@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default desktop capability for the hydration app.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-minimize",
+    "notification:default",
+    "autostart:default",
+    "opener:default"
+  ]
+}
