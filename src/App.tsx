@@ -7,9 +7,11 @@ import {
 } from "@tauri-apps/plugin-notification";
 import {
   dismissOrSnoozeReminder,
+  exportData,
   getHistory,
   getSettings,
   getTodayStatus,
+  importData,
   logDrink,
   saveSettings,
   toggleAutostart,
@@ -31,9 +33,10 @@ import type {
 import { computeReminderMeta } from "./utils";
 
 type TabKey = "today" | "history" | "settings";
-const APP_VERSION = "0.2.0";
+
+const APP_VERSION = "0.3.0";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
-const COPYRIGHT = "Copyright © 2026 zhufree";
+const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
 const appWindow = getCurrentWindow();
 
@@ -198,6 +201,25 @@ export default function App() {
     setStatus(await getTodayStatus());
   };
 
+  const handleExportData = async () => {
+    setMessage("");
+    const exported = await exportData();
+    if (exported) {
+      setMessage(i18n.t("message.exportSuccess"));
+    }
+  };
+
+  const handleImportData = async () => {
+    setMessage("");
+    const imported = await importData();
+    if (!imported) {
+      return;
+    }
+
+    await refreshAll();
+    setMessage(i18n.t("message.importSuccess"));
+  };
+
   return (
     <I18nProvider locale={locale}>
       {loading || !status ? (
@@ -250,6 +272,8 @@ export default function App() {
               notificationState={notificationState}
               setDraftSettings={setDraftSettings}
               onAutostartChange={(enabled) => void handleAutostartChange(enabled)}
+              onExportData={() => void handleExportData()}
+              onImportData={() => void handleImportData()}
               onSave={() => void handleSaveSettings()}
             />
           ) : null}

@@ -13,6 +13,7 @@ use tauri::{
     AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder,
 };
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartExt};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_notification::NotificationExt;
 
 const STORE_FILE_NAME: &str = "drink-water-state.json";
@@ -262,6 +263,15 @@ impl AppState {
         let content = serde_json::to_string_pretty(&data).map_err(|error| error.to_string())?;
         fs::write(&self.store_path, content).map_err(|error| error.to_string())
     }
+
+    fn replace_data(&self, next: PersistedState) -> Result<(), String> {
+        let mut guard = self
+            .data
+            .lock()
+            .map_err(|_| "failed to lock local state".to_string())?;
+        *guard = next;
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -464,6 +474,61 @@ fn get_history(
     items.truncate(range.max(1));
     let _ = app;
     Ok(items)
+}
+
+#[tauri::command]
+fn export_data(app: AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    state.save()?;
+
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("Export Drink Water data")
+        .set_file_name("drink-water-data.json")
+        .add_filter("JSON", &["json"])
+        .blocking_save_file();
+
+    let Some(file_path) = selected else {
+        return Ok(false);
+    };
+
+    let destination = file_path.into_path().map_err(|error| error.to_string())?;
+    let content = fs::read_to_string(&state.store_path).map_err(|error| error.to_string())?;
+    fs::write(destination, content).map_err(|error| error.to_string())?;
+    Ok(true)
+}
+
+#[tauri::command]
+fn import_data(app: AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .set_title("Import Drink Water data")
+        .add_filter("JSON", &["json"])
+        .blocking_pick_file();
+
+    let Some(file_path) = selected else {
+        return Ok(false);
+    };
+
+    let source = file_path.into_path().map_err(|error| error.to_string())?;
+    let content = fs::read_to_string(source).map_err(|error| error.to_string())?;
+    let mut parsed =
+        serde_json::from_str::<PersistedState>(&content).map_err(|error| error.to_string())?;
+    parsed.settings = parsed.settings.sanitize();
+    parsed.today.target_ml = parsed.settings.daily_target_ml;
+    parsed.today.cup_size_ml = parsed.settings.cup_size_ml;
+    parsed.today.reminder_interval_minutes = parsed.settings.reminder_interval_minutes;
+    parsed.today.active_start_hour = parsed.settings.active_start_hour;
+    parsed.today.active_end_hour = parsed.settings.active_end_hour;
+    parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
+    parsed.today.debt_ml = 0;
+    reconcile(&mut parsed, Local::now());
+
+    state.replace_data(parsed)?;
+    state.save()?;
+    emit_state_updated(&app);
+    Ok(true)
 }
 
 fn update_state_and_snapshot(app: &AppHandle, state: &AppState) -> Result<TodayStatus, String> {
@@ -692,7 +757,7 @@ fn ensure_window(app: &AppHandle) -> Result<tauri::WebviewWindow, tauri::Error> 
         .inner_size(460.0, 760.0)
         .min_inner_size(380.0, 640.0)
         .decorations(false)
-        .visible(false)
+        .visible(true)
         .build()
 }
 
@@ -704,6 +769,14 @@ fn toggle_main_window(app: &AppHandle) {
             let _ = window.show();
             let _ = window.set_focus();
         }
+    }
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Ok(window) = ensure_window(app) {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
     }
 }
 
@@ -797,6 +870,10 @@ fn start_scheduler(app: AppHandle) {
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
@@ -814,6 +891,7 @@ pub fn run() {
                 let _ = app.handle().autolaunch().enable();
             }
             app.manage(state);
+            show_main_window(&app.handle());
 
             let app_handle = app.handle().clone();
             TrayIconBuilder::new()
@@ -840,6 +918,8 @@ pub fn run() {
             get_today_status,
             log_drink,
             undo_last_drink,
+            export_data,
+            import_data,
             toggle_autostart,
             dismiss_or_snooze_reminder,
             get_history

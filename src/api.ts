@@ -11,8 +11,7 @@ export const getTodayStatus = () => invoke<TodayStatus>("get_today_status");
 export const logDrink = (amountMl: number) =>
   invoke<TodayStatus>("log_drink", { amountMl });
 
-export const undoLastDrink = () =>
-  invoke<TodayStatus>("undo_last_drink");
+export const undoLastDrink = () => invoke<TodayStatus>("undo_last_drink");
 
 export const toggleAutostart = (enabled: boolean) =>
   invoke<boolean>("toggle_autostart", { enabled });
@@ -22,3 +21,7 @@ export const dismissOrSnoozeReminder = () =>
 
 export const getHistory = (range: number) =>
   invoke<HistoryItem[]>("get_history", { range });
+
+export const exportData = () => invoke<boolean>("export_data");
+
+export const importData = () => invoke<boolean>("import_data");

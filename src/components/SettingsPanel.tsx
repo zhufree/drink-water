@@ -13,6 +13,8 @@ type SettingsPanelProps = {
   notificationState: NotificationPermissionState;
   setDraftSettings: Dispatch<SetStateAction<Settings>>;
   onAutostartChange: (enabled: boolean) => void;
+  onExportData: () => void;
+  onImportData: () => void;
   onSave: () => void;
 };
 
@@ -27,6 +29,8 @@ export function SettingsPanel({
   notificationState,
   setDraftSettings,
   onAutostartChange,
+  onExportData,
+  onImportData,
   onSave
 }: SettingsPanelProps) {
   const { t } = useI18n();
@@ -188,6 +192,25 @@ export function SettingsPanel({
           {t("settings.permissionStatus", { status: permissionLabel })}
         </p>
         <p className="mt-2 text-xs text-slate-400">{t("settings.notificationNote")}</p>
+      </div>
+
+      <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+        <strong className="text-sm font-semibold text-slate-50">{t("settings.dataTitle")}</strong>
+        <p className="mt-2 text-sm text-slate-300/78">{t("settings.dataDescription")}</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <button
+            onClick={onExportData}
+            className="rounded-[14px] border border-cyan-200/30 bg-cyan-300/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
+          >
+            {t("settings.exportData")}
+          </button>
+          <button
+            onClick={onImportData}
+            className="rounded-[14px] border border-emerald-200/30 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition hover:-translate-y-px hover:bg-emerald-300/16"
+          >
+            {t("settings.importData")}
+          </button>
+        </div>
       </div>
 
       <button

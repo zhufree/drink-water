@@ -7,6 +7,8 @@ type TranslationKey =
   | "message.undo"
   | "message.windowActionFailed"
   | "message.settingsSaved"
+  | "message.exportSuccess"
+  | "message.importSuccess"
   | "window.subtitle"
   | "window.openSettings"
   | "window.minimize"
@@ -48,6 +50,10 @@ type TranslationKey =
   | "settings.permissionUnsupported"
   | "settings.permissionPrompt"
   | "settings.notificationNote"
+  | "settings.dataTitle"
+  | "settings.dataDescription"
+  | "settings.exportData"
+  | "settings.importData"
   | "settings.save"
   | "settings.saving"
   | "settings.languageZhCn"
@@ -72,8 +78,6 @@ type TranslationKey =
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
   | "notification.snoozeBody"
-  | "notification.testTitle"
-  | "notification.testBody"
   | "common.notScheduled";
 
 type TranslationParams = Record<string, string | number>;
@@ -81,86 +85,107 @@ type TranslationTable = Record<TranslationKey, string>;
 
 const translations: Record<Locale, TranslationTable> = {
   "zh-CN": {
-    "app.loading": "正在准备你的补水助手...",
-    "message.logged": "已记录 {amount}。",
-    "message.undo": "已撤销上次记录的 {amount}。",
-    "message.windowActionFailed": "窗口操作失败：{action} 未执行成功，{detail}",
-    "message.settingsSaved": "设置已保存，提醒节奏和语言已更新。",
-    "window.subtitle": "桌面补水助手",
-    "window.openSettings": "打开设置",
-    "window.minimize": "最小化",
-    "window.hideToTray": "收起到托盘",
-    "tabs.navigation": "功能切换",
-    "tabs.today": "今日",
-    "tabs.history": "历史",
-    "today.title": "今日饮水概览",
-    "today.nextReminder": "下次提醒",
-    "today.progress": "今日进度",
-    "today.target": "今日目标 {amount}",
-    "today.expected": "当前应喝 {amount}",
-    "today.actual": "实际已喝 {amount}",
-    "today.debt": "当前欠量 {amount}",
-    "today.remaining": "剩余目标 {amount}",
-    "today.quickLog": "快速记录",
-    "today.quickLogHelp": "默认一键记一杯，也可以微调这次实际喝了多少。",
-    "today.snooze": "稍后提醒",
-    "today.resetToCup": "恢复单杯",
-    "today.logOneCup": "记一杯 {amount}",
-    "today.logAmount": "记录 {amount}",
-    "today.undoAmount": "撤销上次 {amount}",
-    "today.undoLastLog": "撤销上次记录",
-    "settings.title": "常规设置",
-    "settings.description": "提醒节奏会根据目标量、单杯容量和提醒时间自动计算。",
-    "settings.dailyTarget": "每日目标（ml）",
-    "settings.cupSize": "单杯容量（ml）",
-    "settings.interval": "提醒间隔（分钟）",
-    "settings.intervalHelp": "自动计算：{drinksPerDay} 次喝水，约每 {minutes} 分钟提醒一次",
-    "settings.startHour": "开始提醒时间（小时）",
-    "settings.endHour": "结束提醒时间（小时）",
-    "settings.language": "界面语言",
-    "settings.notifications": "系统通知",
-    "settings.autostart": "开机自启",
-    "settings.permissionTitle": "通知权限",
-    "settings.permissionStatus": "当前状态：{status}",
-    "settings.permissionGranted": "已允许",
-    "settings.permissionDenied": "已拒绝，提醒可能无法弹出",
-    "settings.permissionUnsupported": "当前环境不支持前端检测",
-    "settings.permissionPrompt": "等待系统确认",
-    "settings.notificationNote": "在 Windows 上，安装后的应用比开发调试进程更容易稳定显示系统通知。",
-    "settings.save": "保存设置",
-    "settings.saving": "正在保存...",
-    "settings.languageZhCn": "简体中文",
+    "app.loading": "\u6b63\u5728\u51c6\u5907\u4f60\u7684\u8865\u6c34\u52a9\u624b...",
+    "message.logged": "\u5df2\u8bb0\u5f55 {amount}\u3002",
+    "message.undo": "\u5df2\u64a4\u9500\u4e0a\u6b21\u8bb0\u5f55\u7684 {amount}\u3002",
+    "message.windowActionFailed":
+      "\u7a97\u53e3\u64cd\u4f5c\u5931\u8d25\uff1a{action} \u672a\u6267\u884c\u6210\u529f\uff0c{detail}",
+    "message.settingsSaved":
+      "\u8bbe\u7f6e\u5df2\u4fdd\u5b58\uff0c\u63d0\u9192\u8282\u594f\u548c\u8bed\u8a00\u5df2\u66f4\u65b0\u3002",
+    "message.exportSuccess": "\u6570\u636e\u5df2\u5bfc\u51fa\u3002",
+    "message.importSuccess": "\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5237\u65b0\u3002",
+    "window.subtitle": "\u684c\u9762\u8865\u6c34\u52a9\u624b",
+    "window.openSettings": "\u6253\u5f00\u8bbe\u7f6e",
+    "window.minimize": "\u6700\u5c0f\u5316",
+    "window.hideToTray": "\u6536\u8d77\u5230\u6258\u76d8",
+    "tabs.navigation": "\u529f\u80fd\u5207\u6362",
+    "tabs.today": "\u4eca\u65e5",
+    "tabs.history": "\u5386\u53f2",
+    "today.title": "\u4eca\u65e5\u996e\u6c34\u6982\u89c8",
+    "today.nextReminder": "\u4e0b\u6b21\u63d0\u9192",
+    "today.progress": "\u4eca\u65e5\u8fdb\u5ea6",
+    "today.target": "\u4eca\u65e5\u76ee\u6807 {amount}",
+    "today.expected": "\u5f53\u524d\u5e94\u559d {amount}",
+    "today.actual": "\u5b9e\u9645\u5df2\u559d {amount}",
+    "today.debt": "\u5f53\u524d\u6b20\u91cf {amount}",
+    "today.remaining": "\u5269\u4f59\u76ee\u6807 {amount}",
+    "today.quickLog": "\u5feb\u901f\u8bb0\u5f55",
+    "today.quickLogHelp":
+      "\u9ed8\u8ba4\u4e00\u952e\u8bb0\u4e00\u676f\uff0c\u4e5f\u53ef\u4ee5\u5fae\u8c03\u8fd9\u6b21\u5b9e\u9645\u559d\u4e86\u591a\u5c11\u3002",
+    "today.snooze": "\u7a0d\u540e\u63d0\u9192",
+    "today.resetToCup": "\u6062\u590d\u5355\u676f",
+    "today.logOneCup": "\u8bb0\u4e00\u676f {amount}",
+    "today.logAmount": "\u8bb0\u5f55 {amount}",
+    "today.undoAmount": "\u64a4\u9500\u4e0a\u6b21 {amount}",
+    "today.undoLastLog": "\u64a4\u9500\u4e0a\u6b21\u8bb0\u5f55",
+    "settings.title": "\u5e38\u89c4\u8bbe\u7f6e",
+    "settings.description":
+      "\u63d0\u9192\u8282\u594f\u4f1a\u6839\u636e\u76ee\u6807\u91cf\u3001\u5355\u676f\u5bb9\u91cf\u548c\u63d0\u9192\u65f6\u95f4\u81ea\u52a8\u8ba1\u7b97\u3002",
+    "settings.dailyTarget": "\u6bcf\u65e5\u76ee\u6807 (ml)",
+    "settings.cupSize": "\u5355\u676f\u5bb9\u91cf (ml)",
+    "settings.interval": "\u63d0\u9192\u95f4\u9694 (\u5206\u949f)",
+    "settings.intervalHelp":
+      "\u81ea\u52a8\u8ba1\u7b97\uff1a\u6bcf\u5929 {drinksPerDay} \u676f\uff0c\u7ea6\u6bcf {minutes} \u5206\u949f\u63d0\u9192\u4e00\u6b21",
+    "settings.startHour": "\u5f00\u59cb\u63d0\u9192\u65f6\u95f4 (\u5c0f\u65f6)",
+    "settings.endHour": "\u7ed3\u675f\u63d0\u9192\u65f6\u95f4 (\u5c0f\u65f6)",
+    "settings.language": "\u754c\u9762\u8bed\u8a00",
+    "settings.notifications": "\u7cfb\u7edf\u901a\u77e5",
+    "settings.autostart": "\u5f00\u673a\u81ea\u542f",
+    "settings.permissionTitle": "\u901a\u77e5\u6743\u9650",
+    "settings.permissionStatus": "\u5f53\u524d\u72b6\u6001\uff1a{status}",
+    "settings.permissionGranted": "\u5df2\u5141\u8bb8",
+    "settings.permissionDenied":
+      "\u5df2\u62d2\u7edd\uff0c\u63d0\u9192\u53ef\u80fd\u65e0\u6cd5\u5f39\u51fa",
+    "settings.permissionUnsupported":
+      "\u5f53\u524d\u73af\u5883\u4e0d\u652f\u6301\u524d\u7aef\u6743\u9650\u68c0\u6d4b",
+    "settings.permissionPrompt": "\u7b49\u5f85\u7cfb\u7edf\u786e\u8ba4",
+    "settings.notificationNote":
+      "\u5728 Windows \u4e0a\uff0c\u5b89\u88c5\u540e\u7684\u5e94\u7528\u901a\u5e38\u6bd4\u5f00\u53d1\u8c03\u8bd5\u8fdb\u7a0b\u66f4\u5bb9\u6613\u7a33\u5b9a\u663e\u793a\u7cfb\u7edf\u901a\u77e5\u3002",
+    "settings.dataTitle": "\u6570\u636e\u7ba1\u7406",
+    "settings.dataDescription":
+      "\u53ef\u5bfc\u51fa\u5907\u4efd\u6587\u4ef6\uff0c\u4e5f\u53ef\u5728\u65b0\u7535\u8111\u4e0a\u5bfc\u5165\u6062\u590d\u5386\u53f2\u8bb0\u5f55\u548c\u8bbe\u7f6e\u3002",
+    "settings.exportData": "\u5bfc\u51fa\u6570\u636e",
+    "settings.importData": "\u5bfc\u5165\u6570\u636e",
+    "settings.save": "\u4fdd\u5b58\u8bbe\u7f6e",
+    "settings.saving": "\u6b63\u5728\u4fdd\u5b58...",
+    "settings.languageZhCn": "\u7b80\u4f53\u4e2d\u6587",
     "settings.languageEnUs": "English",
-    "settings.version": "版本号：{version}",
-    "settings.downloadLatest": "下载新版本",
-    "history.title": "饮水历史",
-    "history.description": "用颜色快速查看每天的饮水情况，颜色越健康说明越接近目标。",
-    "history.heatmapTitle": "近 8 周热力格",
-    "history.heatmapDescription": "绿色代表达标，蓝色代表喝得不错，暖色代表喝得偏少。",
-    "history.tooltip": "{day} · 实际 {actual}{target}",
-    "history.goalMet": "达标",
-    "history.nearGoal": "接近达标",
-    "history.low": "喝得偏少",
-    "history.veryLow": "喝得很少",
-    "history.recentTitle": "最近 7 天明细",
-    "history.recentAmounts": "实际 {actual} / 计入进度 {consumed}",
-    "history.met": "已达标",
-    "history.notMet": "未达标",
-    "history.debtTotal": "欠量累计 {amount}",
-    "notification.drinkNowTitle": "该喝水了",
-    "notification.drinkNowBody": "新的喝水提醒已经开始了，记得按时补一杯水。",
-    "notification.snoozeTitle": "再次提醒你",
-    "notification.snoozeBody": "稍后提醒时间到了，现在可以顺手把这杯水补上。",
-    "notification.testTitle": "测试通知",
-    "notification.testBody": "如果你能看到这条消息，说明系统通知链路是正常的。",
-    "common.notScheduled": "未安排"
+    "settings.version": "\u7248\u672c\u53f7\uff1a{version}",
+    "settings.downloadLatest": "\u4e0b\u8f7d\u65b0\u7248\u672c",
+    "history.title": "\u996e\u6c34\u5386\u53f2",
+    "history.description":
+      "\u7528\u989c\u8272\u5feb\u901f\u67e5\u770b\u6bcf\u5929\u7684\u996e\u6c34\u60c5\u51b5\uff0c\u989c\u8272\u8d8a\u5065\u5eb7\u8bf4\u660e\u8d8a\u63a5\u8fd1\u76ee\u6807\u3002",
+    "history.heatmapTitle": "\u8fc7\u53bb 8 \u5468\u70ed\u529b\u683c",
+    "history.heatmapDescription":
+      "\u7eff\u8272\u4ee3\u8868\u8fbe\u6807\uff0c\u84dd\u8272\u4ee3\u8868\u559d\u5f97\u4e0d\u9519\uff0c\u6696\u8272\u4ee3\u8868\u559d\u5f97\u504f\u5c11\u3002",
+    "history.tooltip": "{day} | \u5b9e\u9645 {actual}{target}",
+    "history.goalMet": "\u8fbe\u6807",
+    "history.nearGoal": "\u63a5\u8fd1\u8fbe\u6807",
+    "history.low": "\u559d\u5f97\u504f\u5c11",
+    "history.veryLow": "\u559d\u5f97\u5f88\u5c11",
+    "history.recentTitle": "\u6700\u8fd1 7 \u5929\u660e\u7ec6",
+    "history.recentAmounts": "\u5b9e\u9645 {actual} / \u8ba1\u5165 {consumed}",
+    "history.met": "\u5df2\u8fbe\u6807",
+    "history.notMet": "\u672a\u8fbe\u6807",
+    "history.debtTotal": "\u6b20\u91cf\u7d2f\u8ba1 {amount}",
+    "notification.drinkNowTitle": "\u8be5\u559d\u6c34\u4e86",
+    "notification.drinkNowBody":
+      "\u65b0\u7684\u559d\u6c34\u63d0\u9192\u7a97\u53e3\u5df2\u7ecf\u5f00\u59cb\uff0c\u8bb0\u5f97\u6309\u65f6\u8865\u4e00\u676f\u6c34\u3002",
+    "notification.snoozeTitle": "\u518d\u6b21\u63d0\u9192\u4f60",
+    "notification.snoozeBody":
+      "\u7a0d\u540e\u63d0\u9192\u65f6\u95f4\u5230\u4e86\uff0c\u73b0\u5728\u53ef\u4ee5\u987a\u624b\u628a\u8fd9\u676f\u6c34\u8865\u4e0a\u3002",
+    "common.notScheduled": "\u672a\u5b89\u6392"
   },
   "en-US": {
     "app.loading": "Loading your hydration assistant...",
     "message.logged": "Logged {amount}.",
     "message.undo": "Undid the last {amount} log.",
-    "message.windowActionFailed": "Window action failed: {action} was not completed, {detail}",
-    "message.settingsSaved": "Settings saved. Reminder pacing and language have been updated.",
+    "message.windowActionFailed":
+      "Window action failed: {action} was not completed, {detail}",
+    "message.settingsSaved":
+      "Settings saved. Reminder pacing and language have been updated.",
+    "message.exportSuccess": "Data exported.",
+    "message.importSuccess": "Data imported and refreshed.",
     "window.subtitle": "Desktop hydration assistant",
     "window.openSettings": "Open settings",
     "window.minimize": "Minimize",
@@ -168,7 +193,7 @@ const translations: Record<Locale, TranslationTable> = {
     "tabs.navigation": "Switch sections",
     "tabs.today": "Today",
     "tabs.history": "History",
-    "today.title": "Today's Hydration",
+    "today.title": "Today's hydration",
     "today.nextReminder": "Next reminder",
     "today.progress": "Progress",
     "today.target": "Target {amount}",
@@ -177,7 +202,8 @@ const translations: Record<Locale, TranslationTable> = {
     "today.debt": "Behind by {amount}",
     "today.remaining": "Remaining {amount}",
     "today.quickLog": "Quick log",
-    "today.quickLogHelp": "Log one cup fast, or fine-tune how much you actually drank.",
+    "today.quickLogHelp":
+      "Log one cup fast, or fine-tune how much you actually drank.",
     "today.snooze": "Snooze",
     "today.resetToCup": "Reset to cup",
     "today.logOneCup": "Log one cup {amount}",
@@ -185,11 +211,13 @@ const translations: Record<Locale, TranslationTable> = {
     "today.undoAmount": "Undo {amount}",
     "today.undoLastLog": "Undo last log",
     "settings.title": "General settings",
-    "settings.description": "Reminder pacing is calculated automatically from the target, cup size, and active hours.",
+    "settings.description":
+      "Reminder pacing is calculated automatically from the target, cup size, and active hours.",
     "settings.dailyTarget": "Daily target (ml)",
     "settings.cupSize": "Cup size (ml)",
     "settings.interval": "Reminder interval (minutes)",
-    "settings.intervalHelp": "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
+    "settings.intervalHelp":
+      "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
     "settings.startHour": "Start hour",
     "settings.endHour": "End hour",
     "settings.language": "Interface language",
@@ -199,9 +227,16 @@ const translations: Record<Locale, TranslationTable> = {
     "settings.permissionStatus": "Current status: {status}",
     "settings.permissionGranted": "Granted",
     "settings.permissionDenied": "Denied, reminders may not appear",
-    "settings.permissionUnsupported": "This environment does not support frontend permission checks",
+    "settings.permissionUnsupported":
+      "This environment does not support frontend permission checks",
     "settings.permissionPrompt": "Waiting for system confirmation",
-    "settings.notificationNote": "On Windows, system notifications are usually more reliable in the installed app than in a dev process.",
+    "settings.notificationNote":
+      "On Windows, system notifications are usually more reliable in the installed app than in a dev process.",
+    "settings.dataTitle": "Data management",
+    "settings.dataDescription":
+      "Export a backup file, or import it on a new computer to restore your history and settings.",
+    "settings.exportData": "Export data",
+    "settings.importData": "Import data",
     "settings.save": "Save settings",
     "settings.saving": "Saving...",
     "settings.languageZhCn": "Simplified Chinese",
@@ -209,10 +244,12 @@ const translations: Record<Locale, TranslationTable> = {
     "settings.version": "Version: {version}",
     "settings.downloadLatest": "Download new version",
     "history.title": "Hydration history",
-    "history.description": "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",
+    "history.description":
+      "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",
     "history.heatmapTitle": "Last 8 weeks",
-    "history.heatmapDescription": "Green means goal met, blue means pretty good, warm colors mean you drank less.",
-    "history.tooltip": "{day} · actual {actual}{target}",
+    "history.heatmapDescription":
+      "Green means goal met, blue means pretty good, warm colors mean you drank less.",
+    "history.tooltip": "{day} | actual {actual}{target}",
     "history.goalMet": "Goal met",
     "history.nearGoal": "Near goal",
     "history.low": "Below target",
@@ -223,11 +260,11 @@ const translations: Record<Locale, TranslationTable> = {
     "history.notMet": "Missed goal",
     "history.debtTotal": "Accumulated debt {amount}",
     "notification.drinkNowTitle": "Time to drink water",
-    "notification.drinkNowBody": "A new reminder window has started. Try to drink a cup now.",
+    "notification.drinkNowBody":
+      "A new reminder window has started. Try to drink a cup now.",
     "notification.snoozeTitle": "Reminder again",
-    "notification.snoozeBody": "Your snooze has ended. This is a good time to catch up on that cup.",
-    "notification.testTitle": "Test notification",
-    "notification.testBody": "If you can see this, the notification pipeline is working.",
+    "notification.snoozeBody":
+      "Your snooze has ended. This is a good time to catch up on that cup.",
     "common.notScheduled": "Not scheduled"
   }
 };
