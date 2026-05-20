@@ -1,25 +1,5 @@
 import type { Settings } from "./types";
 
-export function formatMl(value: number) {
-  return `${value.toLocaleString("zh-CN")} ml`;
-}
-
-export function formatDateTime(value: string | null) {
-  if (!value) {
-    return "未安排";
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-}
-
 export function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }

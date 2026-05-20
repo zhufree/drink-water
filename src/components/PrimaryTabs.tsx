@@ -1,16 +1,20 @@
+import { useI18n } from "../i18n";
+
 type PrimaryTabsProps = {
   activeTab: "today" | "history" | "settings";
   onChange: (tab: "today" | "history") => void;
 };
 
-const tabs = [
-  { key: "today", label: "今日" },
-  { key: "history", label: "历史" }
-] as const;
-
 export function PrimaryTabs({ activeTab, onChange }: PrimaryTabsProps) {
+  const { t } = useI18n();
+
+  const tabs = [
+    { key: "today", label: t("tabs.today") },
+    { key: "history", label: t("tabs.history") }
+  ] as const;
+
   return (
-    <nav aria-label="功能切换" className="mb-3 grid grid-cols-2 gap-2">
+    <nav aria-label={t("tabs.navigation")} className="mb-3 grid grid-cols-2 gap-2">
       {tabs.map((tab) => (
         <button
           key={tab.key}

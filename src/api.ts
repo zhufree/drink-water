@@ -11,6 +11,9 @@ export const getTodayStatus = () => invoke<TodayStatus>("get_today_status");
 export const logDrink = (amountMl: number) =>
   invoke<TodayStatus>("log_drink", { amountMl });
 
+export const undoLastDrink = () =>
+  invoke<TodayStatus>("undo_last_drink");
+
 export const toggleAutostart = (enabled: boolean) =>
   invoke<boolean>("toggle_autostart", { enabled });
 

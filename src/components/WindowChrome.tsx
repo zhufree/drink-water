@@ -1,3 +1,5 @@
+import { useI18n } from "../i18n";
+
 type TabKey = "today" | "history" | "settings";
 
 type WindowChromeProps = {
@@ -26,6 +28,8 @@ export function WindowChrome({
   onMinimize,
   onHide
 }: WindowChromeProps) {
+  const { t } = useI18n();
+
   return (
     <header className="mb-3 flex items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-white/5 px-3 py-2 backdrop-blur-md select-none">
       <div className="min-w-0 flex-1" data-tauri-drag-region>
@@ -39,7 +43,7 @@ export function WindowChrome({
               Drink Water
             </strong>
             <span className="block text-[11px] text-slate-300/80" data-tauri-drag-region>
-              桌面补水助手
+              {t("window.subtitle")}
             </span>
           </div>
         </div>
@@ -48,7 +52,7 @@ export function WindowChrome({
       <div className="no-drag flex shrink-0 items-center gap-2">
         <button
           type="button"
-          aria-label="打开设置"
+          aria-label={t("window.openSettings")}
           onClick={onOpenSettings}
           className={`flex h-8 w-8 items-center justify-center rounded-[10px] transition ${
             activeTab === "settings"
@@ -60,7 +64,7 @@ export function WindowChrome({
         </button>
         <button
           type="button"
-          aria-label="最小化"
+          aria-label={t("window.minimize")}
           onClick={onMinimize}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >
@@ -68,7 +72,7 @@ export function WindowChrome({
         </button>
         <button
           type="button"
-          aria-label="收起到托盘"
+          aria-label={t("window.hideToTray")}
           onClick={onHide}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >

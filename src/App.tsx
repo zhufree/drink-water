@@ -12,22 +12,28 @@ import {
   getTodayStatus,
   logDrink,
   saveSettings,
-  toggleAutostart
+  toggleAutostart,
+  undoLastDrink
 } from "./api";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { TodayPanel } from "./components/TodayPanel";
 import { WindowChrome } from "./components/WindowChrome";
+import { I18nProvider, createI18n } from "./i18n";
 import type {
   HistoryItem,
+  Locale,
   NotificationPermissionState,
   Settings,
   TodayStatus
 } from "./types";
-import { computeReminderMeta, formatMl } from "./utils";
+import { computeReminderMeta } from "./utils";
 
 type TabKey = "today" | "history" | "settings";
+const APP_VERSION = "0.2.0";
+const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
+const COPYRIGHT = "Copyright © 2026 zhufree";
 
 const appWindow = getCurrentWindow();
 
@@ -38,7 +44,8 @@ const defaultSettings: Settings = {
   activeStartHour: 9,
   activeEndHour: 22,
   notificationsEnabled: true,
-  autostartEnabled: false
+  autostartEnabled: false,
+  locale: "zh-CN"
 };
 
 export default function App() {
@@ -53,6 +60,9 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [notificationState, setNotificationState] =
     useState<NotificationPermissionState>("default");
+
+  const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
+  const i18n = useMemo(() => createI18n(locale), [locale]);
 
   const reminderMeta = useMemo(
     () => computeReminderMeta(draftSettings),
@@ -127,7 +137,20 @@ export default function App() {
     const nextStatus = await logDrink(amountMl);
     setStatus(nextStatus);
     setHistory(await getHistory(56));
-    setMessage(`已记录 ${formatMl(amountMl)}，系统会先补欠量，再增加今日净进度。`);
+    setMessage(i18n.t("message.logged", { amount: i18n.formatMl(amountMl) }));
+  };
+
+  const handleUndoLastDrink = async () => {
+    setMessage("");
+    const previousAmount = status?.lastLoggedAmountMl ?? null;
+    const nextStatus = await undoLastDrink();
+    setStatus(nextStatus);
+    setHistory(await getHistory(56));
+    setMessage(
+      i18n.t("message.undo", {
+        amount: i18n.formatMl(previousAmount ?? 0)
+      })
+    );
   };
 
   const handleWindowAction = async (
@@ -140,9 +163,13 @@ export default function App() {
       const detail =
         error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       setMessage(
-        `窗口操作失败：${
-          actionName === "minimize" ? "最小化" : "收起到托盘"
-        }未执行成功，${detail}`
+        i18n.t("message.windowActionFailed", {
+          action:
+            actionName === "minimize"
+              ? i18n.t("window.minimize")
+              : i18n.t("window.hideToTray"),
+          detail
+        })
       );
     }
   };
@@ -157,7 +184,7 @@ export default function App() {
       setDraftSettings(saved);
       setQuickAmount(saved.cupSizeMl);
       setStatus(await getTodayStatus());
-      setMessage("设置已保存。后续提醒节奏会按新的目标和时间自动计算。");
+      setMessage(i18n.t("message.settingsSaved"));
     } finally {
       setSaving(false);
     }
@@ -171,59 +198,63 @@ export default function App() {
     setStatus(await getTodayStatus());
   };
 
-  if (loading || !status) {
-    return (
-      <main className="grid min-h-screen place-items-center text-slate-200/80">
-        正在准备你的补水助手...
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen">
-      <WindowChrome
-        activeTab={activeTab}
-        onOpenSettings={() => setActiveTab("settings")}
-        onMinimize={() => void handleWindowAction("minimize", () => appWindow.minimize())}
-        onHide={() => void handleWindowAction("hide", () => appWindow.hide())}
-      />
+    <I18nProvider locale={locale}>
+      {loading || !status ? (
+        <main className="grid min-h-screen place-items-center text-slate-200/80">
+          {i18n.t("app.loading")}
+        </main>
+      ) : (
+        <main className="min-h-screen">
+          <WindowChrome
+            activeTab={activeTab}
+            onOpenSettings={() => setActiveTab("settings")}
+            onMinimize={() => void handleWindowAction("minimize", () => appWindow.minimize())}
+            onHide={() => void handleWindowAction("hide", () => appWindow.hide())}
+          />
 
-      <PrimaryTabs
-        activeTab={activeTab}
-        onChange={(tab) => setActiveTab(tab)}
-      />
+          <PrimaryTabs
+            activeTab={activeTab}
+            onChange={(tab) => setActiveTab(tab)}
+          />
 
-      {message ? (
-        <p className="mb-3 rounded-[14px] bg-cyan-300/14 px-3 py-2 text-sm text-cyan-100">
-          {message}
-        </p>
-      ) : null}
+          {message ? (
+            <p className="mb-3 rounded-[14px] bg-cyan-300/14 px-3 py-2 text-sm text-cyan-100">
+              {message}
+            </p>
+          ) : null}
 
-      {activeTab === "today" ? (
-        <TodayPanel
-          settings={settings}
-          status={status}
-          quickAmount={quickAmount}
-          setQuickAmount={setQuickAmount}
-          onLog={(amountMl) => void handleLog(amountMl)}
-          onSnooze={() => void dismissOrSnoozeReminder()}
-        />
-      ) : null}
+          {activeTab === "today" ? (
+            <TodayPanel
+              settings={settings}
+              status={status}
+              quickAmount={quickAmount}
+              setQuickAmount={setQuickAmount}
+              onLog={(amountMl) => void handleLog(amountMl)}
+              onUndo={() => void handleUndoLastDrink()}
+              onSnooze={() => void dismissOrSnoozeReminder()}
+            />
+          ) : null}
 
-      {activeTab === "history" ? <HistoryPanel history={history} /> : null}
+          {activeTab === "history" ? <HistoryPanel history={history} /> : null}
 
-      {activeTab === "settings" ? (
-        <SettingsPanel
-          draftSettings={draftSettings}
-          reminderIntervalMinutes={reminderMeta.reminderIntervalMinutes}
-          drinksPerDay={reminderMeta.drinksPerDay}
-          saving={saving}
-          notificationState={notificationState}
-          setDraftSettings={setDraftSettings}
-          onAutostartChange={(enabled) => void handleAutostartChange(enabled)}
-          onSave={() => void handleSaveSettings()}
-        />
-      ) : null}
-    </main>
+          {activeTab === "settings" ? (
+            <SettingsPanel
+              draftSettings={draftSettings}
+              reminderIntervalMinutes={reminderMeta.reminderIntervalMinutes}
+              drinksPerDay={reminderMeta.drinksPerDay}
+              version={APP_VERSION}
+              copyright={COPYRIGHT}
+              releaseUrl={RELEASE_URL}
+              saving={saving}
+              notificationState={notificationState}
+              setDraftSettings={setDraftSettings}
+              onAutostartChange={(enabled) => void handleAutostartChange(enabled)}
+              onSave={() => void handleSaveSettings()}
+            />
+          ) : null}
+        </main>
+      )}
+    </I18nProvider>
   );
 }

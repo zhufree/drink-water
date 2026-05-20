@@ -19,6 +19,17 @@ const STORE_FILE_NAME: &str = "drink-water-state.json";
 const STATE_EVENT: &str = "state-updated";
 const SNOOZE_MINUTES: i64 = 10;
 
+fn default_locale() -> String {
+    "zh-CN".to_string()
+}
+
+fn normalize_locale(locale: &str) -> String {
+    match locale {
+        "en-US" => "en-US".to_string(),
+        _ => "zh-CN".to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Settings {
@@ -29,6 +40,8 @@ pub struct Settings {
     active_end_hour: u8,
     notifications_enabled: bool,
     autostart_enabled: bool,
+    #[serde(default = "default_locale")]
+    locale: String,
 }
 
 impl Default for Settings {
@@ -41,6 +54,7 @@ impl Default for Settings {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: false,
+            locale: default_locale(),
         }
     }
 }
@@ -51,6 +65,7 @@ impl Settings {
         self.cup_size_ml = self.cup_size_ml.max(50);
         self.active_start_hour = self.active_start_hour.min(23);
         self.active_end_hour = self.active_end_hour.clamp(self.active_start_hour + 1, 23);
+        self.locale = normalize_locale(&self.locale);
         self.reminder_interval_minutes = derived_reminder_interval_minutes(
             self.daily_target_ml,
             self.cup_size_ml,
@@ -59,6 +74,21 @@ impl Settings {
         );
         self
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DrinkUndoSnapshot {
+    actual_intake_ml: u32,
+    effective_intake_ml: u32,
+    debt_ml: u32,
+    pending_slot_index: Option<u32>,
+    pending_since: Option<String>,
+    snooze_until: Option<String>,
+    completed_reminder_slots: u32,
+    last_drink_at: Option<String>,
+    notification_token: u32,
+    last_notified_token: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,6 +110,14 @@ pub struct DailyRecord {
     pending_since: Option<String>,
     last_slot_spawned: Option<u32>,
     last_drink_at: Option<String>,
+    #[serde(default)]
+    last_logged_amount_ml: Option<u32>,
+    #[serde(default)]
+    last_log_undo: Option<DrinkUndoSnapshot>,
+    #[serde(default)]
+    notification_token: u32,
+    #[serde(default)]
+    last_notified_token: Option<u32>,
     snooze_until: Option<String>,
     updated_at: String,
 }
@@ -101,6 +139,7 @@ pub struct HistoryItem {
 #[serde(rename_all = "camelCase")]
 pub struct TodayStatus {
     target_ml: u32,
+    expected_ml: u32,
     consumed_ml: u32,
     actual_intake_ml: u32,
     debt_ml: u32,
@@ -111,6 +150,8 @@ pub struct TodayStatus {
     pending_since: Option<String>,
     completed_reminder_slots: u32,
     missed_reminder_slots: u32,
+    can_undo_last_drink: bool,
+    last_logged_amount_ml: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -152,6 +193,10 @@ impl DailyRecord {
             pending_since: None,
             last_slot_spawned: None,
             last_drink_at: None,
+            last_logged_amount_ml: None,
+            last_log_undo: None,
+            notification_token: 0,
+            last_notified_token: None,
             snooze_until: None,
             updated_at: now.to_rfc3339(),
         }
@@ -162,9 +207,9 @@ impl DailyRecord {
             day_key: self.day_key.clone(),
             target_ml: self.target_ml,
             actual_intake_ml: self.actual_intake_ml,
-            consumed_ml: self.effective_intake_ml,
+            consumed_ml: self.actual_intake_ml,
             debt_incurred_ml: self.total_debt_incurred_ml,
-            goal_met: self.effective_intake_ml >= self.target_ml,
+            goal_met: self.actual_intake_ml >= self.target_ml,
             completed_reminder_slots: self.completed_reminder_slots,
             missed_reminder_slots: self.missed_reminder_slots,
         }
@@ -195,6 +240,8 @@ impl AppState {
             parsed.today.reminder_interval_minutes = parsed.settings.reminder_interval_minutes;
             parsed.today.active_start_hour = parsed.settings.active_start_hour;
             parsed.today.active_end_hour = parsed.settings.active_end_hour;
+            parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
+            parsed.today.debt_ml = 0;
             parsed
         } else {
             PersistedState::new(Local::now())
@@ -210,7 +257,7 @@ impl AppState {
         let data = self
             .data
             .lock()
-            .map_err(|_| "无法锁定本地状态".to_string())?
+            .map_err(|_| "failed to lock local state".to_string())?
             .clone();
         let content = serde_json::to_string_pretty(&data).map_err(|error| error.to_string())?;
         fs::write(&self.store_path, content).map_err(|error| error.to_string())
@@ -222,7 +269,7 @@ fn get_settings(state: State<'_, AppState>) -> Result<Settings, String> {
     let guard = state
         .data
         .lock()
-        .map_err(|_| "无法读取设置".to_string())?;
+        .map_err(|_| "failed to read settings".to_string())?;
     Ok(guard.settings.clone())
 }
 
@@ -237,7 +284,7 @@ fn save_settings(
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法保存设置".to_string())?;
+            .map_err(|_| "failed to save settings".to_string())?;
         guard.settings = settings.clone();
         guard.today.target_ml = settings.daily_target_ml;
         guard.today.cup_size_ml = settings.cup_size_ml;
@@ -268,32 +315,37 @@ fn log_drink(
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法记录饮水".to_string())?;
+            .map_err(|_| "failed to log water".to_string())?;
 
         reconcile(&mut guard, Local::now());
 
+        guard.today.last_log_undo = Some(DrinkUndoSnapshot {
+            actual_intake_ml: guard.today.actual_intake_ml,
+            effective_intake_ml: guard.today.effective_intake_ml,
+            debt_ml: guard.today.debt_ml,
+            pending_slot_index: guard.today.pending_slot_index,
+            pending_since: guard.today.pending_since.clone(),
+            snooze_until: guard.today.snooze_until.clone(),
+            completed_reminder_slots: guard.today.completed_reminder_slots,
+            last_drink_at: guard.today.last_drink_at.clone(),
+            notification_token: guard.today.notification_token,
+            last_notified_token: guard.today.last_notified_token,
+        });
+        guard.today.last_logged_amount_ml = Some(amount_ml);
         guard.today.actual_intake_ml = guard.today.actual_intake_ml.saturating_add(amount_ml);
         guard.today.last_drink_at = Some(Local::now().to_rfc3339());
         guard.today.updated_at = Local::now().to_rfc3339();
 
-        let mut remaining = amount_ml;
-        if guard.today.debt_ml > 0 {
-            let repaid = remaining.min(guard.today.debt_ml);
-            guard.today.debt_ml -= repaid;
-            remaining -= repaid;
+        if guard.today.pending_slot_index.is_some() {
+            guard.today.pending_slot_index = None;
+            guard.today.pending_since = None;
+            guard.today.snooze_until = None;
+            guard.today.completed_reminder_slots =
+                guard.today.completed_reminder_slots.saturating_add(1);
         }
 
-        if remaining > 0 {
-            if guard.today.pending_slot_index.is_some() {
-                guard.today.pending_slot_index = None;
-                guard.today.pending_since = None;
-                guard.today.snooze_until = None;
-                guard.today.completed_reminder_slots =
-                    guard.today.completed_reminder_slots.saturating_add(1);
-            }
-            guard.today.effective_intake_ml =
-                guard.today.effective_intake_ml.saturating_add(remaining);
-        }
+        guard.today.effective_intake_ml = guard.today.actual_intake_ml;
+        guard.today.debt_ml = 0;
     }
 
     state.save()?;
@@ -302,7 +354,45 @@ fn log_drink(
 }
 
 #[tauri::command]
-fn toggle_autostart(app: AppHandle, enabled: bool, state: State<'_, AppState>) -> Result<bool, String> {
+fn undo_last_drink(app: AppHandle, state: State<'_, AppState>) -> Result<TodayStatus, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to undo water log".to_string())?;
+
+        let Some(snapshot) = guard.today.last_log_undo.clone() else {
+            return Err("there is no drink record to undo".to_string());
+        };
+
+        guard.today.actual_intake_ml = snapshot.actual_intake_ml;
+        guard.today.effective_intake_ml = snapshot.effective_intake_ml;
+        guard.today.debt_ml = snapshot.debt_ml;
+        guard.today.pending_slot_index = snapshot.pending_slot_index;
+        guard.today.pending_since = snapshot.pending_since;
+        guard.today.snooze_until = snapshot.snooze_until;
+        guard.today.completed_reminder_slots = snapshot.completed_reminder_slots;
+        guard.today.last_drink_at = snapshot.last_drink_at;
+        guard.today.notification_token = snapshot.notification_token;
+        guard.today.last_notified_token = snapshot.last_notified_token;
+        guard.today.last_logged_amount_ml = None;
+        guard.today.last_log_undo = None;
+        guard.today.updated_at = Local::now().to_rfc3339();
+
+        reconcile(&mut guard, Local::now());
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+    update_state_and_snapshot(&app, &state)
+}
+
+#[tauri::command]
+fn toggle_autostart(
+    app: AppHandle,
+    enabled: bool,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
     let autostart = app.autolaunch();
     if enabled {
         autostart.enable().map_err(|error| error.to_string())?;
@@ -314,7 +404,7 @@ fn toggle_autostart(app: AppHandle, enabled: bool, state: State<'_, AppState>) -
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法更新开机自启状态".to_string())?;
+            .map_err(|_| "failed to update autostart state".to_string())?;
         guard.settings.autostart_enabled = enabled;
         guard.today.updated_at = Local::now().to_rfc3339();
     }
@@ -333,7 +423,7 @@ fn dismiss_or_snooze_reminder(
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法处理提醒".to_string())?;
+            .map_err(|_| "failed to handle reminder".to_string())?;
         reconcile(&mut guard, Local::now());
 
         if guard.today.pending_slot_index.is_some() {
@@ -358,7 +448,7 @@ fn get_history(
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法读取历史".to_string())?;
+            .map_err(|_| "failed to read history".to_string())?;
         reconcile(&mut guard, Local::now());
     }
 
@@ -367,7 +457,7 @@ fn get_history(
     let guard = state
         .data
         .lock()
-        .map_err(|_| "无法读取历史".to_string())?;
+        .map_err(|_| "failed to read history".to_string())?;
     let mut items = guard.history.clone();
     items.push(guard.today.summary());
     items.sort_by(|left, right| right.day_key.cmp(&left.day_key));
@@ -381,7 +471,7 @@ fn update_state_and_snapshot(app: &AppHandle, state: &AppState) -> Result<TodayS
         let mut guard = state
             .data
             .lock()
-            .map_err(|_| "无法更新今日状态".to_string())?;
+            .map_err(|_| "failed to update today state".to_string())?;
         reconcile(&mut guard, Local::now());
     }
     state.save()?;
@@ -389,25 +479,30 @@ fn update_state_and_snapshot(app: &AppHandle, state: &AppState) -> Result<TodayS
     let guard = state
         .data
         .lock()
-        .map_err(|_| "无法读取今日状态".to_string())?;
+        .map_err(|_| "failed to read today state".to_string())?;
     let status = to_today_status(&guard.settings, &guard.today);
     let _ = app;
     Ok(status)
 }
 
 fn to_today_status(settings: &Settings, today: &DailyRecord) -> TodayStatus {
+    let expected_ml = expected_intake_ml(settings, Local::now());
+
     TodayStatus {
         target_ml: today.target_ml,
-        consumed_ml: today.effective_intake_ml,
+        expected_ml,
+        consumed_ml: today.actual_intake_ml.min(expected_ml),
         actual_intake_ml: today.actual_intake_ml,
-        debt_ml: today.debt_ml,
-        remaining_ml: today.target_ml.saturating_sub(today.effective_intake_ml),
+        debt_ml: expected_ml.saturating_sub(today.actual_intake_ml),
+        remaining_ml: today.target_ml.saturating_sub(today.actual_intake_ml),
         next_reminder_at: next_reminder_time(settings, Local::now()),
         autostart_enabled: settings.autostart_enabled,
         pending_reminder: today.pending_slot_index.is_some(),
         pending_since: today.pending_since.clone(),
         completed_reminder_slots: today.completed_reminder_slots,
         missed_reminder_slots: today.missed_reminder_slots,
+        can_undo_last_drink: today.last_log_undo.is_some(),
+        last_logged_amount_ml: today.last_logged_amount_ml,
     }
 }
 
@@ -429,9 +524,11 @@ fn reconcile(state: &mut PersistedState, now: DateTime<Local>) -> bool {
                 }
 
                 state.today.pending_slot_index = Some(slot_index);
-                state.today.pending_since = slot_time_for_day(&state.today.day_key, &state.settings, slot_index)
-                    .map(|value| value.to_rfc3339());
+                state.today.pending_since =
+                    slot_time_for_day(&state.today.day_key, &state.settings, slot_index)
+                        .map(|value| value.to_rfc3339());
                 state.today.last_slot_spawned = Some(slot_index);
+                state.today.notification_token = state.today.notification_token.saturating_add(1);
                 state.today.snooze_until = None;
                 state.today.updated_at = now.to_rfc3339();
                 changed = true;
@@ -440,12 +537,17 @@ fn reconcile(state: &mut PersistedState, now: DateTime<Local>) -> bool {
     }
 
     if let Some(snooze_until) = &state.today.snooze_until {
-        if parse_local_datetime(snooze_until).map(|value| value <= now).unwrap_or(false) {
+        if parse_local_datetime(snooze_until)
+            .map(|value| value <= now)
+            .unwrap_or(false)
+        {
             state.today.snooze_until = None;
+            state.today.notification_token = state.today.notification_token.saturating_add(1);
             changed = true;
         }
     }
 
+    state.today.effective_intake_ml = state.today.actual_intake_ml;
     changed
 }
 
@@ -465,8 +567,12 @@ fn mark_pending_as_missed(today: &mut DailyRecord) {
     today.pending_since = None;
     today.snooze_until = None;
     today.missed_reminder_slots = today.missed_reminder_slots.saturating_add(1);
-    today.debt_ml = today.debt_ml.saturating_add(today.cup_size_ml);
-    today.total_debt_incurred_ml = today.total_debt_incurred_ml.saturating_add(today.cup_size_ml);
+    today.total_debt_incurred_ml = today
+        .total_debt_incurred_ml
+        .saturating_add(today.cup_size_ml);
+    today.last_log_undo = None;
+    today.last_logged_amount_ml = None;
+    today.last_notified_token = None;
 }
 
 fn latest_slot_index(settings: &Settings, now: DateTime<Local>) -> Option<u32> {
@@ -492,6 +598,26 @@ fn derived_reminder_interval_minutes(
     let active_minutes = end_minutes.saturating_sub(start_minutes).max(60);
     let drinks_per_day = daily_target_ml.div_ceil(cup_size_ml.max(1)).max(1);
     (active_minutes / drinks_per_day).max(15)
+}
+
+fn expected_intake_ml(settings: &Settings, now: DateTime<Local>) -> u32 {
+    let second_of_day = now.hour() * 3600 + now.minute() * 60 + now.second();
+    let start_seconds = u32::from(settings.active_start_hour) * 3600;
+    let end_seconds = u32::from(settings.active_end_hour) * 3600;
+
+    if second_of_day <= start_seconds {
+        return 0;
+    }
+
+    if second_of_day >= end_seconds {
+        return settings.daily_target_ml;
+    }
+
+    let active_seconds = end_seconds.saturating_sub(start_seconds).max(1);
+    let elapsed_seconds = second_of_day.saturating_sub(start_seconds);
+    let target = u64::from(settings.daily_target_ml);
+    let expected = (target * u64::from(elapsed_seconds)).div_ceil(u64::from(active_seconds));
+    expected.min(target) as u32
 }
 
 fn slot_time_for_day(
@@ -594,6 +720,34 @@ fn maybe_send_notification(app: &AppHandle, title: &str, body: &str) {
         .show();
 }
 
+enum NotificationKind {
+    DrinkNow,
+    SnoozeReady,
+}
+
+fn notification_copy(locale: &str, kind: NotificationKind) -> (&'static str, &'static str) {
+    let english = normalize_locale(locale) == "en-US";
+
+    match (english, kind) {
+        (true, NotificationKind::DrinkNow) => (
+            "Time to drink water",
+            "A new reminder window has started. Try to drink a cup now.",
+        ),
+        (true, NotificationKind::SnoozeReady) => (
+            "Reminder again",
+            "Your snooze has ended. This is a good time to catch up on that cup.",
+        ),
+        (false, NotificationKind::DrinkNow) => (
+            "该喝水了",
+            "新的喝水提醒已经开始了，记得按时补一杯水。",
+        ),
+        (false, NotificationKind::SnoozeReady) => (
+            "再次提醒你",
+            "稍后提醒时间到了，现在可以顺手把这杯水补上。",
+        ),
+    }
+}
+
 fn start_scheduler(app: AppHandle) {
     spawn(async move {
         loop {
@@ -603,33 +757,35 @@ fn start_scheduler(app: AppHandle) {
                 let mut notifications_enabled = false;
 
                 if let Ok(mut guard) = state.data.lock() {
-                    let before_slot = guard.today.last_slot_spawned;
                     let before_snooze = guard.today.snooze_until.clone();
-                    let before_pending = guard.today.pending_slot_index;
                     let changed = reconcile(&mut guard, Local::now());
                     notifications_enabled = guard.settings.notifications_enabled;
-                    let after_slot = guard.today.last_slot_spawned;
-                    should_notify = changed && after_slot != before_slot && guard.today.pending_slot_index.is_some();
-                    should_snooze_notify = before_pending.is_some()
+                    should_snooze_notify = guard.today.pending_slot_index.is_some()
                         && before_snooze.is_some()
                         && guard.today.snooze_until.is_none()
-                        && guard.today.pending_slot_index.is_some();
+                        && changed;
+                    should_notify = guard.today.pending_slot_index.is_some()
+                        && guard.today.last_notified_token != Some(guard.today.notification_token);
+                    if should_notify {
+                        guard.today.last_notified_token = Some(guard.today.notification_token);
+                    }
+                    if should_notify || should_snooze_notify {
+                        let kind = if should_snooze_notify {
+                            NotificationKind::SnoozeReady
+                        } else {
+                            NotificationKind::DrinkNow
+                        };
+                        let copy = notification_copy(&guard.settings.locale, kind);
+                        if notifications_enabled {
+                            maybe_send_notification(&app, copy.0, copy.1);
+                        }
+                    }
                 }
 
                 let _ = state.save();
                 if should_notify && notifications_enabled {
-                    maybe_send_notification(
-                        &app,
-                        "该喝水了",
-                        "这轮提醒已经开始，记得按时喝一杯；拖太久会累计欠量。",
-                    );
                     emit_state_updated(&app);
                 } else if should_snooze_notify && notifications_enabled {
-                    maybe_send_notification(
-                        &app,
-                        "再提醒你一次",
-                        "你刚才选择了稍后提醒，现在可以顺手把这一杯补上。",
-                    );
                     emit_state_updated(&app);
                 }
             }
@@ -683,6 +839,7 @@ pub fn run() {
             save_settings,
             get_today_status,
             log_drink,
+            undo_last_drink,
             toggle_autostart,
             dismiss_or_snooze_reminder,
             get_history
@@ -704,7 +861,7 @@ mod tests {
     }
 
     #[test]
-    fn missed_slots_accumulate_debt_by_cup_size() {
+    fn missed_slots_accumulate_history_debt_by_cup_size() {
         let settings = Settings::default();
         let mut state = PersistedState {
             today: DailyRecord::new(local_dt(2026, 5, 19, 8, 0), &settings),
@@ -714,7 +871,7 @@ mod tests {
 
         let changed = reconcile(&mut state, local_dt(2026, 5, 19, 11, 0));
         assert!(changed);
-        assert_eq!(state.today.debt_ml, 500);
+        assert_eq!(state.today.total_debt_incurred_ml, 500);
         assert_eq!(state.today.missed_reminder_slots, 2);
         assert_eq!(state.today.pending_slot_index, Some(2));
     }
@@ -729,6 +886,7 @@ mod tests {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: false,
+            locale: default_locale(),
         }
         .sanitize();
 
@@ -744,7 +902,6 @@ mod tests {
             history: Vec::new(),
         };
 
-        state.today.debt_ml = 250;
         state.today.pending_slot_index = Some(3);
         state.today.pending_since = Some(local_dt(2026, 5, 19, 12, 0).to_rfc3339());
         reconcile(&mut state, local_dt(2026, 5, 20, 8, 0));
@@ -752,16 +909,56 @@ mod tests {
         assert_eq!(state.history.len(), 1);
         assert_eq!(state.history[0].day_key, "2026-05-19");
         assert_eq!(state.today.day_key, "2026-05-20");
-        assert_eq!(state.today.debt_ml, 0);
         assert_eq!(state.today.actual_intake_ml, 0);
+        assert_eq!(state.today.total_debt_incurred_ml, 0);
     }
 
     #[test]
-    fn debt_is_paid_before_effective_progress() {
+    fn expected_intake_tracks_elapsed_time() {
+        let settings = Settings {
+            daily_target_ml: 2000,
+            cup_size_ml: 250,
+            reminder_interval_minutes: 97,
+            active_start_hour: 9,
+            active_end_hour: 22,
+            notifications_enabled: true,
+            autostart_enabled: false,
+            locale: default_locale(),
+        };
+
+        assert_eq!(expected_intake_ml(&settings, local_dt(2026, 5, 19, 8, 30)), 0);
+        assert_eq!(expected_intake_ml(&settings, local_dt(2026, 5, 19, 9, 30)), 77);
+        assert_eq!(expected_intake_ml(&settings, local_dt(2026, 5, 19, 20, 0)), 1693);
+        assert_eq!(expected_intake_ml(&settings, local_dt(2026, 5, 19, 22, 0)), 2000);
+    }
+
+    #[test]
+    fn undo_snapshot_restores_previous_intake() {
         let settings = Settings::default();
         let mut today = DailyRecord::new(local_dt(2026, 5, 19, 9, 0), &settings);
-        today.debt_ml = 250;
+        today.actual_intake_ml = 500;
+        today.effective_intake_ml = 500;
         today.pending_slot_index = Some(1);
+
+        let snapshot = DrinkUndoSnapshot {
+            actual_intake_ml: 500,
+            effective_intake_ml: 500,
+            debt_ml: 0,
+            pending_slot_index: Some(1),
+            pending_since: None,
+            snooze_until: None,
+            completed_reminder_slots: 0,
+            last_drink_at: None,
+            notification_token: 1,
+            last_notified_token: Some(1),
+        };
+
+        today.last_log_undo = Some(snapshot.clone());
+        today.last_logged_amount_ml = Some(250);
+        today.actual_intake_ml = 750;
+        today.effective_intake_ml = 750;
+        today.pending_slot_index = None;
+        today.completed_reminder_slots = 1;
 
         let mut state = PersistedState {
             settings,
@@ -769,21 +966,14 @@ mod tests {
             history: Vec::new(),
         };
 
-        state.today.actual_intake_ml += 400;
-        let mut remaining = 400;
-        if state.today.debt_ml > 0 {
-            let repaid = remaining.min(state.today.debt_ml);
-            state.today.debt_ml -= repaid;
-            remaining -= repaid;
-        }
-        if remaining > 0 {
-            state.today.pending_slot_index = None;
-            state.today.completed_reminder_slots += 1;
-            state.today.effective_intake_ml += remaining;
-        }
+        let saved = state.today.last_log_undo.clone().unwrap();
+        state.today.actual_intake_ml = saved.actual_intake_ml;
+        state.today.effective_intake_ml = saved.effective_intake_ml;
+        state.today.pending_slot_index = saved.pending_slot_index;
+        state.today.completed_reminder_slots = saved.completed_reminder_slots;
 
-        assert_eq!(state.today.debt_ml, 0);
-        assert_eq!(state.today.effective_intake_ml, 150);
-        assert_eq!(state.today.completed_reminder_slots, 1);
+        assert_eq!(state.today.actual_intake_ml, 500);
+        assert_eq!(state.today.pending_slot_index, Some(1));
+        assert_eq!(state.today.completed_reminder_slots, 0);
     }
 }

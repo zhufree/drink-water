@@ -1,3 +1,5 @@
+export type Locale = "zh-CN" | "en-US";
+
 export type Settings = {
   dailyTargetMl: number;
   cupSizeMl: number;
@@ -6,10 +8,12 @@ export type Settings = {
   activeEndHour: number;
   notificationsEnabled: boolean;
   autostartEnabled: boolean;
+  locale: Locale;
 };
 
 export type TodayStatus = {
   targetMl: number;
+  expectedMl: number;
   consumedMl: number;
   actualIntakeMl: number;
   debtMl: number;
@@ -20,6 +24,8 @@ export type TodayStatus = {
   pendingSince: string | null;
   completedReminderSlots: number;
   missedReminderSlots: number;
+  canUndoLastDrink: boolean;
+  lastLoggedAmountMl: number | null;
 };
 
 export type HistoryItem = {
@@ -37,4 +43,6 @@ export type NotificationPermissionState =
   | "default"
   | "denied"
   | "granted"
-  | "unsupported";
+  | "unsupported"
+  | "prompt"
+  | "prompt-with-rationale";
