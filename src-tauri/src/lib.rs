@@ -24,6 +24,10 @@ fn default_locale() -> String {
     "zh-CN".to_string()
 }
 
+fn default_cup_step_ml() -> u32 {
+    50
+}
+
 fn normalize_locale(locale: &str) -> String {
     match locale {
         "en-US" => "en-US".to_string(),
@@ -36,6 +40,8 @@ fn normalize_locale(locale: &str) -> String {
 pub struct Settings {
     daily_target_ml: u32,
     cup_size_ml: u32,
+    #[serde(default = "default_cup_step_ml")]
+    cup_step_ml: u32,
     reminder_interval_minutes: u32,
     active_start_hour: u8,
     active_end_hour: u8,
@@ -50,6 +56,7 @@ impl Default for Settings {
         Self {
             daily_target_ml: 2000,
             cup_size_ml: 250,
+            cup_step_ml: default_cup_step_ml(),
             reminder_interval_minutes: 60,
             active_start_hour: 9,
             active_end_hour: 22,
@@ -64,6 +71,7 @@ impl Settings {
     fn sanitize(mut self) -> Self {
         self.daily_target_ml = self.daily_target_ml.max(500);
         self.cup_size_ml = self.cup_size_ml.max(50);
+        self.cup_step_ml = self.cup_step_ml.max(10);
         self.active_start_hour = self.active_start_hour.min(23);
         self.active_end_hour = self.active_end_hour.clamp(self.active_start_hour + 1, 23);
         self.locale = normalize_locale(&self.locale);
@@ -173,6 +181,13 @@ impl PersistedState {
             history: Vec::new(),
         }
     }
+
+    fn normalize_history(&mut self) {
+        for item in &mut self.history {
+            item.consumed_ml = item.actual_intake_ml;
+            item.goal_met = item.actual_intake_ml >= item.target_ml;
+        }
+    }
 }
 
 impl DailyRecord {
@@ -243,6 +258,7 @@ impl AppState {
             parsed.today.active_end_hour = parsed.settings.active_end_hour;
             parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
             parsed.today.debt_ml = 0;
+            parsed.normalize_history();
             parsed
         } else {
             PersistedState::new(Local::now())
@@ -523,9 +539,31 @@ fn import_data(app: AppHandle, state: State<'_, AppState>) -> Result<bool, Strin
     parsed.today.active_end_hour = parsed.settings.active_end_hour;
     parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
     parsed.today.debt_ml = 0;
+    parsed.normalize_history();
     reconcile(&mut parsed, Local::now());
 
     state.replace_data(parsed)?;
+    state.save()?;
+    emit_state_updated(&app);
+    Ok(true)
+}
+
+#[tauri::command]
+fn log_yesterday_drink(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    amount_ml: u32,
+) -> Result<bool, String> {
+    let amount_ml = amount_ml.max(50);
+
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to update yesterday history".to_string())?;
+        apply_yesterday_catch_up(&mut guard, Local::now(), amount_ml)?;
+    }
+
     state.save()?;
     emit_state_updated(&app);
     Ok(true)
@@ -625,6 +663,30 @@ fn finalize_today(history: &mut Vec<HistoryItem>, today: &mut DailyRecord) {
     history.push(today.summary());
     history.sort_by(|left, right| right.day_key.cmp(&left.day_key));
     history.truncate(90);
+}
+
+fn apply_yesterday_catch_up(
+    state: &mut PersistedState,
+    now: DateTime<Local>,
+    amount_ml: u32,
+) -> Result<(), String> {
+    reconcile(state, now);
+
+    let yesterday = now
+        .date_naive()
+        .pred_opt()
+        .ok_or_else(|| "failed to resolve yesterday".to_string())?
+        .format("%Y-%m-%d")
+        .to_string();
+
+    let Some(item) = state.history.iter_mut().find(|entry| entry.day_key == yesterday) else {
+        return Err("there is no yesterday record to update".to_string());
+    };
+
+    item.actual_intake_ml = item.actual_intake_ml.saturating_add(amount_ml);
+    item.consumed_ml = item.actual_intake_ml;
+    item.goal_met = item.actual_intake_ml >= item.target_ml;
+    Ok(())
 }
 
 fn mark_pending_as_missed(today: &mut DailyRecord) {
@@ -918,6 +980,7 @@ pub fn run() {
             get_today_status,
             log_drink,
             undo_last_drink,
+            log_yesterday_drink,
             export_data,
             import_data,
             toggle_autostart,
@@ -961,6 +1024,7 @@ mod tests {
         let settings = Settings {
             daily_target_ml: 2000,
             cup_size_ml: 250,
+            cup_step_ml: 50,
             reminder_interval_minutes: 5,
             active_start_hour: 9,
             active_end_hour: 22,
@@ -998,6 +1062,7 @@ mod tests {
         let settings = Settings {
             daily_target_ml: 2000,
             cup_size_ml: 250,
+            cup_step_ml: 50,
             reminder_interval_minutes: 97,
             active_start_hour: 9,
             active_end_hour: 22,
@@ -1055,5 +1120,35 @@ mod tests {
         assert_eq!(state.today.actual_intake_ml, 500);
         assert_eq!(state.today.pending_slot_index, Some(1));
         assert_eq!(state.today.completed_reminder_slots, 0);
+    }
+
+    #[test]
+    fn yesterday_catch_up_updates_previous_history_entry() {
+        let settings = Settings::default();
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
+            history: vec![HistoryItem {
+                day_key: "2026-05-19".to_string(),
+                target_ml: 2000,
+                actual_intake_ml: 1500,
+                consumed_ml: 1500,
+                debt_incurred_ml: 500,
+                goal_met: false,
+                completed_reminder_slots: 6,
+                missed_reminder_slots: 2,
+            }],
+        };
+
+        apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 9, 30), 250).unwrap();
+
+        assert_eq!(state.history[0].actual_intake_ml, 1750);
+        assert_eq!(state.history[0].consumed_ml, 1750);
+        assert!(!state.history[0].goal_met);
+
+        apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 10, 0), 250).unwrap();
+
+        assert_eq!(state.history[0].actual_intake_ml, 2000);
+        assert!(state.history[0].goal_met);
     }
 }

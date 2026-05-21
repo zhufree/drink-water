@@ -16,12 +16,12 @@ export const undoLastDrink = () => invoke<TodayStatus>("undo_last_drink");
 export const toggleAutostart = (enabled: boolean) =>
   invoke<boolean>("toggle_autostart", { enabled });
 
-export const dismissOrSnoozeReminder = () =>
-  invoke<TodayStatus>("dismiss_or_snooze_reminder");
-
 export const getHistory = (range: number) =>
   invoke<HistoryItem[]>("get_history", { range });
 
 export const exportData = () => invoke<boolean>("export_data");
 
 export const importData = () => invoke<boolean>("import_data");
+
+export const logYesterdayDrink = (amountMl: number) =>
+  invoke<boolean>("log_yesterday_drink", { amountMl });

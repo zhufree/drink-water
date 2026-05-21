@@ -50,24 +50,7 @@
 
   #root {
     height: 100vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    padding: 12px 14px 18px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(114, 208, 255, 0.38) transparent;
-  }
-
-  #root::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  #root::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  #root::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(114, 208, 255, 0.28);
+    overflow: hidden;
   }
 }
 
@@ -79,5 +62,23 @@
   .no-drag,
   .no-drag * {
     app-region: no-drag;
+  }
+
+  .app-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(114, 208, 255, 0.38) transparent;
+  }
+
+  .app-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .app-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .app-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(114, 208, 255, 0.28);
   }
 }

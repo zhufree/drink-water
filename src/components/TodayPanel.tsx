@@ -9,7 +9,6 @@ type TodayPanelProps = {
   setQuickAmount: (updater: number | ((value: number) => number)) => void;
   onLog: (amountMl: number) => void;
   onUndo: () => void;
-  onSnooze: () => void;
 };
 
 function widthPercent(value: number, target: number) {
@@ -26,10 +25,10 @@ export function TodayPanel({
   quickAmount,
   setQuickAmount,
   onLog,
-  onUndo,
-  onSnooze
+  onUndo
 }: TodayPanelProps) {
   const { t, formatMl, formatDateTime } = useI18n();
+  const cupStep = Math.max(10, settings.cupStepMl);
   const expectedWidth = widthPercent(status.expectedMl, status.targetMl);
   const actualWidth = widthPercent(status.actualIntakeMl, status.targetMl);
   const debtWidth = Math.max(0, expectedWidth - actualWidth);
@@ -114,36 +113,28 @@ export function TodayPanel({
       </article>
 
       <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
-        <div className="mb-4 flex items-start justify-between gap-3">
+        <div className="mb-4">
           <div>
             <h2 className="m-0 text-lg font-semibold text-slate-50">{t("today.quickLog")}</h2>
             <p className="mt-1 text-sm text-slate-300/78">{t("today.quickLogHelp")}</p>
           </div>
-          {status.pendingReminder ? (
-            <button
-              onClick={onSnooze}
-              className="rounded-[14px] bg-white/8 px-3 py-2 text-sm text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
-            >
-              {t("today.snooze")}
-            </button>
-          ) : null}
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <button
-            onClick={() => setQuickAmount((value) => Math.max(50, value - 50))}
+            onClick={() => setQuickAmount((value) => Math.max(cupStep, value - cupStep))}
             className="rounded-[14px] bg-white/8 px-3 py-2 text-sm text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
           >
-            -50 ml
+            -{cupStep} ml
           </button>
           <div className="min-w-[98px] rounded-[14px] bg-white/8 px-3 py-2 text-center font-semibold text-slate-50">
             {quickAmount} ml
           </div>
           <button
-            onClick={() => setQuickAmount((value) => value + 50)}
+            onClick={() => setQuickAmount((value) => value + cupStep)}
             className="rounded-[14px] bg-white/8 px-3 py-2 text-sm text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
           >
-            +50 ml
+            +{cupStep} ml
           </button>
           <button
             onClick={() => setQuickAmount(settings.cupSizeMl)}

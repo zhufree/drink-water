@@ -9,6 +9,7 @@ type TranslationKey =
   | "message.settingsSaved"
   | "message.exportSuccess"
   | "message.importSuccess"
+  | "message.yesterdayCatchUpSaved"
   | "window.subtitle"
   | "window.openSettings"
   | "window.minimize"
@@ -36,6 +37,7 @@ type TranslationKey =
   | "settings.description"
   | "settings.dailyTarget"
   | "settings.cupSize"
+  | "settings.cupStep"
   | "settings.interval"
   | "settings.intervalHelp"
   | "settings.startHour"
@@ -78,6 +80,16 @@ type TranslationKey =
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
   | "notification.snoozeBody"
+  | "startupCatchUp.badge"
+  | "startupCatchUp.title"
+  | "startupCatchUp.description"
+  | "startupCatchUp.yesterdaySummary"
+  | "startupCatchUp.actual"
+  | "startupCatchUp.target"
+  | "startupCatchUp.amountTitle"
+  | "startupCatchUp.amountHelp"
+  | "startupCatchUp.dismiss"
+  | "startupCatchUp.confirm"
   | "common.notScheduled";
 
 type TranslationParams = Record<string, string | number>;
@@ -94,6 +106,8 @@ const translations: Record<Locale, TranslationTable> = {
       "\u8bbe\u7f6e\u5df2\u4fdd\u5b58\uff0c\u63d0\u9192\u8282\u594f\u548c\u8bed\u8a00\u5df2\u66f4\u65b0\u3002",
     "message.exportSuccess": "\u6570\u636e\u5df2\u5bfc\u51fa\u3002",
     "message.importSuccess": "\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5237\u65b0\u3002",
+    "message.yesterdayCatchUpSaved":
+      "\u5df2\u4e3a\u6628\u5929\u8865\u8bb0 {amount}\u3002",
     "window.subtitle": "\u684c\u9762\u8865\u6c34\u52a9\u624b",
     "window.openSettings": "\u6253\u5f00\u8bbe\u7f6e",
     "window.minimize": "\u6700\u5c0f\u5316",
@@ -123,6 +137,7 @@ const translations: Record<Locale, TranslationTable> = {
       "\u63d0\u9192\u8282\u594f\u4f1a\u6839\u636e\u76ee\u6807\u91cf\u3001\u5355\u676f\u5bb9\u91cf\u548c\u63d0\u9192\u65f6\u95f4\u81ea\u52a8\u8ba1\u7b97\u3002",
     "settings.dailyTarget": "\u6bcf\u65e5\u76ee\u6807 (ml)",
     "settings.cupSize": "\u5355\u676f\u5bb9\u91cf (ml)",
+    "settings.cupStep": "\u676f\u91cf\u8c03\u6574\u6b65\u8fdb (ml)",
     "settings.interval": "\u63d0\u9192\u95f4\u9694 (\u5206\u949f)",
     "settings.intervalHelp":
       "\u81ea\u52a8\u8ba1\u7b97\uff1a\u6bcf\u5929 {drinksPerDay} \u676f\uff0c\u7ea6\u6bcf {minutes} \u5206\u949f\u63d0\u9192\u4e00\u6b21",
@@ -174,6 +189,18 @@ const translations: Record<Locale, TranslationTable> = {
     "notification.snoozeTitle": "\u518d\u6b21\u63d0\u9192\u4f60",
     "notification.snoozeBody":
       "\u7a0d\u540e\u63d0\u9192\u65f6\u95f4\u5230\u4e86\uff0c\u73b0\u5728\u53ef\u4ee5\u987a\u624b\u628a\u8fd9\u676f\u6c34\u8865\u4e0a\u3002",
+    "startupCatchUp.badge": "\u6628\u5929\u8fd8\u53ef\u4ee5\u8865\u8bb0",
+    "startupCatchUp.title": "\u8981\u4e0d\u8981\u8865\u8bb0\u6628\u5929\u7684\u996e\u6c34\u91cf\uff1f",
+    "startupCatchUp.description":
+      "\u5982\u679c\u4f60\u6628\u665a\u8fd8\u559d\u4e86\u6c34\uff0c\u53ef\u4ee5\u5728\u8fd9\u91cc\u8865\u4e00\u6761\uff0c\u8ba9 {day} \u7684\u8bb0\u5f55\u66f4\u63a5\u8fd1\u771f\u5b9e\u60c5\u51b5\u3002",
+    "startupCatchUp.yesterdaySummary": "\u6628\u5929\u5f53\u524d\u8bb0\u5f55",
+    "startupCatchUp.actual": "\u5df2\u559d {amount}",
+    "startupCatchUp.target": "\u76ee\u6807 {amount}",
+    "startupCatchUp.amountTitle": "\u8865\u8bb0\u591a\u5c11\uff1f",
+    "startupCatchUp.amountHelp":
+      "\u9ed8\u8ba4\u4ece 250 ml \u5f00\u59cb\uff0c\u53ef\u4ee5\u7528 +50 / -50 \u5fae\u8c03\u3002",
+    "startupCatchUp.dismiss": "\u5148\u4e0d\u8865\u8bb0",
+    "startupCatchUp.confirm": "\u8865\u8bb0 {amount}",
     "common.notScheduled": "\u672a\u5b89\u6392"
   },
   "en-US": {
@@ -186,6 +213,7 @@ const translations: Record<Locale, TranslationTable> = {
       "Settings saved. Reminder pacing and language have been updated.",
     "message.exportSuccess": "Data exported.",
     "message.importSuccess": "Data imported and refreshed.",
+    "message.yesterdayCatchUpSaved": "Added {amount} to yesterday's log.",
     "window.subtitle": "Desktop hydration assistant",
     "window.openSettings": "Open settings",
     "window.minimize": "Minimize",
@@ -215,6 +243,7 @@ const translations: Record<Locale, TranslationTable> = {
       "Reminder pacing is calculated automatically from the target, cup size, and active hours.",
     "settings.dailyTarget": "Daily target (ml)",
     "settings.cupSize": "Cup size (ml)",
+    "settings.cupStep": "Cup adjustment step (ml)",
     "settings.interval": "Reminder interval (minutes)",
     "settings.intervalHelp":
       "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
@@ -265,6 +294,18 @@ const translations: Record<Locale, TranslationTable> = {
     "notification.snoozeTitle": "Reminder again",
     "notification.snoozeBody":
       "Your snooze has ended. This is a good time to catch up on that cup.",
+    "startupCatchUp.badge": "Yesterday can still be updated",
+    "startupCatchUp.title": "Do you want to add water to yesterday?",
+    "startupCatchUp.description":
+      "If you drank more water after shutting down or forgot to record it, you can add it here so {day} stays accurate.",
+    "startupCatchUp.yesterdaySummary": "Yesterday's current record",
+    "startupCatchUp.actual": "Drank {amount}",
+    "startupCatchUp.target": "Target {amount}",
+    "startupCatchUp.amountTitle": "How much should we add?",
+    "startupCatchUp.amountHelp":
+      "Start from 250 ml and fine-tune with +50 / -50.",
+    "startupCatchUp.dismiss": "Not now",
+    "startupCatchUp.confirm": "Add {amount}",
     "common.notScheduled": "Not scheduled"
   }
 };

@@ -3,6 +3,7 @@ export type Locale = "zh-CN" | "en-US";
 export type Settings = {
   dailyTargetMl: number;
   cupSizeMl: number;
+  cupStepMl: number;
   reminderIntervalMinutes: number;
   activeStartHour: number;
   activeEndHour: number;

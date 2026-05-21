@@ -74,12 +74,29 @@ export function SettingsPanel({
           <input
             type="number"
             min={50}
-            step={50}
+            step={Math.max(10, draftSettings.cupStepMl)}
             value={draftSettings.cupSizeMl}
             onChange={(event) =>
               setDraftSettings((current) => ({
                 ...current,
                 cupSizeMl: Number(event.target.value)
+              }))
+            }
+            className="rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 outline-none"
+          />
+        </label>
+
+        <label className="flex flex-col gap-2 rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+          <span className="text-sm text-slate-300/70">{t("settings.cupStep")}</span>
+          <input
+            type="number"
+            min={10}
+            step={10}
+            value={draftSettings.cupStepMl}
+            onChange={(event) =>
+              setDraftSettings((current) => ({
+                ...current,
+                cupStepMl: Number(event.target.value)
               }))
             }
             className="rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 outline-none"
@@ -191,7 +208,6 @@ export function SettingsPanel({
         <p className="mt-2 text-sm text-slate-300/78">
           {t("settings.permissionStatus", { status: permissionLabel })}
         </p>
-        <p className="mt-2 text-xs text-slate-400">{t("settings.notificationNote")}</p>
       </div>
 
       <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
@@ -6,12 +6,12 @@ import {
   requestPermission
 } from "@tauri-apps/plugin-notification";
 import {
-  dismissOrSnoozeReminder,
   exportData,
   getHistory,
   getSettings,
   getTodayStatus,
   importData,
+  logYesterdayDrink,
   logDrink,
   saveSettings,
   toggleAutostart,
@@ -20,6 +20,7 @@ import {
 import { HistoryPanel } from "./components/HistoryPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { StartupCatchUpModal } from "./components/StartupCatchUpModal";
 import { TodayPanel } from "./components/TodayPanel";
 import { WindowChrome } from "./components/WindowChrome";
 import { I18nProvider, createI18n } from "./i18n";
@@ -34,7 +35,7 @@ import { computeReminderMeta } from "./utils";
 
 type TabKey = "today" | "history" | "settings";
 
-const APP_VERSION = "0.3.0";
+const APP_VERSION = "0.3.1";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -43,6 +44,7 @@ const appWindow = getCurrentWindow();
 const defaultSettings: Settings = {
   dailyTargetMl: 2000,
   cupSizeMl: 250,
+  cupStepMl: 50,
   reminderIntervalMinutes: 60,
   activeStartHour: 9,
   activeEndHour: 22,
@@ -63,6 +65,10 @@ export default function App() {
   const [message, setMessage] = useState("");
   const [notificationState, setNotificationState] =
     useState<NotificationPermissionState>("default");
+  const [yesterdayCatchUpItem, setYesterdayCatchUpItem] =
+    useState<HistoryItem | null>(null);
+  const [yesterdayCatchUpAmount, setYesterdayCatchUpAmount] = useState(250);
+  const startupPromptCheckedRef = useRef(false);
 
   const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
   const i18n = useMemo(() => createI18n(locale), [locale]);
@@ -86,6 +92,8 @@ export default function App() {
     );
     setStatus(nextStatus);
     setHistory(nextHistory);
+
+    return { nextSettings, nextStatus, nextHistory };
   };
 
   useEffect(() => {
@@ -106,7 +114,15 @@ export default function App() {
       }
 
       try {
-        await refreshAll();
+        const { nextHistory } = await refreshAll();
+        if (!startupPromptCheckedRef.current) {
+          startupPromptCheckedRef.current = true;
+          const yesterdayCandidate = findYesterdayCatchUpCandidate(nextHistory);
+          if (yesterdayCandidate) {
+            setYesterdayCatchUpItem(yesterdayCandidate);
+            setYesterdayCatchUpAmount(250);
+          }
+        }
       } finally {
         if (!disposed) {
           setLoading(false);
@@ -220,65 +236,117 @@ export default function App() {
     setMessage(i18n.t("message.importSuccess"));
   };
 
+  const handleDismissYesterdayCatchUp = () => {
+    setYesterdayCatchUpItem(null);
+    setYesterdayCatchUpAmount(250);
+  };
+
+  const handleConfirmYesterdayCatchUp = async () => {
+    if (!yesterdayCatchUpItem) {
+      return;
+    }
+
+    const amount = yesterdayCatchUpAmount;
+    setMessage("");
+    await logYesterdayDrink(amount);
+    handleDismissYesterdayCatchUp();
+    await refreshAll();
+    setMessage(
+      i18n.t("message.yesterdayCatchUpSaved", {
+        amount: i18n.formatMl(amount)
+      })
+    );
+  };
+
   return (
     <I18nProvider locale={locale}>
       {loading || !status ? (
-        <main className="grid min-h-screen place-items-center text-slate-200/80">
+        <main className="grid h-screen place-items-center px-[14px] py-[12px] text-slate-200/80">
           {i18n.t("app.loading")}
         </main>
       ) : (
-        <main className="min-h-screen">
-          <WindowChrome
-            activeTab={activeTab}
-            onOpenSettings={() => setActiveTab("settings")}
-            onMinimize={() => void handleWindowAction("minimize", () => appWindow.minimize())}
-            onHide={() => void handleWindowAction("hide", () => appWindow.hide())}
-          />
-
-          <PrimaryTabs
-            activeTab={activeTab}
-            onChange={(tab) => setActiveTab(tab)}
-          />
-
-          {message ? (
-            <p className="mb-3 rounded-[14px] bg-cyan-300/14 px-3 py-2 text-sm text-cyan-100">
-              {message}
-            </p>
+        <main className="flex h-screen flex-col overflow-hidden px-[14px] py-[12px]">
+          {yesterdayCatchUpItem ? (
+            <StartupCatchUpModal
+              historyItem={yesterdayCatchUpItem}
+              amountMl={yesterdayCatchUpAmount}
+              onChangeAmount={setYesterdayCatchUpAmount}
+              onDismiss={handleDismissYesterdayCatchUp}
+              onConfirm={() => void handleConfirmYesterdayCatchUp()}
+            />
           ) : null}
 
-          {activeTab === "today" ? (
-            <TodayPanel
+          <div className="shrink-0">
+            <WindowChrome
+              activeTab={activeTab}
+              onOpenSettings={() => setActiveTab("settings")}
+              onMinimize={() => void handleWindowAction("minimize", () => appWindow.minimize())}
+              onHide={() => void handleWindowAction("hide", () => appWindow.hide())}
+            />
+          </div>
+
+          <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <PrimaryTabs
+              activeTab={activeTab}
+              onChange={(tab) => setActiveTab(tab)}
+            />
+
+            {message ? (
+              <p className="mb-3 rounded-[14px] bg-cyan-300/14 px-3 py-2 text-sm text-cyan-100">
+                {message}
+              </p>
+            ) : null}
+
+            {activeTab === "today" ? (
+              <TodayPanel
               settings={settings}
               status={status}
               quickAmount={quickAmount}
               setQuickAmount={setQuickAmount}
               onLog={(amountMl) => void handleLog(amountMl)}
               onUndo={() => void handleUndoLastDrink()}
-              onSnooze={() => void dismissOrSnoozeReminder()}
             />
           ) : null}
 
-          {activeTab === "history" ? <HistoryPanel history={history} /> : null}
+            {activeTab === "history" ? <HistoryPanel history={history} /> : null}
 
-          {activeTab === "settings" ? (
-            <SettingsPanel
-              draftSettings={draftSettings}
-              reminderIntervalMinutes={reminderMeta.reminderIntervalMinutes}
-              drinksPerDay={reminderMeta.drinksPerDay}
-              version={APP_VERSION}
-              copyright={COPYRIGHT}
-              releaseUrl={RELEASE_URL}
-              saving={saving}
-              notificationState={notificationState}
-              setDraftSettings={setDraftSettings}
-              onAutostartChange={(enabled) => void handleAutostartChange(enabled)}
-              onExportData={() => void handleExportData()}
-              onImportData={() => void handleImportData()}
-              onSave={() => void handleSaveSettings()}
-            />
-          ) : null}
+            {activeTab === "settings" ? (
+              <SettingsPanel
+                draftSettings={draftSettings}
+                reminderIntervalMinutes={reminderMeta.reminderIntervalMinutes}
+                drinksPerDay={reminderMeta.drinksPerDay}
+                version={APP_VERSION}
+                copyright={COPYRIGHT}
+                releaseUrl={RELEASE_URL}
+                saving={saving}
+                notificationState={notificationState}
+                setDraftSettings={setDraftSettings}
+                onAutostartChange={(enabled) => void handleAutostartChange(enabled)}
+                onExportData={() => void handleExportData()}
+                onImportData={() => void handleImportData()}
+                onSave={() => void handleSaveSettings()}
+              />
+            ) : null}
+          </div>
         </main>
       )}
     </I18nProvider>
   );
+}
+
+function findYesterdayCatchUpCandidate(history: HistoryItem[]) {
+  const yesterdayKey = dayKeyOffset(-1);
+  return history.find(
+    (item) => item.dayKey === yesterdayKey && item.actualIntakeMl < item.targetMl
+  ) ?? null;
+}
+
+function dayKeyOffset(offsetDays: number) {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + offsetDays);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
