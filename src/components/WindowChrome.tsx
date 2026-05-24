@@ -1,6 +1,6 @@
 import { useI18n } from "../i18n";
 
-type TabKey = "today" | "history" | "settings";
+type TabKey = "today" | "history" | "leaderboard" | "settings";
 
 type WindowChromeProps = {
   activeTab: TabKey;

@@ -1,12 +1,13 @@
 import type { Dispatch, SetStateAction } from "react";
 import { useI18n } from "../i18n";
-import type { NotificationPermissionState, Settings } from "../types";
+import type { AppUpdateInfo, NotificationPermissionState, Settings } from "../types";
 
 type SettingsPanelProps = {
   draftSettings: Settings;
   reminderIntervalMinutes: number;
   drinksPerDay: number;
   version: string;
+  updateInfo: AppUpdateInfo | null;
   copyright: string;
   releaseUrl: string;
   saving: boolean;
@@ -23,6 +24,7 @@ export function SettingsPanel({
   reminderIntervalMinutes,
   drinksPerDay,
   version,
+  updateInfo,
   copyright,
   releaseUrl,
   saving,
@@ -238,15 +240,23 @@ export function SettingsPanel({
       </button>
 
       <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 text-sm text-slate-300/78 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
-        <p className="m-0">{t("settings.version", { version })}</p>
+        <p className="m-0">{t("settings.version", { version })} {updateInfo?.hasUpdate ? (
+          <span className="mt-2 text-amber-200">
+            ({t("settings.updateAvailable", { version: updateInfo.latestVersion })})
+          </span>
+        ) : null}</p>
+        
+        {updateInfo?.hasUpdate && updateInfo.notes ? (
+          <p className="mt-2 text-slate-300/74">{updateInfo.notes}</p>
+        ) : null}
         <p className="mt-2">{copyright}</p>
         <a
-          href={releaseUrl}
+          href={updateInfo?.hasUpdate ? updateInfo.releaseUrl : releaseUrl}
           target="_blank"
           rel="noreferrer"
           className="mt-2 inline-flex text-cyan-200 underline decoration-cyan-200/50 underline-offset-4 transition hover:text-cyan-100"
         >
-          {t("settings.downloadLatest")}
+          {updateInfo?.hasUpdate ? t("settings.downloadUpdate") : t("settings.downloadLatest")}
         </a>
       </div>
     </section>

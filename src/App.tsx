@@ -18,14 +18,28 @@ import {
   undoLastDrink
 } from "./api";
 import { HistoryPanel } from "./components/HistoryPanel";
+import { LeaderboardPanel } from "./components/LeaderboardPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StartupCatchUpModal } from "./components/StartupCatchUpModal";
 import { TodayPanel } from "./components/TodayPanel";
 import { WindowChrome } from "./components/WindowChrome";
 import { I18nProvider, createI18n } from "./i18n";
+import {
+  bootstrapLeaderboard,
+  checkForAppUpdate,
+  createLeaderboardCircle,
+  getLeaderboard,
+  joinLeaderboardCircle,
+  listLeaderboardCircles,
+  updateLeaderboardProfile,
+  upsertLeaderboardStats
+} from "./leaderboardApi";
 import type {
+  AppUpdateInfo,
+  CircleSummary,
   HistoryItem,
+  LeaderboardEntry,
   Locale,
   NotificationPermissionState,
   Settings,
@@ -33,9 +47,9 @@ import type {
 } from "./types";
 import { computeReminderMeta } from "./utils";
 
-type TabKey = "today" | "history" | "settings";
+type TabKey = "today" | "history" | "leaderboard" | "settings";
 
-const APP_VERSION = "0.3.1";
+const APP_VERSION = "0.4.0";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -45,6 +59,10 @@ const defaultSettings: Settings = {
   dailyTargetMl: 2000,
   cupSizeMl: 250,
   cupStepMl: 50,
+  deviceId: "",
+  displayName: "",
+  activeCircleCode: "",
+  activeCircleName: "",
   reminderIntervalMinutes: 60,
   activeStartHour: 9,
   activeEndHour: 22,
@@ -68,7 +86,19 @@ export default function App() {
   const [yesterdayCatchUpItem, setYesterdayCatchUpItem] =
     useState<HistoryItem | null>(null);
   const [yesterdayCatchUpAmount, setYesterdayCatchUpAmount] = useState(250);
+  const [circles, setCircles] = useState<CircleSummary[]>([]);
+  const [circleCodeInput, setCircleCodeInput] = useState("");
+  const [circleNameInput, setCircleNameInput] = useState("");
+  const [leaderboardMetric, setLeaderboardMetric] =
+    useState<"intake" | "progress">("intake");
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+
   const startupPromptCheckedRef = useRef(false);
+  const lastSyncedStatsKeyRef = useRef("");
+  const displayNameSyncTimerRef = useRef<number | null>(null);
+  const displayNameSyncVersionRef = useRef(0);
 
   const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
   const i18n = useMemo(() => createI18n(locale), [locale]);
@@ -114,7 +144,49 @@ export default function App() {
       }
 
       try {
-        const { nextHistory } = await refreshAll();
+        let { nextSettings, nextHistory } = await refreshAll();
+
+        if (!nextSettings.deviceId) {
+          const saved = await saveSettings({
+            ...nextSettings,
+            deviceId: crypto.randomUUID()
+          });
+          setSettings(saved);
+          setDraftSettings(saved);
+          nextSettings = saved;
+        }
+
+        await syncCloudIdentity(nextSettings);
+        const fetchedCircles = await listLeaderboardCircles(nextSettings.deviceId);
+        setCircles(fetchedCircles);
+        try {
+          const nextUpdateInfo = await checkForAppUpdate({
+            appId: "drink-water",
+            platform: "desktop-windows",
+            currentVersion: APP_VERSION
+          });
+          setUpdateInfo(nextUpdateInfo);
+        } catch {
+          setUpdateInfo(null);
+        }
+
+        if (
+          nextSettings.activeCircleCode &&
+          !fetchedCircles.some((circle) => circle.circleCode === nextSettings.activeCircleCode)
+        ) {
+          const firstCircle = fetchedCircles[0] ?? null;
+          if (firstCircle) {
+            const saved = await saveSettings({
+              ...nextSettings,
+              activeCircleCode: firstCircle.circleCode,
+              activeCircleName: firstCircle.circleName ?? ""
+            });
+            setSettings(saved);
+            setDraftSettings(saved);
+            nextSettings = saved;
+          }
+        }
+
         if (!startupPromptCheckedRef.current) {
           startupPromptCheckedRef.current = true;
           const yesterdayCandidate = findYesterdayCatchUpCandidate(nextHistory);
@@ -147,6 +219,95 @@ export default function App() {
       window.clearInterval(timer);
       if (unlisten) {
         void unlisten();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!settings.deviceId || !settings.activeCircleCode || !status) {
+      return;
+    }
+
+    const syncKey = [
+      settings.deviceId,
+      settings.activeCircleCode,
+      currentDayKey(),
+      status.actualIntakeMl,
+      status.targetMl
+    ].join("|");
+
+    if (lastSyncedStatsKeyRef.current === syncKey) {
+      return;
+    }
+
+    lastSyncedStatsKeyRef.current = syncKey;
+
+    void upsertLeaderboardStats({
+      deviceId: settings.deviceId,
+      circleCode: settings.activeCircleCode,
+      dayKey: currentDayKey(),
+      actualIntakeMl: status.actualIntakeMl,
+      targetMl: status.targetMl
+    }).catch(() => {
+      lastSyncedStatsKeyRef.current = "";
+    });
+  }, [settings.deviceId, settings.activeCircleCode, status]);
+
+  useEffect(() => {
+    if (!settings.activeCircleCode) {
+      setLeaderboardEntries([]);
+      return;
+    }
+
+    void refreshLeaderboard();
+  }, [settings.activeCircleCode, leaderboardMetric]);
+
+  useEffect(() => {
+    if (!settings.deviceId || draftSettings.displayName === settings.displayName) {
+      return;
+    }
+
+    if (displayNameSyncTimerRef.current !== null) {
+      window.clearTimeout(displayNameSyncTimerRef.current);
+    }
+
+    const syncVersion = ++displayNameSyncVersionRef.current;
+    displayNameSyncTimerRef.current = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const saved = await saveSettings({
+            ...settings,
+            displayName: draftSettings.displayName
+          });
+
+          if (syncVersion !== displayNameSyncVersionRef.current) {
+            return;
+          }
+
+          setSettings(saved);
+          setDraftSettings((current) => ({ ...current, displayName: saved.displayName }));
+          await syncCloudIdentity(saved);
+
+          if (saved.activeCircleCode) {
+            await refreshLeaderboard();
+          }
+        } catch {
+          // Ignore transient sync failures to avoid interrupting typing.
+        }
+      })();
+    }, 500);
+
+    return () => {
+      if (displayNameSyncTimerRef.current !== null) {
+        window.clearTimeout(displayNameSyncTimerRef.current);
+      }
+    };
+  }, [draftSettings.displayName, settings, settings.deviceId]);
+
+  useEffect(() => {
+    return () => {
+      if (displayNameSyncTimerRef.current !== null) {
+        window.clearTimeout(displayNameSyncTimerRef.current);
       }
     };
   }, []);
@@ -203,6 +364,7 @@ export default function App() {
       setDraftSettings(saved);
       setQuickAmount(saved.cupSizeMl);
       setStatus(await getTodayStatus());
+      await syncCloudIdentity(saved);
       setMessage(i18n.t("message.settingsSaved"));
     } finally {
       setSaving(false);
@@ -258,6 +420,88 @@ export default function App() {
     );
   };
 
+  const handleCreateCircle = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    const result = await createLeaderboardCircle(settings.deviceId, circleNameInput.trim());
+    const nextSettings = await saveSettings({
+      ...settings,
+      activeCircleCode: result.circleCode,
+      activeCircleName: result.circleName ?? ""
+    });
+    setSettings(nextSettings);
+    setDraftSettings(nextSettings);
+    setCircleNameInput("");
+    const fetchedCircles = await listLeaderboardCircles(settings.deviceId);
+    setCircles(fetchedCircles);
+    setActiveTab("leaderboard");
+    setMessage(
+      i18n.t("message.circleCreated", {
+        code: result.circleCode
+      })
+    );
+  };
+
+  const handleJoinCircle = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    const result = await joinLeaderboardCircle(settings.deviceId, circleCodeInput.trim());
+    const nextSettings = await saveSettings({
+      ...settings,
+      activeCircleCode: result.circleCode,
+      activeCircleName: result.circleName ?? ""
+    });
+    setSettings(nextSettings);
+    setDraftSettings(nextSettings);
+    setCircleCodeInput("");
+    const fetchedCircles = await listLeaderboardCircles(settings.deviceId);
+    setCircles(fetchedCircles);
+    setActiveTab("leaderboard");
+    setMessage(
+      i18n.t("message.circleJoined", {
+        code: result.circleCode
+      })
+    );
+  };
+
+  const handleSelectCircle = async (circle: CircleSummary) => {
+    const nextSettings = await saveSettings({
+      ...settings,
+      activeCircleCode: circle.circleCode,
+      activeCircleName: circle.circleName ?? ""
+    });
+    setSettings(nextSettings);
+    setDraftSettings(nextSettings);
+    setMessage(
+      i18n.t("message.circleSelected", {
+        code: circle.circleCode
+      })
+    );
+  };
+
+  const refreshLeaderboard = async () => {
+    if (!settings.activeCircleCode) {
+      setLeaderboardEntries([]);
+      return;
+    }
+
+    setLeaderboardLoading(true);
+    try {
+      const result = await getLeaderboard({
+        circleCode: settings.activeCircleCode,
+        dayKey: currentDayKey(),
+        metric: leaderboardMetric
+      });
+      setLeaderboardEntries(result.leaderboard);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  };
+
   return (
     <I18nProvider locale={locale}>
       {loading || !status ? (
@@ -299,16 +543,43 @@ export default function App() {
 
             {activeTab === "today" ? (
               <TodayPanel
-              settings={settings}
-              status={status}
-              quickAmount={quickAmount}
-              setQuickAmount={setQuickAmount}
-              onLog={(amountMl) => void handleLog(amountMl)}
-              onUndo={() => void handleUndoLastDrink()}
-            />
-          ) : null}
+                settings={settings}
+                status={status}
+                quickAmount={quickAmount}
+                setQuickAmount={setQuickAmount}
+                onLog={(amountMl) => void handleLog(amountMl)}
+                onUndo={() => void handleUndoLastDrink()}
+              />
+            ) : null}
 
             {activeTab === "history" ? <HistoryPanel history={history} /> : null}
+
+            {activeTab === "leaderboard" ? (
+              <LeaderboardPanel
+                displayName={draftSettings.displayName}
+                activeCircleCode={settings.activeCircleCode}
+                activeCircleName={settings.activeCircleName}
+                circles={circles}
+                circleCodeInput={circleCodeInput}
+                circleNameInput={circleNameInput}
+                metric={leaderboardMetric}
+                leaderboard={leaderboardEntries}
+                loading={leaderboardLoading}
+                onDisplayNameChange={(value) =>
+                  setDraftSettings((current) => ({
+                    ...current,
+                    displayName: value
+                  }))
+                }
+                onCircleCodeInputChange={setCircleCodeInput}
+                onCircleNameInputChange={setCircleNameInput}
+                onCreateCircle={() => void handleCreateCircle()}
+                onJoinCircle={() => void handleJoinCircle()}
+                onSelectCircle={(circle) => void handleSelectCircle(circle)}
+                onMetricChange={setLeaderboardMetric}
+                onRefresh={() => void refreshLeaderboard()}
+              />
+            ) : null}
 
             {activeTab === "settings" ? (
               <SettingsPanel
@@ -316,6 +587,7 @@ export default function App() {
                 reminderIntervalMinutes={reminderMeta.reminderIntervalMinutes}
                 drinksPerDay={reminderMeta.drinksPerDay}
                 version={APP_VERSION}
+                updateInfo={updateInfo}
                 copyright={COPYRIGHT}
                 releaseUrl={RELEASE_URL}
                 saving={saving}
@@ -332,6 +604,17 @@ export default function App() {
       )}
     </I18nProvider>
   );
+
+  async function syncCloudIdentity(nextSettings: Settings) {
+    if (!nextSettings.deviceId) {
+      return;
+    }
+
+    await bootstrapLeaderboard(nextSettings.deviceId, nextSettings.displayName);
+    if (nextSettings.displayName.trim()) {
+      await updateLeaderboardProfile(nextSettings.deviceId, nextSettings.displayName.trim());
+    }
+  }
 }
 
 function findYesterdayCatchUpCandidate(history: HistoryItem[]) {
@@ -345,8 +628,9 @@ function dayKeyOffset(offsetDays: number) {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
   date.setDate(date.getDate() + offsetDays);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return date.toISOString().slice(0, 10);
+}
+
+function currentDayKey() {
+  return dayKeyOffset(0);
 }

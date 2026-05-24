@@ -10,6 +10,9 @@ type TranslationKey =
   | "message.exportSuccess"
   | "message.importSuccess"
   | "message.yesterdayCatchUpSaved"
+  | "message.circleCreated"
+  | "message.circleJoined"
+  | "message.circleSelected"
   | "window.subtitle"
   | "window.openSettings"
   | "window.minimize"
@@ -17,6 +20,7 @@ type TranslationKey =
   | "tabs.navigation"
   | "tabs.today"
   | "tabs.history"
+  | "tabs.leaderboard"
   | "today.title"
   | "today.nextReminder"
   | "today.progress"
@@ -61,7 +65,31 @@ type TranslationKey =
   | "settings.languageZhCn"
   | "settings.languageEnUs"
   | "settings.version"
+  | "settings.updateAvailable"
+  | "settings.downloadUpdate"
   | "settings.downloadLatest"
+  | "leaderboard.title"
+  | "leaderboard.description"
+  | "leaderboard.loading"
+  | "leaderboard.refresh"
+  | "leaderboard.displayName"
+  | "leaderboard.identityHint"
+  | "leaderboard.activeCircle"
+  | "leaderboard.circleCode"
+  | "leaderboard.empty"
+  | "leaderboard.circleTitle"
+  | "leaderboard.circleDescription"
+  | "leaderboard.circleCreateName"
+  | "leaderboard.circleCreate"
+  | "leaderboard.circleJoinCode"
+  | "leaderboard.circleJoin"
+  | "leaderboard.circleEmpty"
+  | "leaderboard.metricIntake"
+  | "leaderboard.metricProgress"
+  | "leaderboard.intakeValue"
+  | "leaderboard.progressValue"
+  | "leaderboard.targetValue"
+  | "leaderboard.noData"
   | "history.title"
   | "history.description"
   | "history.heatmapTitle"
@@ -108,6 +136,9 @@ const translations: Record<Locale, TranslationTable> = {
     "message.importSuccess": "\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5237\u65b0\u3002",
     "message.yesterdayCatchUpSaved":
       "\u5df2\u4e3a\u6628\u5929\u8865\u8bb0 {amount}\u3002",
+    "message.circleCreated": "\u5df2\u521b\u5efa\u5708\u5b50 {code}\u3002",
+    "message.circleJoined": "\u5df2\u52a0\u5165\u5708\u5b50 {code}\u3002",
+    "message.circleSelected": "\u5df2\u5207\u6362\u5230\u5708\u5b50 {code}\u3002",
     "window.subtitle": "\u684c\u9762\u8865\u6c34\u52a9\u624b",
     "window.openSettings": "\u6253\u5f00\u8bbe\u7f6e",
     "window.minimize": "\u6700\u5c0f\u5316",
@@ -115,6 +146,7 @@ const translations: Record<Locale, TranslationTable> = {
     "tabs.navigation": "\u529f\u80fd\u5207\u6362",
     "tabs.today": "\u4eca\u65e5",
     "tabs.history": "\u5386\u53f2",
+    "tabs.leaderboard": "\u6392\u884c\u699c",
     "today.title": "\u4eca\u65e5\u996e\u6c34\u6982\u89c8",
     "today.nextReminder": "\u4e0b\u6b21\u63d0\u9192",
     "today.progress": "\u4eca\u65e5\u8fdb\u5ea6",
@@ -166,7 +198,35 @@ const translations: Record<Locale, TranslationTable> = {
     "settings.languageZhCn": "\u7b80\u4f53\u4e2d\u6587",
     "settings.languageEnUs": "English",
     "settings.version": "\u7248\u672c\u53f7\uff1a{version}",
+    "settings.updateAvailable": "\u53d1\u73b0\u65b0\u7248\u672c {version}",
+    "settings.downloadUpdate": "\u4e0b\u8f7d\u8fd9\u4e2a\u66f4\u65b0",
     "settings.downloadLatest": "\u4e0b\u8f7d\u65b0\u7248\u672c",
+    "leaderboard.title": "\u996e\u6c34\u6392\u884c\u699c",
+    "leaderboard.description":
+      "\u7528\u5708\u5b50\u7801\u628a\u51e0\u4e2a\u4eba\u62c9\u8fdb\u540c\u4e00\u4e2a\u5c0f\u5708\u5b50\uff0c\u5c31\u80fd\u8f7b\u677e\u6bd4\u8f83\u4eca\u5929\u7684\u996e\u6c34\u60c5\u51b5\u3002",
+    "leaderboard.loading": "\u6b63\u5728\u5237\u65b0...",
+    "leaderboard.refresh": "\u5237\u65b0\u699c\u5355",
+    "leaderboard.displayName": "\u6211\u7684\u6635\u79f0",
+    "leaderboard.identityHint":
+      "\u4e0d\u7528\u6ce8\u518c\u3002\u8fd9\u4e2a\u6635\u79f0\u4f1a\u8ddf\u968f\u4f60\u7684\u672c\u673a\u8bbe\u5907 ID \u540c\u6b65\u5230\u699c\u5355\u91cc\u3002",
+    "leaderboard.activeCircle": "\u5f53\u524d\u5708\u5b50\uff1a{name}",
+    "leaderboard.circleCode": "\u5708\u5b50\u7801 {code}",
+    "leaderboard.empty":
+      "\u8fd8\u6ca1\u6709\u52a0\u5165\u4efb\u4f55\u5708\u5b50\u3002\u5148\u521b\u5efa\u4e00\u4e2a\uff0c\u6216\u8005\u8f93\u5165\u522b\u4eba\u7684\u5708\u5b50\u7801\u5427\u3002",
+    "leaderboard.circleTitle": "\u5708\u5b50\u7ba1\u7406",
+    "leaderboard.circleDescription":
+      "\u521b\u5efa\u4e00\u4e2a\u5c0f\u5708\u5b50\uff0c\u6216\u7528 6 \u4f4d\u5708\u5b50\u7801\u52a0\u5165\u522b\u4eba\u7684\u699c\u5355\u3002",
+    "leaderboard.circleCreateName": "\u65b0\u5708\u5b50\u540d\u79f0",
+    "leaderboard.circleCreate": "\u521b\u5efa\u5708\u5b50",
+    "leaderboard.circleJoinCode": "\u8f93\u5165\u5708\u5b50\u7801",
+    "leaderboard.circleJoin": "\u52a0\u5165\u5708\u5b50",
+    "leaderboard.circleEmpty": "\u8fd8\u6ca1\u6709\u5df2\u52a0\u5165\u7684\u5708\u5b50\u3002",
+    "leaderboard.metricIntake": "\u6309\u996e\u6c34\u91cf",
+    "leaderboard.metricProgress": "\u6309\u5b8c\u6210\u7387",
+    "leaderboard.intakeValue": "\u5df2\u559d {amount}",
+    "leaderboard.progressValue": "\u5b8c\u6210 {percent}%",
+    "leaderboard.targetValue": "\u76ee\u6807 {amount}",
+    "leaderboard.noData": "\u4eca\u5929\u8fd8\u6ca1\u6709\u540c\u5708\u5b50\u6210\u5458\u540c\u6b65\u6570\u636e\u3002",
     "history.title": "\u996e\u6c34\u5386\u53f2",
     "history.description":
       "\u7528\u989c\u8272\u5feb\u901f\u67e5\u770b\u6bcf\u5929\u7684\u996e\u6c34\u60c5\u51b5\uff0c\u989c\u8272\u8d8a\u5065\u5eb7\u8bf4\u660e\u8d8a\u63a5\u8fd1\u76ee\u6807\u3002",
@@ -214,6 +274,9 @@ const translations: Record<Locale, TranslationTable> = {
     "message.exportSuccess": "Data exported.",
     "message.importSuccess": "Data imported and refreshed.",
     "message.yesterdayCatchUpSaved": "Added {amount} to yesterday's log.",
+    "message.circleCreated": "Created circle {code}.",
+    "message.circleJoined": "Joined circle {code}.",
+    "message.circleSelected": "Switched to circle {code}.",
     "window.subtitle": "Desktop hydration assistant",
     "window.openSettings": "Open settings",
     "window.minimize": "Minimize",
@@ -221,6 +284,7 @@ const translations: Record<Locale, TranslationTable> = {
     "tabs.navigation": "Switch sections",
     "tabs.today": "Today",
     "tabs.history": "History",
+    "tabs.leaderboard": "Leaderboard",
     "today.title": "Today's hydration",
     "today.nextReminder": "Next reminder",
     "today.progress": "Progress",
@@ -271,7 +335,35 @@ const translations: Record<Locale, TranslationTable> = {
     "settings.languageZhCn": "Simplified Chinese",
     "settings.languageEnUs": "English",
     "settings.version": "Version: {version}",
+    "settings.updateAvailable": "Version {version} is available here if you want to update.",
+    "settings.downloadUpdate": "Download this update",
     "settings.downloadLatest": "Download new version",
+    "leaderboard.title": "Hydration leaderboard",
+    "leaderboard.description":
+      "Use a circle code to bring a few people into one small group and compare today's hydration at a glance.",
+    "leaderboard.loading": "Refreshing...",
+    "leaderboard.refresh": "Refresh",
+    "leaderboard.displayName": "My display name",
+    "leaderboard.identityHint":
+      "No registration needed. This name is synced with your local device identity for the leaderboard.",
+    "leaderboard.activeCircle": "Active circle: {name}",
+    "leaderboard.circleCode": "Circle code {code}",
+    "leaderboard.empty":
+      "You have not joined a circle yet. Create one first, or enter someone else's circle code.",
+    "leaderboard.circleTitle": "Circle management",
+    "leaderboard.circleDescription":
+      "Create a small circle, or join someone else's leaderboard with a 6-character circle code.",
+    "leaderboard.circleCreateName": "New circle name",
+    "leaderboard.circleCreate": "Create circle",
+    "leaderboard.circleJoinCode": "Enter circle code",
+    "leaderboard.circleJoin": "Join circle",
+    "leaderboard.circleEmpty": "No joined circles yet.",
+    "leaderboard.metricIntake": "By intake",
+    "leaderboard.metricProgress": "By progress",
+    "leaderboard.intakeValue": "Drank {amount}",
+    "leaderboard.progressValue": "{percent}% complete",
+    "leaderboard.targetValue": "Target {amount}",
+    "leaderboard.noData": "No one in this circle has synced data for today yet.",
     "history.title": "Hydration history",
     "history.description":
       "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",

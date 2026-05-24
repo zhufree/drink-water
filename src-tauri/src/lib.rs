@@ -9,6 +9,7 @@ use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Tim
 use serde::{Deserialize, Serialize};
 use tauri::{
     async_runtime::spawn,
+    menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder,
 };
@@ -28,6 +29,10 @@ fn default_cup_step_ml() -> u32 {
     50
 }
 
+fn default_empty_string() -> String {
+    String::new()
+}
+
 fn normalize_locale(locale: &str) -> String {
     match locale {
         "en-US" => "en-US".to_string(),
@@ -42,6 +47,14 @@ pub struct Settings {
     cup_size_ml: u32,
     #[serde(default = "default_cup_step_ml")]
     cup_step_ml: u32,
+    #[serde(default = "default_empty_string")]
+    device_id: String,
+    #[serde(default = "default_empty_string")]
+    display_name: String,
+    #[serde(default = "default_empty_string")]
+    active_circle_code: String,
+    #[serde(default = "default_empty_string")]
+    active_circle_name: String,
     reminder_interval_minutes: u32,
     active_start_hour: u8,
     active_end_hour: u8,
@@ -57,6 +70,10 @@ impl Default for Settings {
             daily_target_ml: 2000,
             cup_size_ml: 250,
             cup_step_ml: default_cup_step_ml(),
+            device_id: default_empty_string(),
+            display_name: default_empty_string(),
+            active_circle_code: default_empty_string(),
+            active_circle_name: default_empty_string(),
             reminder_interval_minutes: 60,
             active_start_hour: 9,
             active_end_hour: 22,
@@ -72,6 +89,16 @@ impl Settings {
         self.daily_target_ml = self.daily_target_ml.max(500);
         self.cup_size_ml = self.cup_size_ml.max(50);
         self.cup_step_ml = self.cup_step_ml.max(10);
+        self.device_id = self.device_id.trim().chars().take(128).collect();
+        self.display_name = self.display_name.trim().chars().take(32).collect();
+        self.active_circle_code = self
+            .active_circle_code
+            .trim()
+            .to_uppercase()
+            .chars()
+            .take(6)
+            .collect();
+        self.active_circle_name = self.active_circle_name.trim().chars().take(48).collect();
         self.active_start_hour = self.active_start_hour.min(23);
         self.active_end_hour = self.active_end_hour.clamp(self.active_start_hour + 1, 23);
         self.locale = normalize_locale(&self.locale);
@@ -855,6 +882,14 @@ fn maybe_send_notification(app: &AppHandle, title: &str, body: &str) {
         .show();
 }
 
+fn tray_menu_copy(locale: &str) -> (&'static str, &'static str) {
+    if normalize_locale(locale) == "en-US" {
+        ("Open Drink Water", "Quit")
+    } else {
+        ("打开 Drink Water", "退出程序")
+    }
+}
+
 enum NotificationKind {
     DrinkNow,
     SnoozeReady,
@@ -956,9 +991,21 @@ pub fn run() {
             show_main_window(&app.handle());
 
             let app_handle = app.handle().clone();
+            let locale = app
+                .state::<AppState>()
+                .data
+                .lock()
+                .map(|guard| guard.settings.locale.clone())
+                .unwrap_or_else(|_| default_locale());
+            let (open_label, quit_label) = tray_menu_copy(&locale);
+            let open_item = MenuItem::with_id(app, "open", open_label, true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+            let tray_menu = Menu::with_items(app, &[&open_item, &quit_item])?;
             TrayIconBuilder::new()
                 .icon(tauri::include_image!("icons/icon.png"))
                 .tooltip("Drink Water")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
                 .on_tray_icon_event(move |_, event| {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,
@@ -968,6 +1015,11 @@ pub fn run() {
                     {
                         toggle_main_window(&app_handle);
                     }
+                })
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => show_main_window(app),
+                    "quit" => app.exit(0),
+                    _ => {}
                 })
                 .build(app)?;
 
@@ -1025,6 +1077,10 @@ mod tests {
             daily_target_ml: 2000,
             cup_size_ml: 250,
             cup_step_ml: 50,
+            device_id: default_empty_string(),
+            display_name: default_empty_string(),
+            active_circle_code: default_empty_string(),
+            active_circle_name: default_empty_string(),
             reminder_interval_minutes: 5,
             active_start_hour: 9,
             active_end_hour: 22,
@@ -1063,6 +1119,10 @@ mod tests {
             daily_target_ml: 2000,
             cup_size_ml: 250,
             cup_step_ml: 50,
+            device_id: default_empty_string(),
+            display_name: default_empty_string(),
+            active_circle_code: default_empty_string(),
+            active_circle_name: default_empty_string(),
             reminder_interval_minutes: 97,
             active_start_hour: 9,
             active_end_hour: 22,

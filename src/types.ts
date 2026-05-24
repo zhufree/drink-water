@@ -4,6 +4,10 @@ export type Settings = {
   dailyTargetMl: number;
   cupSizeMl: number;
   cupStepMl: number;
+  deviceId: string;
+  displayName: string;
+  activeCircleCode: string;
+  activeCircleName: string;
   reminderIntervalMinutes: number;
   activeStartHour: number;
   activeEndHour: number;
@@ -47,3 +51,26 @@ export type NotificationPermissionState =
   | "unsupported"
   | "prompt"
   | "prompt-with-rationale";
+
+export type CircleSummary = {
+  circleCode: string;
+  circleName: string | null;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  deviceId: string;
+  displayName: string;
+  actualIntakeMl: number;
+  targetMl: number;
+  progressPercent: number;
+};
+
+export type AppUpdateInfo = {
+  currentVersion: string;
+  latestVersion: string;
+  hasUpdate: boolean;
+  releaseUrl: string;
+  notes: string | null;
+  publishedAt: string;
+};

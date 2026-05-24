@@ -1,8 +1,8 @@
 import { useI18n } from "../i18n";
 
 type PrimaryTabsProps = {
-  activeTab: "today" | "history" | "settings";
-  onChange: (tab: "today" | "history") => void;
+  activeTab: "today" | "history" | "leaderboard" | "settings";
+  onChange: (tab: "today" | "history" | "leaderboard") => void;
 };
 
 export function PrimaryTabs({ activeTab, onChange }: PrimaryTabsProps) {
@@ -10,11 +10,12 @@ export function PrimaryTabs({ activeTab, onChange }: PrimaryTabsProps) {
 
   const tabs = [
     { key: "today", label: t("tabs.today") },
-    { key: "history", label: t("tabs.history") }
+    { key: "history", label: t("tabs.history") },
+    { key: "leaderboard", label: t("tabs.leaderboard") }
   ] as const;
 
   return (
-    <nav aria-label={t("tabs.navigation")} className="mb-3 grid grid-cols-2 gap-2">
+    <nav aria-label={t("tabs.navigation")} className="mb-3 grid grid-cols-3 gap-2">
       {tabs.map((tab) => (
         <button
           key={tab.key}
