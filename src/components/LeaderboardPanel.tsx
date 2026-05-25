@@ -3,9 +3,12 @@ import type { CircleSummary, LeaderboardEntry } from "../types";
 
 type LeaderboardPanelProps = {
   displayName: string;
+  cloudIdentityState: "loading" | "ready" | "error";
+  cloudIdentityError: string | null;
   activeCircleCode: string;
   activeCircleName: string;
   circles: CircleSummary[];
+  circlesLoadState: "loading" | "ready" | "error";
   circleCodeInput: string;
   circleNameInput: string;
   metric: "intake" | "progress";
@@ -16,6 +19,7 @@ type LeaderboardPanelProps = {
   onCircleNameInputChange: (value: string) => void;
   onCreateCircle: () => void;
   onJoinCircle: () => void;
+  onReconnectIdentity: () => void;
   onSelectCircle: (circle: CircleSummary) => void;
   onMetricChange: (metric: "intake" | "progress") => void;
   onRefresh: () => void;
@@ -23,9 +27,12 @@ type LeaderboardPanelProps = {
 
 export function LeaderboardPanel({
   displayName,
+  cloudIdentityState,
+  cloudIdentityError,
   activeCircleCode,
   activeCircleName,
   circles,
+  circlesLoadState,
   circleCodeInput,
   circleNameInput,
   metric,
@@ -36,12 +43,16 @@ export function LeaderboardPanel({
   onCircleNameInputChange,
   onCreateCircle,
   onJoinCircle,
+  onReconnectIdentity,
   onSelectCircle,
   onMetricChange,
   onRefresh
 }: LeaderboardPanelProps) {
   const { t, formatMl } = useI18n();
   const activeCircle = circles.find((item) => item.circleCode === activeCircleCode);
+  const showResolvedActiveCircle = Boolean(
+    activeCircleCode && (activeCircle || circlesLoadState === "error")
+  );
 
   return (
     <section className="flex flex-col gap-3">
@@ -72,7 +83,41 @@ export function LeaderboardPanel({
           </label>
         </div>
 
-        {activeCircleCode ? (
+        <div className="mt-4 rounded-[18px] bg-white/5 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="m-0 text-sm font-medium text-slate-100">
+                {t("leaderboard.identityStatusTitle")}
+              </p>
+              <p
+                className={`mt-1 text-sm ${
+                  cloudIdentityState === "ready"
+                    ? "text-emerald-200"
+                    : cloudIdentityState === "error"
+                      ? "text-amber-200"
+                      : "text-slate-300/76"
+                }`}
+              >
+                {cloudIdentityState === "ready"
+                  ? t("leaderboard.identityReady")
+                  : cloudIdentityState === "error"
+                    ? t("leaderboard.identityError")
+                    : t("leaderboard.identityLoading")}
+              </p>
+              {cloudIdentityState === "error" && cloudIdentityError ? (
+                <p className="mt-2 text-xs text-slate-300/70">{cloudIdentityError}</p>
+              ) : null}
+            </div>
+            <button
+              onClick={onReconnectIdentity}
+              className="rounded-[12px] bg-white/8 px-3 py-2 text-sm text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
+            >
+              {t("leaderboard.identityRetry")}
+            </button>
+          </div>
+        </div>
+
+        {showResolvedActiveCircle ? (
           <div className="mt-4 flex flex-wrap gap-2">
             <span className="rounded-full bg-cyan-300/12 px-3 py-2 text-sm text-cyan-100">
               {t("leaderboard.activeCircle", {
@@ -137,7 +182,11 @@ export function LeaderboardPanel({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {circles.length > 0 ? (
+          {circlesLoadState === "loading" ? (
+            <span className="text-sm text-slate-300/70">{t("leaderboard.circleLoading")}</span>
+          ) : circlesLoadState === "error" ? (
+            <span className="text-sm text-amber-200">{t("leaderboard.circleLoadFailed")}</span>
+          ) : circles.length > 0 ? (
             circles.map((circle) => {
               const active = activeCircleCode === circle.circleCode;
               return (

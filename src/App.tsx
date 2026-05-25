@@ -48,8 +48,10 @@ import type {
 import { computeReminderMeta } from "./utils";
 
 type TabKey = "today" | "history" | "leaderboard" | "settings";
+type CirclesLoadState = "loading" | "ready" | "error";
+type CloudIdentityState = "loading" | "ready" | "error";
 
-const APP_VERSION = "0.4.0";
+const APP_VERSION = "0.4.1";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -87,6 +89,7 @@ export default function App() {
     useState<HistoryItem | null>(null);
   const [yesterdayCatchUpAmount, setYesterdayCatchUpAmount] = useState(250);
   const [circles, setCircles] = useState<CircleSummary[]>([]);
+  const [circlesLoadState, setCirclesLoadState] = useState<CirclesLoadState>("loading");
   const [circleCodeInput, setCircleCodeInput] = useState("");
   const [circleNameInput, setCircleNameInput] = useState("");
   const [leaderboardMetric, setLeaderboardMetric] =
@@ -94,6 +97,8 @@ export default function App() {
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
+  const [cloudIdentityState, setCloudIdentityState] = useState<CloudIdentityState>("loading");
+  const [cloudIdentityError, setCloudIdentityError] = useState<string | null>(null);
 
   const startupPromptCheckedRef = useRef(false);
   const lastSyncedStatsKeyRef = useRef("");
@@ -156,9 +161,17 @@ export default function App() {
           nextSettings = saved;
         }
 
-        await syncCloudIdentity(nextSettings);
-        const fetchedCircles = await listLeaderboardCircles(nextSettings.deviceId);
-        setCircles(fetchedCircles);
+        setCloudIdentityState("loading");
+        setCloudIdentityError(null);
+        try {
+          const bootstrapResult = await syncCloudIdentity(nextSettings);
+          nextSettings = await applyCircleSnapshot(nextSettings, bootstrapResult.circles);
+          setCloudIdentityState("ready");
+        } catch (error) {
+          setCloudIdentityState("error");
+          setCloudIdentityError(extractErrorMessage(error));
+          setCirclesLoadState("error");
+        }
         try {
           const nextUpdateInfo = await checkForAppUpdate({
             appId: "drink-water",
@@ -168,23 +181,6 @@ export default function App() {
           setUpdateInfo(nextUpdateInfo);
         } catch {
           setUpdateInfo(null);
-        }
-
-        if (
-          nextSettings.activeCircleCode &&
-          !fetchedCircles.some((circle) => circle.circleCode === nextSettings.activeCircleCode)
-        ) {
-          const firstCircle = fetchedCircles[0] ?? null;
-          if (firstCircle) {
-            const saved = await saveSettings({
-              ...nextSettings,
-              activeCircleCode: firstCircle.circleCode,
-              activeCircleName: firstCircle.circleName ?? ""
-            });
-            setSettings(saved);
-            setDraftSettings(saved);
-            nextSettings = saved;
-          }
         }
 
         if (!startupPromptCheckedRef.current) {
@@ -364,7 +360,17 @@ export default function App() {
       setDraftSettings(saved);
       setQuickAmount(saved.cupSizeMl);
       setStatus(await getTodayStatus());
-      await syncCloudIdentity(saved);
+      setCloudIdentityState("loading");
+      setCloudIdentityError(null);
+      try {
+        const bootstrapResult = await syncCloudIdentity(saved);
+        await applyCircleSnapshot(saved, bootstrapResult.circles);
+        setCloudIdentityState("ready");
+      } catch (error) {
+        setCloudIdentityState("error");
+        setCloudIdentityError(extractErrorMessage(error));
+        setCirclesLoadState("error");
+      }
       setMessage(i18n.t("message.settingsSaved"));
     } finally {
       setSaving(false);
@@ -425,23 +431,32 @@ export default function App() {
       return;
     }
 
-    const result = await createLeaderboardCircle(settings.deviceId, circleNameInput.trim());
-    const nextSettings = await saveSettings({
-      ...settings,
-      activeCircleCode: result.circleCode,
-      activeCircleName: result.circleName ?? ""
-    });
-    setSettings(nextSettings);
-    setDraftSettings(nextSettings);
-    setCircleNameInput("");
-    const fetchedCircles = await listLeaderboardCircles(settings.deviceId);
-    setCircles(fetchedCircles);
-    setActiveTab("leaderboard");
-    setMessage(
-      i18n.t("message.circleCreated", {
-        code: result.circleCode
-      })
-    );
+    try {
+      const result = await createLeaderboardCircle(settings.deviceId, circleNameInput.trim());
+      const nextCircles = upsertCircle(circles, {
+        circleCode: result.circleCode,
+        circleName: result.circleName
+      });
+      let nextSettings = await saveSettings({
+        ...settings,
+        activeCircleCode: result.circleCode,
+        activeCircleName: result.circleName ?? ""
+      });
+      setSettings(nextSettings);
+      setDraftSettings(nextSettings);
+      setCircleNameInput("");
+      nextSettings = await applyCircleSnapshot(nextSettings, nextCircles);
+      void refreshCirclesFromServer(settings.deviceId);
+      setActiveTab("leaderboard");
+      setMessage(
+        i18n.t("message.circleCreated", {
+          code: result.circleCode
+        })
+      );
+    } catch (error) {
+      setCirclesLoadState("error");
+      setMessage(extractErrorMessage(error));
+    }
   };
 
   const handleJoinCircle = async () => {
@@ -449,23 +464,55 @@ export default function App() {
       return;
     }
 
-    const result = await joinLeaderboardCircle(settings.deviceId, circleCodeInput.trim());
-    const nextSettings = await saveSettings({
-      ...settings,
-      activeCircleCode: result.circleCode,
-      activeCircleName: result.circleName ?? ""
-    });
-    setSettings(nextSettings);
-    setDraftSettings(nextSettings);
-    setCircleCodeInput("");
-    const fetchedCircles = await listLeaderboardCircles(settings.deviceId);
-    setCircles(fetchedCircles);
-    setActiveTab("leaderboard");
-    setMessage(
-      i18n.t("message.circleJoined", {
-        code: result.circleCode
-      })
-    );
+    try {
+      const result = await joinLeaderboardCircle(settings.deviceId, circleCodeInput.trim());
+      const nextCircles = upsertCircle(circles, {
+        circleCode: result.circleCode,
+        circleName: result.circleName
+      });
+      let nextSettings = await saveSettings({
+        ...settings,
+        activeCircleCode: result.circleCode,
+        activeCircleName: result.circleName ?? ""
+      });
+      setSettings(nextSettings);
+      setDraftSettings(nextSettings);
+      setCircleCodeInput("");
+      nextSettings = await applyCircleSnapshot(nextSettings, nextCircles);
+      void refreshCirclesFromServer(settings.deviceId);
+      setActiveTab("leaderboard");
+      setMessage(
+        i18n.t("message.circleJoined", {
+          code: result.circleCode
+        })
+      );
+    } catch (error) {
+      setCirclesLoadState("error");
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleReconnectLeaderboard = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setMessage("");
+    setCloudIdentityState("loading");
+    setCloudIdentityError(null);
+    setCirclesLoadState("loading");
+
+    try {
+      const bootstrapResult = await syncCloudIdentity(settings);
+      await applyCircleSnapshot(settings, bootstrapResult.circles);
+      setCloudIdentityState("ready");
+      setMessage(i18n.t("leaderboard.identityReconnectSuccess"));
+    } catch (error) {
+      setCloudIdentityState("error");
+      setCloudIdentityError(extractErrorMessage(error));
+      setCirclesLoadState("error");
+      setMessage(extractErrorMessage(error));
+    }
   };
 
   const handleSelectCircle = async (circle: CircleSummary) => {
@@ -557,9 +604,12 @@ export default function App() {
             {activeTab === "leaderboard" ? (
               <LeaderboardPanel
                 displayName={draftSettings.displayName}
+                cloudIdentityState={cloudIdentityState}
+                cloudIdentityError={cloudIdentityError}
                 activeCircleCode={settings.activeCircleCode}
                 activeCircleName={settings.activeCircleName}
                 circles={circles}
+                circlesLoadState={circlesLoadState}
                 circleCodeInput={circleCodeInput}
                 circleNameInput={circleNameInput}
                 metric={leaderboardMetric}
@@ -575,6 +625,7 @@ export default function App() {
                 onCircleNameInputChange={setCircleNameInput}
                 onCreateCircle={() => void handleCreateCircle()}
                 onJoinCircle={() => void handleJoinCircle()}
+                onReconnectIdentity={() => void handleReconnectLeaderboard()}
                 onSelectCircle={(circle) => void handleSelectCircle(circle)}
                 onMetricChange={setLeaderboardMetric}
                 onRefresh={() => void refreshLeaderboard()}
@@ -607,14 +658,84 @@ export default function App() {
 
   async function syncCloudIdentity(nextSettings: Settings) {
     if (!nextSettings.deviceId) {
-      return;
+      return { circles: [] as CircleSummary[] };
     }
 
-    await bootstrapLeaderboard(nextSettings.deviceId, nextSettings.displayName);
+    const result = await bootstrapLeaderboard(nextSettings.deviceId, nextSettings.displayName);
     if (nextSettings.displayName.trim()) {
       await updateLeaderboardProfile(nextSettings.deviceId, nextSettings.displayName.trim());
     }
+
+    return result;
   }
+
+  async function refreshCirclesFromServer(deviceId: string) {
+    try {
+      const fetchedCircles = await listLeaderboardCircles(deviceId);
+      await applyCircleSnapshot(settings.deviceId === deviceId ? settings : draftSettings, fetchedCircles);
+    } catch {
+      setCirclesLoadState("error");
+    }
+  }
+
+  async function applyCircleSnapshot(
+    baseSettings: Settings,
+    fetchedCircles: CircleSummary[]
+  ) {
+    setCircles(fetchedCircles);
+    setCirclesLoadState("ready");
+
+    const activeCircle =
+      fetchedCircles.find((circle) => circle.circleCode === baseSettings.activeCircleCode) ?? null;
+
+    if (baseSettings.activeCircleCode && !activeCircle) {
+      const fallbackCircle = fetchedCircles[0] ?? null;
+      const saved = await saveSettings({
+        ...baseSettings,
+        activeCircleCode: fallbackCircle?.circleCode ?? "",
+        activeCircleName: fallbackCircle?.circleName ?? ""
+      });
+      setSettings(saved);
+      setDraftSettings(saved);
+      return saved;
+    }
+
+    if (activeCircle && baseSettings.activeCircleName !== (activeCircle.circleName ?? "")) {
+      const saved = await saveSettings({
+        ...baseSettings,
+        activeCircleName: activeCircle.circleName ?? ""
+      });
+      setSettings(saved);
+      setDraftSettings(saved);
+      return saved;
+    }
+
+    return baseSettings;
+  }
+
+  function extractErrorMessage(error: unknown) {
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+
+    return "Failed to sync circles.";
+  }
+}
+
+function upsertCircle(circles: CircleSummary[], circle: CircleSummary) {
+  const existing = circles.find((item) => item.circleCode === circle.circleCode);
+  if (existing) {
+    return circles.map((item) =>
+      item.circleCode === circle.circleCode
+        ? {
+            ...item,
+            circleName: circle.circleName
+          }
+        : item
+    );
+  }
+
+  return [circle, ...circles];
 }
 
 function findYesterdayCatchUpCandidate(history: HistoryItem[]) {

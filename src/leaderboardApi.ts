@@ -1,15 +1,5 @@
+import { invoke } from "@tauri-apps/api/core";
 import type { AppUpdateInfo, CircleSummary, LeaderboardEntry } from "./types";
-
-function getApiBase() {
-  const configured = (import.meta.env.VITE_LEADERBOARD_API_BASE as string | undefined)?.trim();
-  if (!configured) {
-    throw new Error("Leaderboard API base is not configured.");
-  }
-
-  return configured.replace(/\/+$/, "");
-}
-
-const API_BASE = getApiBase();
 
 type BootstrapResponse = {
   user: {
@@ -42,24 +32,46 @@ type UpdateCheckResponse = {
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {})
-    }
-  });
+  const retries = init?.method === "GET" || !init?.method ? 2 : 1;
+  let lastError: Error | null = null;
+  const method = init?.method ?? "GET";
+  const [pathname, rawQuery] = path.split("?");
+  const query = rawQuery
+    ? Array.from(new URLSearchParams(rawQuery).entries())
+    : undefined;
+  const body = init?.body ? JSON.parse(String(init.body)) : null;
 
-  const data = (await response.json()) as T | { error?: string };
-  if (!response.ok) {
-    throw new Error(
-      typeof data === "object" && data && "error" in data && data.error
-        ? data.error || "Request failed"
-        : "Request failed"
-    );
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const data = await invoke<T>("leaderboard_request", {
+        method,
+        path: pathname,
+        query,
+        body
+      });
+      return data;
+    } catch (error) {
+      lastError =
+        error instanceof Error ? error : new Error(typeof error === "string" ? error : "Request failed");
+      console.error("[leaderboardApi] request error", {
+        method,
+        path,
+        attempt: attempt + 1,
+        name: lastError.name,
+        message: lastError.message
+      });
+      if (attempt >= retries) {
+        break;
+      }
+      await delay(350 * (attempt + 1));
+    }
   }
 
-  return data as T;
+  throw lastError ?? new Error("Request failed");
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 export async function bootstrapLeaderboard(deviceId: string, displayName: string) {

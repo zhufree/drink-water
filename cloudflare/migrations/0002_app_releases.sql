@@ -23,7 +23,7 @@ INSERT INTO app_releases (
   'drink-water',
   'desktop-windows',
   'stable',
-  '0.4.0',
+  '0.4.1',
   'https://github.com/zhufree/drink-water/releases',
   NULL,
   '2026-05-24T00:00:00.000Z',

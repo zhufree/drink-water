@@ -6,7 +6,9 @@ use std::{
 };
 
 use chrono::{DateTime, Local, NaiveDate, NaiveDateTime, NaiveTime, TimeZone, Timelike};
+use reqwest::Method;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::{
     async_runtime::spawn,
     menu::{Menu, MenuItem},
@@ -20,6 +22,7 @@ use tauri_plugin_notification::NotificationExt;
 const STORE_FILE_NAME: &str = "drink-water-state.json";
 const STATE_EVENT: &str = "state-updated";
 const SNOOZE_MINUTES: i64 = 10;
+const LEADERBOARD_API_BASE: &str = "https://water-api.zhufree.fun";
 
 fn default_locale() -> String {
     "zh-CN".to_string()
@@ -596,6 +599,59 @@ fn log_yesterday_drink(
     Ok(true)
 }
 
+#[tauri::command]
+async fn leaderboard_request(
+    method: String,
+    path: String,
+    query: Option<Vec<(String, String)>>,
+    body: Option<Value>,
+) -> Result<Value, String> {
+    let method = Method::from_bytes(method.trim().to_uppercase().as_bytes())
+        .map_err(|error| error.to_string())?;
+    let path = if path.starts_with('/') {
+        path
+    } else {
+        format!("/{path}")
+    };
+
+    let mut url = reqwest::Url::parse(&format!("{LEADERBOARD_API_BASE}{path}"))
+        .map_err(|error| error.to_string())?;
+    if let Some(query) = query {
+        let mut pairs = url.query_pairs_mut();
+        for (key, value) in query {
+            pairs.append_pair(&key, &value);
+        }
+        drop(pairs);
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .map_err(|error| error.to_string())?;
+
+    let mut request = client.request(method, url);
+    if let Some(body) = body {
+        request = request.json(&body);
+    }
+
+    let response = request.send().await.map_err(|error| error.to_string())?;
+    let status = response.status();
+    let value = response
+        .json::<Value>()
+        .await
+        .map_err(|error| error.to_string())?;
+
+    if !status.is_success() {
+        let message = value
+            .get("error")
+            .and_then(Value::as_str)
+            .unwrap_or("Request failed");
+        return Err(message.to_string());
+    }
+
+    Ok(value)
+}
+
 fn update_state_and_snapshot(app: &AppHandle, state: &AppState) -> Result<TodayStatus, String> {
     {
         let mut guard = state
@@ -1033,6 +1089,7 @@ pub fn run() {
             log_drink,
             undo_last_drink,
             log_yesterday_drink,
+            leaderboard_request,
             export_data,
             import_data,
             toggle_autostart,

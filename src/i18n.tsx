@@ -13,6 +13,7 @@ type TranslationKey =
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
+  | "leaderboard.identityReconnectSuccess"
   | "window.subtitle"
   | "window.openSettings"
   | "window.minimize"
@@ -73,6 +74,11 @@ type TranslationKey =
   | "leaderboard.loading"
   | "leaderboard.refresh"
   | "leaderboard.displayName"
+  | "leaderboard.identityStatusTitle"
+  | "leaderboard.identityLoading"
+  | "leaderboard.identityReady"
+  | "leaderboard.identityError"
+  | "leaderboard.identityRetry"
   | "leaderboard.identityHint"
   | "leaderboard.activeCircle"
   | "leaderboard.circleCode"
@@ -84,6 +90,8 @@ type TranslationKey =
   | "leaderboard.circleJoinCode"
   | "leaderboard.circleJoin"
   | "leaderboard.circleEmpty"
+  | "leaderboard.circleLoading"
+  | "leaderboard.circleLoadFailed"
   | "leaderboard.metricIntake"
   | "leaderboard.metricProgress"
   | "leaderboard.intakeValue"
@@ -139,6 +147,7 @@ const translations: Record<Locale, TranslationTable> = {
     "message.circleCreated": "\u5df2\u521b\u5efa\u5708\u5b50 {code}\u3002",
     "message.circleJoined": "\u5df2\u52a0\u5165\u5708\u5b50 {code}\u3002",
     "message.circleSelected": "\u5df2\u5207\u6362\u5230\u5708\u5b50 {code}\u3002",
+    "leaderboard.identityReconnectSuccess": "\u5df2\u91cd\u65b0\u8fde\u63a5\u6392\u884c\u699c\u670d\u52a1\u3002",
     "window.subtitle": "\u684c\u9762\u8865\u6c34\u52a9\u624b",
     "window.openSettings": "\u6253\u5f00\u8bbe\u7f6e",
     "window.minimize": "\u6700\u5c0f\u5316",
@@ -207,6 +216,11 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.loading": "\u6b63\u5728\u5237\u65b0...",
     "leaderboard.refresh": "\u5237\u65b0\u699c\u5355",
     "leaderboard.displayName": "\u6211\u7684\u6635\u79f0",
+    "leaderboard.identityStatusTitle": "\u4e91\u7aef\u6392\u884c\u699c\u8fde\u63a5",
+    "leaderboard.identityLoading": "\u6b63\u5728\u5efa\u7acb\u6216\u68c0\u67e5\u4f60\u7684\u4e91\u7aef\u8eab\u4efd...",
+    "leaderboard.identityReady": "\u4e91\u7aef\u8eab\u4efd\u5df2\u5c31\u7eea\uff0c\u53ef\u4ee5\u6b63\u5e38\u4f7f\u7528\u5708\u5b50\u529f\u80fd\u3002",
+    "leaderboard.identityError": "\u4e91\u7aef\u8eab\u4efd\u5efa\u7acb\u5931\u8d25\uff0c\u5708\u5b50\u529f\u80fd\u53ef\u80fd\u65e0\u6cd5\u6b63\u5e38\u4f7f\u7528\u3002",
+    "leaderboard.identityRetry": "\u91cd\u8bd5\u8fde\u63a5",
     "leaderboard.identityHint":
       "\u4e0d\u7528\u6ce8\u518c\u3002\u8fd9\u4e2a\u6635\u79f0\u4f1a\u8ddf\u968f\u4f60\u7684\u672c\u673a\u8bbe\u5907 ID \u540c\u6b65\u5230\u699c\u5355\u91cc\u3002",
     "leaderboard.activeCircle": "\u5f53\u524d\u5708\u5b50\uff1a{name}",
@@ -221,6 +235,8 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.circleJoinCode": "\u8f93\u5165\u5708\u5b50\u7801",
     "leaderboard.circleJoin": "\u52a0\u5165\u5708\u5b50",
     "leaderboard.circleEmpty": "\u8fd8\u6ca1\u6709\u5df2\u52a0\u5165\u7684\u5708\u5b50\u3002",
+    "leaderboard.circleLoading": "\u6b63\u5728\u540c\u6b65\u5df2\u52a0\u5165\u7684\u5708\u5b50...",
+    "leaderboard.circleLoadFailed": "\u5708\u5b50\u5217\u8868\u6682\u65f6\u540c\u6b65\u5931\u8d25\uff0c\u53ef\u4ee5\u7a0d\u540e\u518d\u8bd5\u3002",
     "leaderboard.metricIntake": "\u6309\u996e\u6c34\u91cf",
     "leaderboard.metricProgress": "\u6309\u5b8c\u6210\u7387",
     "leaderboard.intakeValue": "\u5df2\u559d {amount}",
@@ -277,6 +293,7 @@ const translations: Record<Locale, TranslationTable> = {
     "message.circleCreated": "Created circle {code}.",
     "message.circleJoined": "Joined circle {code}.",
     "message.circleSelected": "Switched to circle {code}.",
+    "leaderboard.identityReconnectSuccess": "Reconnected to the leaderboard service.",
     "window.subtitle": "Desktop hydration assistant",
     "window.openSettings": "Open settings",
     "window.minimize": "Minimize",
@@ -344,6 +361,11 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.loading": "Refreshing...",
     "leaderboard.refresh": "Refresh",
     "leaderboard.displayName": "My display name",
+    "leaderboard.identityStatusTitle": "Cloud leaderboard connection",
+    "leaderboard.identityLoading": "Creating or checking your cloud identity...",
+    "leaderboard.identityReady": "Your cloud identity is ready and circle features should work.",
+    "leaderboard.identityError": "Your cloud identity could not be established, so circle features may fail.",
+    "leaderboard.identityRetry": "Retry connection",
     "leaderboard.identityHint":
       "No registration needed. This name is synced with your local device identity for the leaderboard.",
     "leaderboard.activeCircle": "Active circle: {name}",
@@ -358,6 +380,8 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.circleJoinCode": "Enter circle code",
     "leaderboard.circleJoin": "Join circle",
     "leaderboard.circleEmpty": "No joined circles yet.",
+    "leaderboard.circleLoading": "Syncing joined circles...",
+    "leaderboard.circleLoadFailed": "Couldn't sync the joined circles right now. Please try again later.",
     "leaderboard.metricIntake": "By intake",
     "leaderboard.metricProgress": "By progress",
     "leaderboard.intakeValue": "Drank {amount}",
