@@ -15,7 +15,7 @@ function buildHistoryGrid(history: HistoryItem[], days = 56) {
   today.setHours(0, 0, 0, 0);
 
   const cells: HistoryCell[] = [];
-  for (let index = days - 1; index >= 0; index -= 1) {
+  for (let index = 0; index < days; index += 1) {
     const date = new Date(today);
     date.setDate(today.getDate() - index);
     const dayKey = date.toISOString().slice(0, 10);
@@ -45,36 +45,38 @@ function buildHistoryGrid(history: HistoryItem[], days = 56) {
   return cells;
 }
 
-function getCellClass(cell: HistoryCell) {
+function getCellFillClass(cell: HistoryCell) {
   if (cell.targetMl <= 0 || cell.actualIntakeMl <= 0) {
-    return "bg-white/6 border border-white/6";
+    return "bg-transparent";
   }
 
   if (cell.goalMet) {
     if (cell.fillRatio >= 1) {
-      return "bg-emerald-400 border border-emerald-300/70";
+      return "bg-emerald-400";
     }
-    return "bg-emerald-500/80 border border-emerald-300/60";
+    return "bg-emerald-500/80";
   }
 
   if (cell.fillRatio >= 0.7) {
-    return "bg-sky-400 border border-sky-300/70";
+    return "bg-sky-400";
   }
 
   if (cell.fillRatio >= 0.4) {
-    return "bg-cyan-500/70 border border-cyan-300/60";
+    return "bg-cyan-500/70";
   }
 
   if (cell.fillRatio >= 0.2) {
-    return "bg-amber-500/70 border border-amber-300/60";
+    return "bg-amber-500/70";
   }
 
-  return "bg-rose-500/70 border border-rose-300/60";
+  return "bg-rose-500/70";
 }
 
 export function HistoryPanel({ history }: HistoryPanelProps) {
   const { t, formatMl, formatShortDay } = useI18n();
   const gridCells = buildHistoryGrid(history, 56);
+  const newestGridDay = gridCells[0]?.dayKey ?? "";
+  const oldestGridDay = gridCells[gridCells.length - 1]?.dayKey ?? "";
   const recentItems = [...history]
     .sort((left, right) => right.dayKey.localeCompare(left.dayKey))
     .slice(0, 7);
@@ -94,6 +96,11 @@ export function HistoryPanel({ history }: HistoryPanelProps) {
           </div>
         </div>
 
+        <div className="mb-3 flex items-center justify-between text-[11px] text-slate-400">
+          <span>{t("history.newestFirst", { day: formatShortDay(newestGridDay) })}</span>
+          <span>{t("history.oldestLast", { day: formatShortDay(oldestGridDay) })}</span>
+        </div>
+
         <div className="grid grid-cols-14 gap-2">
           {gridCells.map((cell) => (
             <div
@@ -104,8 +111,15 @@ export function HistoryPanel({ history }: HistoryPanelProps) {
                 target:
                   cell.targetMl > 0 ? ` / ${formatMl(cell.targetMl)}` : ""
               })}
-              className={`aspect-square rounded-[5px] ${getCellClass(cell)}`}
-            />
+              className="relative aspect-square overflow-hidden rounded-[5px] border border-white/8 bg-white/6"
+            >
+              <div
+                className={`absolute inset-x-0 bottom-0 rounded-b-[5px] ${getCellFillClass(cell)}`}
+                style={{
+                  height: `${Math.round(cell.fillRatio * 100)}%`
+                }}
+              />
+            </div>
           ))}
         </div>
 
@@ -153,7 +167,9 @@ export function HistoryPanel({ history }: HistoryPanelProps) {
                   {item.goalMet ? t("history.met") : t("history.notMet")}
                 </span>
                 <span className="mt-1 block text-xs text-slate-400">
-                  {t("history.debtTotal", { amount: formatMl(item.debtIncurredMl) })}
+                  {t("history.shortfall", {
+                    amount: formatMl(Math.max(0, item.targetMl - item.actualIntakeMl))
+                  })}
                 </span>
               </div>
             </article>

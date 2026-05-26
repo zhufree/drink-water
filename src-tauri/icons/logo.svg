@@ -1,23 +1,23 @@
 <svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="40" y1="24" x2="210" y2="228" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#66D4FF"/>
-      <stop offset="1" stop-color="#2A63FF"/>
+    <linearGradient id="bg" x1="28" y1="22" x2="222" y2="230" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6AE1FF"/>
+      <stop offset="1" stop-color="#2B63FF"/>
     </linearGradient>
-    <linearGradient id="glass" x1="86" y1="112" x2="172" y2="212" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F7FBFF" stop-opacity="0.9"/>
-      <stop offset="1" stop-color="#C5E5FF" stop-opacity="0.55"/>
+    <linearGradient id="glass" x1="76" y1="58" x2="180" y2="204" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F5FBFF" stop-opacity="0.96"/>
+      <stop offset="1" stop-color="#C6E7FF" stop-opacity="0.78"/>
     </linearGradient>
-    <linearGradient id="water" x1="93" y1="150" x2="167" y2="203" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#7DE5FF"/>
-      <stop offset="1" stop-color="#2E8BFF"/>
+    <linearGradient id="water" x1="84" y1="126" x2="176" y2="198" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#69F0FF"/>
+      <stop offset="1" stop-color="#157BFF"/>
     </linearGradient>
-    <filter id="shadow" x="20" y="16" width="216" height="224" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <filter id="shadow" x="18" y="16" width="220" height="224" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
       <feFlood flood-opacity="0" result="BackgroundImageFix"/>
       <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
       <feOffset dy="10"/>
       <feGaussianBlur stdDeviation="12"/>
-      <feColorMatrix type="matrix" values="0 0 0 0 0.0235294 0 0 0 0 0.117647 0 0 0 0 0.278431 0 0 0 0.28 0"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.0235294 0 0 0 0 0.117647 0 0 0 0 0.278431 0 0 0 0.26 0"/>
       <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_1_1"/>
       <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_1_1" result="shape"/>
     </filter>
@@ -26,14 +26,35 @@
   <g filter="url(#shadow)">
     <rect x="32" y="28" width="192" height="192" rx="52" fill="url(#bg)"/>
 
-    <path d="M126.636 52.1672C127.348 50.9894 129.052 50.9894 129.764 52.1672L159.341 101.07C173.318 124.189 156.669 153.5 129.764 153.5H126.636C99.7315 153.5 83.0824 124.189 97.0594 101.07L126.636 52.1672Z" fill="#E9F8FF"/>
-    <path d="M121.311 88.6131C121.85 87.672 123.207 87.672 123.746 88.6131L139.021 115.283C146.457 128.264 137.078 144.375 122.129 144.375C107.18 144.375 97.8009 128.264 105.237 115.283L121.311 88.6131Z" fill="#71D8FF"/>
-
-    <path d="M91 121C91 115.477 95.4772 111 101 111H155C160.523 111 165 115.477 165 121V186C165 193.18 159.18 199 152 199H104C96.8203 199 91 193.18 91 186V121Z" fill="url(#glass)" stroke="#F3FBFF" stroke-width="5"/>
-    <path d="M97 150.5C97 146.358 100.358 143 104.5 143H151.5C155.642 143 159 146.358 159 150.5V186C159 190.418 155.418 194 151 194H105C100.582 194 97 190.418 97 186V150.5Z" fill="url(#water)"/>
-    <path d="M97 153C107.386 147.557 117.063 146.124 126.031 148.701C135.784 151.503 145.441 151.075 155 145.5V154.5C155 157.538 152.538 160 149.5 160H102.5C99.4624 160 97 157.538 97 154.5V153Z" fill="#B8F3FF" fill-opacity="0.72"/>
-
-    <circle cx="172" cy="76" r="7" fill="#EAFBFF"/>
-    <circle cx="186" cy="89" r="4" fill="#EAFBFF" fill-opacity="0.92"/>
+    <path
+      d="M102 58C102 52.4772 106.477 48 112 48H144C149.523 48 154 52.4772 154 58V68H163C168.523 68 173 72.4772 173 78V89C173 94.5228 168.523 99 163 99H154V190C154 195.523 149.523 200 144 200H112C106.477 200 102 195.523 102 190V58Z"
+      fill="url(#glass)"
+      fill-opacity="0.96"
+    />
+    <path
+      d="M90 86C90 75.5066 98.5066 67 109 67H147C157.493 67 166 75.5066 166 86V184C166 194.493 157.493 203 147 203H109C98.5066 203 90 194.493 90 184V86Z"
+      fill="url(#glass)"
+      stroke="#F5FCFF"
+      stroke-width="7"
+    />
+    <path
+      d="M96 132C96 127.582 99.5817 124 104 124H152C156.418 124 160 127.582 160 132V184C160 190.627 154.627 196 148 196H108C101.373 196 96 190.627 96 184V132Z"
+      fill="url(#water)"
+    />
+    <path
+      d="M96 136C109.36 129.232 122.24 127.177 134.64 129.836C144.847 132.026 153.3 131.414 160 128V137.5C160 140.538 157.538 143 154.5 143H101.5C98.4624 143 96 140.538 96 137.5V136Z"
+      fill="#BDF7FF"
+      fill-opacity="0.82"
+    />
+    <path
+      d="M118 88C120.209 88 122 89.7909 122 92V170C122 172.209 120.209 174 118 174C115.791 174 114 172.209 114 170V92C114 89.7909 115.791 88 118 88Z"
+      fill="#F8FDFF"
+      fill-opacity="0.56"
+    />
+    <path
+      d="M173 76C173 72.6863 175.686 70 179 70H193C196.314 70 199 72.6863 199 76V90C199 93.3137 196.314 96 193 96H179C175.686 96 173 93.3137 173 90V76Z"
+      fill="#DDF6FF"
+      fill-opacity="0.7"
+    />
   </g>
 </svg>

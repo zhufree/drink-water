@@ -50,8 +50,9 @@ import { computeReminderMeta } from "./utils";
 type TabKey = "today" | "history" | "leaderboard" | "settings";
 type CirclesLoadState = "loading" | "ready" | "error";
 type CloudIdentityState = "loading" | "ready" | "error";
+type NicknameSaveState = "idle" | "success" | "error";
 
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.4.5";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -99,11 +100,12 @@ export default function App() {
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const [cloudIdentityState, setCloudIdentityState] = useState<CloudIdentityState>("loading");
   const [cloudIdentityError, setCloudIdentityError] = useState<string | null>(null);
+  const [nicknameSaving, setNicknameSaving] = useState(false);
+  const [nicknameSaveState, setNicknameSaveState] = useState<NicknameSaveState>("idle");
+  const [nicknameSaveMessage, setNicknameSaveMessage] = useState<string | null>(null);
 
   const startupPromptCheckedRef = useRef(false);
   const lastSyncedStatsKeyRef = useRef("");
-  const displayNameSyncTimerRef = useRef<number | null>(null);
-  const displayNameSyncVersionRef = useRef(0);
 
   const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
   const i18n = useMemo(() => createI18n(locale), [locale]);
@@ -257,56 +259,6 @@ export default function App() {
 
     void refreshLeaderboard();
   }, [settings.activeCircleCode, leaderboardMetric]);
-
-  useEffect(() => {
-    if (!settings.deviceId || draftSettings.displayName === settings.displayName) {
-      return;
-    }
-
-    if (displayNameSyncTimerRef.current !== null) {
-      window.clearTimeout(displayNameSyncTimerRef.current);
-    }
-
-    const syncVersion = ++displayNameSyncVersionRef.current;
-    displayNameSyncTimerRef.current = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const saved = await saveSettings({
-            ...settings,
-            displayName: draftSettings.displayName
-          });
-
-          if (syncVersion !== displayNameSyncVersionRef.current) {
-            return;
-          }
-
-          setSettings(saved);
-          setDraftSettings((current) => ({ ...current, displayName: saved.displayName }));
-          await syncCloudIdentity(saved);
-
-          if (saved.activeCircleCode) {
-            await refreshLeaderboard();
-          }
-        } catch {
-          // Ignore transient sync failures to avoid interrupting typing.
-        }
-      })();
-    }, 500);
-
-    return () => {
-      if (displayNameSyncTimerRef.current !== null) {
-        window.clearTimeout(displayNameSyncTimerRef.current);
-      }
-    };
-  }, [draftSettings.displayName, settings, settings.deviceId]);
-
-  useEffect(() => {
-    return () => {
-      if (displayNameSyncTimerRef.current !== null) {
-        window.clearTimeout(displayNameSyncTimerRef.current);
-      }
-    };
-  }, []);
 
   const handleLog = async (amountMl: number) => {
     setMessage("");
@@ -515,6 +467,51 @@ export default function App() {
     }
   };
 
+  const handleSaveDisplayName = async () => {
+    if (nicknameSaving) {
+      return;
+    }
+
+    setNicknameSaving(true);
+    setNicknameSaveState("idle");
+    setNicknameSaveMessage(null);
+
+    try {
+      const saved = await saveSettings({
+        ...settings,
+        displayName: draftSettings.displayName
+      });
+      setSettings(saved);
+      setDraftSettings((current) => ({ ...current, displayName: saved.displayName }));
+      setCloudIdentityState("loading");
+      setCloudIdentityError(null);
+
+      try {
+        const bootstrapResult = await syncCloudIdentity(saved);
+        await applyCircleSnapshot(saved, bootstrapResult.circles);
+        setCloudIdentityState("ready");
+      } catch (error) {
+        setCloudIdentityState("error");
+        setCloudIdentityError(extractErrorMessage(error));
+        throw error;
+      }
+
+      if (saved.activeCircleCode) {
+        await refreshLeaderboard();
+      }
+
+      setNicknameSaveState("success");
+      setNicknameSaveMessage(i18n.t("leaderboard.displayNameSaved"));
+    } catch (error) {
+      setNicknameSaveState("error");
+      setNicknameSaveMessage(
+        `${i18n.t("leaderboard.displayNameSaveFailed")} ${extractErrorMessage(error)}`
+      );
+    } finally {
+      setNicknameSaving(false);
+    }
+  };
+
   const handleSelectCircle = async (circle: CircleSummary) => {
     const nextSettings = await saveSettings({
       ...settings,
@@ -604,6 +601,9 @@ export default function App() {
             {activeTab === "leaderboard" ? (
               <LeaderboardPanel
                 displayName={draftSettings.displayName}
+                nicknameSaving={nicknameSaving}
+                nicknameSaveState={nicknameSaveState}
+                nicknameSaveMessage={nicknameSaveMessage}
                 cloudIdentityState={cloudIdentityState}
                 cloudIdentityError={cloudIdentityError}
                 activeCircleCode={settings.activeCircleCode}
@@ -615,12 +615,15 @@ export default function App() {
                 metric={leaderboardMetric}
                 leaderboard={leaderboardEntries}
                 loading={leaderboardLoading}
-                onDisplayNameChange={(value) =>
+                onDisplayNameChange={(value) => {
                   setDraftSettings((current) => ({
                     ...current,
                     displayName: value
-                  }))
-                }
+                  }));
+                  setNicknameSaveState("idle");
+                  setNicknameSaveMessage(null);
+                }}
+                onSaveDisplayName={() => void handleSaveDisplayName()}
                 onCircleCodeInputChange={setCircleCodeInput}
                 onCircleNameInputChange={setCircleNameInput}
                 onCreateCircle={() => void handleCreateCircle()}

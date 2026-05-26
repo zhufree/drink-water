@@ -74,6 +74,10 @@ type TranslationKey =
   | "leaderboard.loading"
   | "leaderboard.refresh"
   | "leaderboard.displayName"
+  | "leaderboard.displayNameSave"
+  | "leaderboard.displayNameSaving"
+  | "leaderboard.displayNameSaved"
+  | "leaderboard.displayNameSaveFailed"
   | "leaderboard.identityStatusTitle"
   | "leaderboard.identityLoading"
   | "leaderboard.identityReady"
@@ -89,6 +93,7 @@ type TranslationKey =
   | "leaderboard.circleCreate"
   | "leaderboard.circleJoinCode"
   | "leaderboard.circleJoin"
+  | "leaderboard.circleSwitchHint"
   | "leaderboard.circleEmpty"
   | "leaderboard.circleLoading"
   | "leaderboard.circleLoadFailed"
@@ -102,6 +107,8 @@ type TranslationKey =
   | "history.description"
   | "history.heatmapTitle"
   | "history.heatmapDescription"
+  | "history.newestFirst"
+  | "history.oldestLast"
   | "history.tooltip"
   | "history.goalMet"
   | "history.nearGoal"
@@ -111,7 +118,9 @@ type TranslationKey =
   | "history.recentAmounts"
   | "history.met"
   | "history.notMet"
-  | "history.debtTotal"
+  | "history.shortfall"
+  | "history.missedReminders"
+  | "history.debtExplanation"
   | "notification.drinkNowTitle"
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
@@ -133,151 +142,159 @@ type TranslationTable = Record<TranslationKey, string>;
 
 const translations: Record<Locale, TranslationTable> = {
   "zh-CN": {
-    "app.loading": "\u6b63\u5728\u51c6\u5907\u4f60\u7684\u8865\u6c34\u52a9\u624b...",
-    "message.logged": "\u5df2\u8bb0\u5f55 {amount}\u3002",
-    "message.undo": "\u5df2\u64a4\u9500\u4e0a\u6b21\u8bb0\u5f55\u7684 {amount}\u3002",
+    "app.loading": "正在准备你的补水助手...",
+    "message.logged": "已记录 {amount}。",
+    "message.undo": "已撤销上次记录的 {amount}。",
     "message.windowActionFailed":
-      "\u7a97\u53e3\u64cd\u4f5c\u5931\u8d25\uff1a{action} \u672a\u6267\u884c\u6210\u529f\uff0c{detail}",
+      "窗口操作失败：{action} 未执行成功，{detail}",
     "message.settingsSaved":
-      "\u8bbe\u7f6e\u5df2\u4fdd\u5b58\uff0c\u63d0\u9192\u8282\u594f\u548c\u8bed\u8a00\u5df2\u66f4\u65b0\u3002",
-    "message.exportSuccess": "\u6570\u636e\u5df2\u5bfc\u51fa\u3002",
-    "message.importSuccess": "\u6570\u636e\u5df2\u5bfc\u5165\u5e76\u5237\u65b0\u3002",
+      "设置已保存，提醒节奏和语言已更新。",
+    "message.exportSuccess": "数据已导出。",
+    "message.importSuccess": "数据已导入并刷新。",
     "message.yesterdayCatchUpSaved":
-      "\u5df2\u4e3a\u6628\u5929\u8865\u8bb0 {amount}\u3002",
-    "message.circleCreated": "\u5df2\u521b\u5efa\u5708\u5b50 {code}\u3002",
-    "message.circleJoined": "\u5df2\u52a0\u5165\u5708\u5b50 {code}\u3002",
-    "message.circleSelected": "\u5df2\u5207\u6362\u5230\u5708\u5b50 {code}\u3002",
-    "leaderboard.identityReconnectSuccess": "\u5df2\u91cd\u65b0\u8fde\u63a5\u6392\u884c\u699c\u670d\u52a1\u3002",
-    "window.subtitle": "\u684c\u9762\u8865\u6c34\u52a9\u624b",
-    "window.openSettings": "\u6253\u5f00\u8bbe\u7f6e",
-    "window.minimize": "\u6700\u5c0f\u5316",
-    "window.hideToTray": "\u6536\u8d77\u5230\u6258\u76d8",
-    "tabs.navigation": "\u529f\u80fd\u5207\u6362",
-    "tabs.today": "\u4eca\u65e5",
-    "tabs.history": "\u5386\u53f2",
-    "tabs.leaderboard": "\u6392\u884c\u699c",
-    "today.title": "\u4eca\u65e5\u996e\u6c34\u6982\u89c8",
-    "today.nextReminder": "\u4e0b\u6b21\u63d0\u9192",
-    "today.progress": "\u4eca\u65e5\u8fdb\u5ea6",
-    "today.target": "\u4eca\u65e5\u76ee\u6807 {amount}",
-    "today.expected": "\u5f53\u524d\u5e94\u559d {amount}",
-    "today.actual": "\u5b9e\u9645\u5df2\u559d {amount}",
-    "today.debt": "\u5f53\u524d\u6b20\u91cf {amount}",
-    "today.remaining": "\u5269\u4f59\u76ee\u6807 {amount}",
-    "today.quickLog": "\u5feb\u901f\u8bb0\u5f55",
+      "已为昨天补记 {amount}。",
+    "message.circleCreated": "已创建圈子 {code}。",
+    "message.circleJoined": "已加入圈子 {code}。",
+    "message.circleSelected": "已切换到圈子 {code}。",
+    "leaderboard.identityReconnectSuccess": "已重新连接排行榜服务。",
+    "window.subtitle": "桌面补水助手",
+    "window.openSettings": "打开设置",
+    "window.minimize": "最小化",
+    "window.hideToTray": "收起到托盘",
+    "tabs.navigation": "功能切换",
+    "tabs.today": "今日",
+    "tabs.history": "历史",
+    "tabs.leaderboard": "排行榜",
+    "today.title": "今日饮水概览",
+    "today.nextReminder": "下次提醒",
+    "today.progress": "今日进度",
+    "today.target": "今日目标 {amount}",
+    "today.expected": "当前应喝 {amount}",
+    "today.actual": "实际已喝 {amount}",
+    "today.debt": "当前欠量 {amount}",
+    "today.remaining": "剩余目标 {amount}",
+    "today.quickLog": "快速记录",
     "today.quickLogHelp":
-      "\u9ed8\u8ba4\u4e00\u952e\u8bb0\u4e00\u676f\uff0c\u4e5f\u53ef\u4ee5\u5fae\u8c03\u8fd9\u6b21\u5b9e\u9645\u559d\u4e86\u591a\u5c11\u3002",
-    "today.snooze": "\u7a0d\u540e\u63d0\u9192",
-    "today.resetToCup": "\u6062\u590d\u5355\u676f",
-    "today.logOneCup": "\u8bb0\u4e00\u676f {amount}",
-    "today.logAmount": "\u8bb0\u5f55 {amount}",
-    "today.undoAmount": "\u64a4\u9500\u4e0a\u6b21 {amount}",
-    "today.undoLastLog": "\u64a4\u9500\u4e0a\u6b21\u8bb0\u5f55",
-    "settings.title": "\u5e38\u89c4\u8bbe\u7f6e",
+      "默认一键记一杯，也可以微调这次实际喝了多少。",
+    "today.snooze": "稍后提醒",
+    "today.resetToCup": "恢复单杯",
+    "today.logOneCup": "记一杯 {amount}",
+    "today.logAmount": "记录 {amount}",
+    "today.undoAmount": "撤销上次 {amount}",
+    "today.undoLastLog": "撤销上次记录",
+    "settings.title": "常规设置",
     "settings.description":
-      "\u63d0\u9192\u8282\u594f\u4f1a\u6839\u636e\u76ee\u6807\u91cf\u3001\u5355\u676f\u5bb9\u91cf\u548c\u63d0\u9192\u65f6\u95f4\u81ea\u52a8\u8ba1\u7b97\u3002",
-    "settings.dailyTarget": "\u6bcf\u65e5\u76ee\u6807 (ml)",
-    "settings.cupSize": "\u5355\u676f\u5bb9\u91cf (ml)",
-    "settings.cupStep": "\u676f\u91cf\u8c03\u6574\u6b65\u8fdb (ml)",
-    "settings.interval": "\u63d0\u9192\u95f4\u9694 (\u5206\u949f)",
+      "提醒节奏会根据目标量、单杯容量和提醒时间自动计算。",
+    "settings.dailyTarget": "每日目标 (ml)",
+    "settings.cupSize": "单杯容量 (ml)",
+    "settings.cupStep": "杯量调整步进 (ml)",
+    "settings.interval": "提醒间隔 (分钟)",
     "settings.intervalHelp":
-      "\u81ea\u52a8\u8ba1\u7b97\uff1a\u6bcf\u5929 {drinksPerDay} \u676f\uff0c\u7ea6\u6bcf {minutes} \u5206\u949f\u63d0\u9192\u4e00\u6b21",
-    "settings.startHour": "\u5f00\u59cb\u63d0\u9192\u65f6\u95f4 (\u5c0f\u65f6)",
-    "settings.endHour": "\u7ed3\u675f\u63d0\u9192\u65f6\u95f4 (\u5c0f\u65f6)",
-    "settings.language": "\u754c\u9762\u8bed\u8a00",
-    "settings.notifications": "\u7cfb\u7edf\u901a\u77e5",
-    "settings.autostart": "\u5f00\u673a\u81ea\u542f",
-    "settings.permissionTitle": "\u901a\u77e5\u6743\u9650",
-    "settings.permissionStatus": "\u5f53\u524d\u72b6\u6001\uff1a{status}",
-    "settings.permissionGranted": "\u5df2\u5141\u8bb8",
+      "自动计算：每天 {drinksPerDay} 杯，约每 {minutes} 分钟提醒一次",
+    "settings.startHour": "开始提醒时间 (小时)",
+    "settings.endHour": "结束提醒时间 (小时)",
+    "settings.language": "界面语言",
+    "settings.notifications": "系统通知",
+    "settings.autostart": "开机自启",
+    "settings.permissionTitle": "通知权限",
+    "settings.permissionStatus": "当前状态：{status}",
+    "settings.permissionGranted": "已允许",
     "settings.permissionDenied":
-      "\u5df2\u62d2\u7edd\uff0c\u63d0\u9192\u53ef\u80fd\u65e0\u6cd5\u5f39\u51fa",
+      "已拒绝，提醒可能无法弹出",
     "settings.permissionUnsupported":
-      "\u5f53\u524d\u73af\u5883\u4e0d\u652f\u6301\u524d\u7aef\u6743\u9650\u68c0\u6d4b",
-    "settings.permissionPrompt": "\u7b49\u5f85\u7cfb\u7edf\u786e\u8ba4",
+      "当前环境不支持前端权限检测",
+    "settings.permissionPrompt": "等待系统确认",
     "settings.notificationNote":
-      "\u5728 Windows \u4e0a\uff0c\u5b89\u88c5\u540e\u7684\u5e94\u7528\u901a\u5e38\u6bd4\u5f00\u53d1\u8c03\u8bd5\u8fdb\u7a0b\u66f4\u5bb9\u6613\u7a33\u5b9a\u663e\u793a\u7cfb\u7edf\u901a\u77e5\u3002",
-    "settings.dataTitle": "\u6570\u636e\u7ba1\u7406",
+      "在 Windows 上，安装后的应用通常比开发调试进程更容易稳定显示系统通知。",
+    "settings.dataTitle": "数据管理",
     "settings.dataDescription":
-      "\u53ef\u5bfc\u51fa\u5907\u4efd\u6587\u4ef6\uff0c\u4e5f\u53ef\u5728\u65b0\u7535\u8111\u4e0a\u5bfc\u5165\u6062\u590d\u5386\u53f2\u8bb0\u5f55\u548c\u8bbe\u7f6e\u3002",
-    "settings.exportData": "\u5bfc\u51fa\u6570\u636e",
-    "settings.importData": "\u5bfc\u5165\u6570\u636e",
-    "settings.save": "\u4fdd\u5b58\u8bbe\u7f6e",
-    "settings.saving": "\u6b63\u5728\u4fdd\u5b58...",
-    "settings.languageZhCn": "\u7b80\u4f53\u4e2d\u6587",
+      "可导出备份文件，也可在新电脑上导入恢复历史记录和设置。",
+    "settings.exportData": "导出数据",
+    "settings.importData": "导入数据",
+    "settings.save": "保存设置",
+    "settings.saving": "正在保存...",
+    "settings.languageZhCn": "简体中文",
     "settings.languageEnUs": "English",
-    "settings.version": "\u7248\u672c\u53f7\uff1a{version}",
-    "settings.updateAvailable": "\u53d1\u73b0\u65b0\u7248\u672c {version}",
-    "settings.downloadUpdate": "\u4e0b\u8f7d\u8fd9\u4e2a\u66f4\u65b0",
-    "settings.downloadLatest": "\u4e0b\u8f7d\u65b0\u7248\u672c",
-    "leaderboard.title": "\u996e\u6c34\u6392\u884c\u699c",
+    "settings.version": "版本号：{version}",
+    "settings.updateAvailable": "发现新版本 {version}",
+    "settings.downloadUpdate": "下载这个更新",
+    "settings.downloadLatest": "下载新版本",
+    "leaderboard.title": "饮水排行榜",
     "leaderboard.description":
-      "\u7528\u5708\u5b50\u7801\u628a\u51e0\u4e2a\u4eba\u62c9\u8fdb\u540c\u4e00\u4e2a\u5c0f\u5708\u5b50\uff0c\u5c31\u80fd\u8f7b\u677e\u6bd4\u8f83\u4eca\u5929\u7684\u996e\u6c34\u60c5\u51b5\u3002",
-    "leaderboard.loading": "\u6b63\u5728\u5237\u65b0...",
-    "leaderboard.refresh": "\u5237\u65b0\u699c\u5355",
-    "leaderboard.displayName": "\u6211\u7684\u6635\u79f0",
-    "leaderboard.identityStatusTitle": "\u4e91\u7aef\u6392\u884c\u699c\u8fde\u63a5",
-    "leaderboard.identityLoading": "\u6b63\u5728\u5efa\u7acb\u6216\u68c0\u67e5\u4f60\u7684\u4e91\u7aef\u8eab\u4efd...",
-    "leaderboard.identityReady": "\u4e91\u7aef\u8eab\u4efd\u5df2\u5c31\u7eea\uff0c\u53ef\u4ee5\u6b63\u5e38\u4f7f\u7528\u5708\u5b50\u529f\u80fd\u3002",
-    "leaderboard.identityError": "\u4e91\u7aef\u8eab\u4efd\u5efa\u7acb\u5931\u8d25\uff0c\u5708\u5b50\u529f\u80fd\u53ef\u80fd\u65e0\u6cd5\u6b63\u5e38\u4f7f\u7528\u3002",
-    "leaderboard.identityRetry": "\u91cd\u8bd5\u8fde\u63a5",
-    "leaderboard.identityHint":
-      "\u4e0d\u7528\u6ce8\u518c\u3002\u8fd9\u4e2a\u6635\u79f0\u4f1a\u8ddf\u968f\u4f60\u7684\u672c\u673a\u8bbe\u5907 ID \u540c\u6b65\u5230\u699c\u5355\u91cc\u3002",
-    "leaderboard.activeCircle": "\u5f53\u524d\u5708\u5b50\uff1a{name}",
-    "leaderboard.circleCode": "\u5708\u5b50\u7801 {code}",
+      "加入喝水圈子，与朋友一起打卡喝水（请勿刷榜哦）",
+    "leaderboard.loading": "正在刷新...",
+    "leaderboard.refresh": "刷新榜单",
+    "leaderboard.displayName": "我的昵称",
+    "leaderboard.displayNameSave": "保存",
+    "leaderboard.displayNameSaving": "保存中...",
+    "leaderboard.displayNameSaved": "昵称已保存并同步。",
+    "leaderboard.displayNameSaveFailed": "昵称保存失败：",
+    "leaderboard.identityStatusTitle": "云端连接状态",
+    "leaderboard.identityLoading": "正在建立或检查你的云端身份...",
+    "leaderboard.identityReady": "云端连接已就绪，可以正常使用圈子功能。",
+    "leaderboard.identityError": "云端连接建立失败，圈子功能可能无法正常使用。",
+    "leaderboard.identityRetry": "重试连接",
+    "leaderboard.identityHint": "保存昵称后，会同步到当前设备的云端身份。",
+    "leaderboard.activeCircle": "当前圈子：{name}",
+    "leaderboard.circleCode": "邀请码 {code}",
     "leaderboard.empty":
-      "\u8fd8\u6ca1\u6709\u52a0\u5165\u4efb\u4f55\u5708\u5b50\u3002\u5148\u521b\u5efa\u4e00\u4e2a\uff0c\u6216\u8005\u8f93\u5165\u522b\u4eba\u7684\u5708\u5b50\u7801\u5427\u3002",
-    "leaderboard.circleTitle": "\u5708\u5b50\u7ba1\u7406",
+      "还没有加入任何圈子。先创建一个，或者输入别人的邀请码吧。",
+    "leaderboard.circleTitle": "圈子管理",
     "leaderboard.circleDescription":
-      "\u521b\u5efa\u4e00\u4e2a\u5c0f\u5708\u5b50\uff0c\u6216\u7528 6 \u4f4d\u5708\u5b50\u7801\u52a0\u5165\u522b\u4eba\u7684\u699c\u5355\u3002",
-    "leaderboard.circleCreateName": "\u65b0\u5708\u5b50\u540d\u79f0",
-    "leaderboard.circleCreate": "\u521b\u5efa\u5708\u5b50",
-    "leaderboard.circleJoinCode": "\u8f93\u5165\u5708\u5b50\u7801",
-    "leaderboard.circleJoin": "\u52a0\u5165\u5708\u5b50",
-    "leaderboard.circleEmpty": "\u8fd8\u6ca1\u6709\u5df2\u52a0\u5165\u7684\u5708\u5b50\u3002",
-    "leaderboard.circleLoading": "\u6b63\u5728\u540c\u6b65\u5df2\u52a0\u5165\u7684\u5708\u5b50...",
-    "leaderboard.circleLoadFailed": "\u5708\u5b50\u5217\u8868\u6682\u65f6\u540c\u6b65\u5931\u8d25\uff0c\u53ef\u4ee5\u7a0d\u540e\u518d\u8bd5\u3002",
-    "leaderboard.metricIntake": "\u6309\u996e\u6c34\u91cf",
-    "leaderboard.metricProgress": "\u6309\u5b8c\u6210\u7387",
-    "leaderboard.intakeValue": "\u5df2\u559d {amount}",
-    "leaderboard.progressValue": "\u5b8c\u6210 {percent}%",
-    "leaderboard.targetValue": "\u76ee\u6807 {amount}",
-    "leaderboard.noData": "\u4eca\u5929\u8fd8\u6ca1\u6709\u540c\u5708\u5b50\u6210\u5458\u540c\u6b65\u6570\u636e\u3002",
-    "history.title": "\u996e\u6c34\u5386\u53f2",
+      "创建一个小圈子，或用 6 位邀请码加入别人的圈子。",
+    "leaderboard.circleCreateName": "新圈子名称",
+    "leaderboard.circleCreate": "创建圈子",
+    "leaderboard.circleJoinCode": "输入邀请码",
+    "leaderboard.circleJoin": "加入圈子",
+    "leaderboard.circleSwitchHint": "点击下面的圈子标签，可以立即切换当前排行榜。",
+    "leaderboard.circleEmpty": "还没有已加入的圈子。",
+    "leaderboard.circleLoading": "正在同步已加入的圈子...",
+    "leaderboard.circleLoadFailed": "圈子列表暂时同步失败，可以稍后再试。",
+    "leaderboard.metricIntake": "按饮水量",
+    "leaderboard.metricProgress": "按完成率",
+    "leaderboard.intakeValue": "已喝 {amount}",
+    "leaderboard.progressValue": "完成 {percent}%",
+    "leaderboard.targetValue": "目标 {amount}",
+    "leaderboard.noData": "今天还没有同圈子成员同步数据。",
+    "history.title": "饮水历史",
     "history.description":
-      "\u7528\u989c\u8272\u5feb\u901f\u67e5\u770b\u6bcf\u5929\u7684\u996e\u6c34\u60c5\u51b5\uff0c\u989c\u8272\u8d8a\u5065\u5eb7\u8bf4\u660e\u8d8a\u63a5\u8fd1\u76ee\u6807\u3002",
-    "history.heatmapTitle": "\u8fc7\u53bb 8 \u5468\u70ed\u529b\u683c",
+      "用颜色快速查看每天的饮水情况，颜色越健康说明越接近目标。",
+    "history.heatmapTitle": "过去 8 周热力格",
     "history.heatmapDescription":
-      "\u7eff\u8272\u4ee3\u8868\u8fbe\u6807\uff0c\u84dd\u8272\u4ee3\u8868\u559d\u5f97\u4e0d\u9519\uff0c\u6696\u8272\u4ee3\u8868\u559d\u5f97\u504f\u5c11\u3002",
-    "history.tooltip": "{day} | \u5b9e\u9645 {actual}{target}",
-    "history.goalMet": "\u8fbe\u6807",
-    "history.nearGoal": "\u63a5\u8fd1\u8fbe\u6807",
-    "history.low": "\u559d\u5f97\u504f\u5c11",
-    "history.veryLow": "\u559d\u5f97\u5f88\u5c11",
-    "history.recentTitle": "\u6700\u8fd1 7 \u5929\u660e\u7ec6",
-    "history.recentAmounts": "\u5b9e\u9645 {actual} / \u8ba1\u5165 {consumed}",
-    "history.met": "\u5df2\u8fbe\u6807",
-    "history.notMet": "\u672a\u8fbe\u6807",
-    "history.debtTotal": "\u6b20\u91cf\u7d2f\u8ba1 {amount}",
-    "notification.drinkNowTitle": "\u8be5\u559d\u6c34\u4e86",
+      "左上角是最新一天，往后依次更早。绿色代表达标，暖色代表距离目标还有差距。",
+    "history.newestFirst": "最新：{day}",
+    "history.oldestLast": "更早：{day}",
+    "history.tooltip": "{day} | 实际 {actual}{target}",
+    "history.goalMet": "达标",
+    "history.nearGoal": "接近达标",
+    "history.low": "喝得偏少",
+    "history.veryLow": "喝得很少",
+    "history.recentTitle": "最近 7 天明细",
+    "history.recentAmounts": "实际 {actual} / 计入 {consumed}",
+    "history.met": "已达标",
+    "history.notMet": "未达标",
+    "history.shortfall": "距目标还差 {amount}",
+    "history.missedReminders": "错过 {count} 次提醒",
+    "history.debtExplanation": "提醒折算缺口 {amount}",
+    "notification.drinkNowTitle": "该喝水了",
     "notification.drinkNowBody":
-      "\u65b0\u7684\u559d\u6c34\u63d0\u9192\u7a97\u53e3\u5df2\u7ecf\u5f00\u59cb\uff0c\u8bb0\u5f97\u6309\u65f6\u8865\u4e00\u676f\u6c34\u3002",
-    "notification.snoozeTitle": "\u518d\u6b21\u63d0\u9192\u4f60",
+      "新的喝水提醒窗口已经开始，记得按时补一杯水。",
+    "notification.snoozeTitle": "再次提醒你",
     "notification.snoozeBody":
-      "\u7a0d\u540e\u63d0\u9192\u65f6\u95f4\u5230\u4e86\uff0c\u73b0\u5728\u53ef\u4ee5\u987a\u624b\u628a\u8fd9\u676f\u6c34\u8865\u4e0a\u3002",
-    "startupCatchUp.badge": "\u6628\u5929\u8fd8\u53ef\u4ee5\u8865\u8bb0",
-    "startupCatchUp.title": "\u8981\u4e0d\u8981\u8865\u8bb0\u6628\u5929\u7684\u996e\u6c34\u91cf\uff1f",
+      "稍后提醒时间到了，现在可以顺手把这杯水补上。",
+    "startupCatchUp.badge": "昨天还可以补记",
+    "startupCatchUp.title": "要不要补记昨天的饮水量？",
     "startupCatchUp.description":
-      "\u5982\u679c\u4f60\u6628\u665a\u8fd8\u559d\u4e86\u6c34\uff0c\u53ef\u4ee5\u5728\u8fd9\u91cc\u8865\u4e00\u6761\uff0c\u8ba9 {day} \u7684\u8bb0\u5f55\u66f4\u63a5\u8fd1\u771f\u5b9e\u60c5\u51b5\u3002",
-    "startupCatchUp.yesterdaySummary": "\u6628\u5929\u5f53\u524d\u8bb0\u5f55",
-    "startupCatchUp.actual": "\u5df2\u559d {amount}",
-    "startupCatchUp.target": "\u76ee\u6807 {amount}",
-    "startupCatchUp.amountTitle": "\u8865\u8bb0\u591a\u5c11\uff1f",
+      "如果你昨晚还喝了水，可以在这里补一条，让 {day} 的记录更接近真实情况。",
+    "startupCatchUp.yesterdaySummary": "昨天当前记录",
+    "startupCatchUp.actual": "已喝 {amount}",
+    "startupCatchUp.target": "目标 {amount}",
+    "startupCatchUp.amountTitle": "补记多少？",
     "startupCatchUp.amountHelp":
-      "\u9ed8\u8ba4\u4ece 250 ml \u5f00\u59cb\uff0c\u53ef\u4ee5\u7528 +50 / -50 \u5fae\u8c03\u3002",
-    "startupCatchUp.dismiss": "\u5148\u4e0d\u8865\u8bb0",
-    "startupCatchUp.confirm": "\u8865\u8bb0 {amount}",
-    "common.notScheduled": "\u672a\u5b89\u6392"
+      "默认从 250 ml 开始，可以用 +50 / -50 微调。",
+    "startupCatchUp.dismiss": "先不补记",
+    "startupCatchUp.confirm": "补记 {amount}",
+    "common.notScheduled": "未安排"
   },
   "en-US": {
     "app.loading": "Loading your hydration assistant...",
@@ -361,13 +378,16 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.loading": "Refreshing...",
     "leaderboard.refresh": "Refresh",
     "leaderboard.displayName": "My display name",
+    "leaderboard.displayNameSave": "Save name",
+    "leaderboard.displayNameSaving": "Saving...",
+    "leaderboard.displayNameSaved": "Name saved and synced.",
+    "leaderboard.displayNameSaveFailed": "Couldn't save the name:",
     "leaderboard.identityStatusTitle": "Cloud leaderboard connection",
     "leaderboard.identityLoading": "Creating or checking your cloud identity...",
     "leaderboard.identityReady": "Your cloud identity is ready and circle features should work.",
     "leaderboard.identityError": "Your cloud identity could not be established, so circle features may fail.",
     "leaderboard.identityRetry": "Retry connection",
-    "leaderboard.identityHint":
-      "No registration needed. This name is synced with your local device identity for the leaderboard.",
+    "leaderboard.identityHint": "Save the name to sync it with this device's cloud identity.",
     "leaderboard.activeCircle": "Active circle: {name}",
     "leaderboard.circleCode": "Circle code {code}",
     "leaderboard.empty":
@@ -379,6 +399,7 @@ const translations: Record<Locale, TranslationTable> = {
     "leaderboard.circleCreate": "Create circle",
     "leaderboard.circleJoinCode": "Enter circle code",
     "leaderboard.circleJoin": "Join circle",
+    "leaderboard.circleSwitchHint": "Tap a circle chip below to switch the active leaderboard right away.",
     "leaderboard.circleEmpty": "No joined circles yet.",
     "leaderboard.circleLoading": "Syncing joined circles...",
     "leaderboard.circleLoadFailed": "Couldn't sync the joined circles right now. Please try again later.",
@@ -393,7 +414,9 @@ const translations: Record<Locale, TranslationTable> = {
       "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",
     "history.heatmapTitle": "Last 8 weeks",
     "history.heatmapDescription":
-      "Green means goal met, blue means pretty good, warm colors mean you drank less.",
+      "The top-left cell is the newest day, and later cells move backward in time. Green means goal met, while warmer colors mean you were further from the goal.",
+    "history.newestFirst": "Newest: {day}",
+    "history.oldestLast": "Older: {day}",
     "history.tooltip": "{day} | actual {actual}{target}",
     "history.goalMet": "Goal met",
     "history.nearGoal": "Near goal",
@@ -403,7 +426,9 @@ const translations: Record<Locale, TranslationTable> = {
     "history.recentAmounts": "Actual {actual} / Counted {consumed}",
     "history.met": "Met goal",
     "history.notMet": "Missed goal",
-    "history.debtTotal": "Accumulated debt {amount}",
+    "history.shortfall": "Short by {amount}",
+    "history.missedReminders": "Missed {count} reminders",
+    "history.debtExplanation": "Reminder-based debt {amount}",
     "notification.drinkNowTitle": "Time to drink water",
     "notification.drinkNowBody":
       "A new reminder window has started. Try to drink a cup now.",

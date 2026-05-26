@@ -1,3 +1,4 @@
+import { Minus, Settings, X } from "lucide-react";
 import { useI18n } from "../i18n";
 
 type TabKey = "today" | "history" | "leaderboard" | "settings";
@@ -8,19 +9,6 @@ type WindowChromeProps = {
   onMinimize: () => void;
   onHide: () => void;
 };
-
-function SettingsIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M10.3 3.2h3.4l.5 2.1c.4.1.9.3 1.3.5l1.9-1.1 2.4 2.4-1.1 1.9c.2.4.4.8.5 1.3l2.1.5v3.4l-2.1.5c-.1.5-.3.9-.5 1.3l1.1 1.9-2.4 2.4-1.9-1.1c-.4.2-.8.4-1.3.5l-.5 2.1h-3.4l-.5-2.1c-.5-.1-.9-.3-1.3-.5l-1.9 1.1-2.4-2.4 1.1-1.9a5 5 0 0 1-.5-1.3l-2.1-.5v-3.4l2.1-.5c.1-.5.3-.9.5-1.3L4.6 7l2.4-2.4 1.9 1.1c.4-.2.8-.4 1.3-.5l.1-2Z"
-      />
-      <circle cx="12" cy="12" r="3.1" />
-    </svg>
-  );
-}
 
 export function WindowChrome({
   activeTab,
@@ -60,7 +48,7 @@ export function WindowChrome({
               : "bg-white/8 text-slate-200 hover:bg-white/14"
           }`}
         >
-          <SettingsIcon />
+          <Settings className="h-4 w-4" strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -68,7 +56,7 @@ export function WindowChrome({
           onClick={onMinimize}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >
-          -
+          <Minus className="h-4 w-4" strokeWidth={2.2} />
         </button>
         <button
           type="button"
@@ -76,7 +64,7 @@ export function WindowChrome({
           onClick={onHide}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >
-          x
+          <X className="h-4 w-4" strokeWidth={2.2} />
         </button>
       </div>
     </header>
