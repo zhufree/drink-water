@@ -44,6 +44,32 @@ export type HistoryItem = {
   missedReminderSlots: number;
 };
 
+export type SeedInventoryItem = {
+  seedType: string;
+  count: number;
+};
+
+export type PlantedCrop = {
+  dayKey: string;
+  seedType: string;
+  plantedAt: string;
+  harvestedAt?: string | null;
+};
+
+export type GardenCollectionItem = {
+  cropType: string;
+  harvestCount: number;
+  firstHarvestedAt?: string | null;
+  lastHarvestedAt?: string | null;
+};
+
+export type GardenState = {
+  initialGrantClaimed: boolean;
+  seeds: SeedInventoryItem[];
+  crops: PlantedCrop[];
+  collection: GardenCollectionItem[];
+};
+
 export type NotificationPermissionState =
   | "default"
   | "denied"

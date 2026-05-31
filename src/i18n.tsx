@@ -10,6 +10,8 @@ type TranslationKey =
   | "message.exportSuccess"
   | "message.importSuccess"
   | "message.yesterdayCatchUpSaved"
+  | "message.seedPlanted"
+  | "message.cropHarvested"
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
@@ -121,6 +123,21 @@ type TranslationKey =
   | "history.shortfall"
   | "history.missedReminders"
   | "history.debtExplanation"
+  | "garden.seedStock"
+  | "garden.seedCount"
+  | "garden.harvested"
+  | "garden.harvestCount"
+  | "garden.plantable"
+  | "garden.plotCount"
+  | "garden.plantAction"
+  | "garden.readyToHarvest"
+  | "garden.growing"
+  | "garden.harvestedCell"
+  | "garden.noSeeds"
+  | "garden.emptyPlot"
+  | "garden.collectionTitle"
+  | "garden.collectionDescription"
+  | "garden.collectionEmpty"
   | "notification.drinkNowTitle"
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
@@ -153,6 +170,8 @@ const translations: Record<Locale, TranslationTable> = {
     "message.importSuccess": "数据已导入并刷新。",
     "message.yesterdayCatchUpSaved":
       "已为昨天补记 {amount}。",
+    "message.seedPlanted": "已在 {day} 播种。",
+    "message.cropHarvested": "已收获 {day} 的小青菜。",
     "message.circleCreated": "已创建圈子 {code}。",
     "message.circleJoined": "已加入圈子 {code}。",
     "message.circleSelected": "已切换到圈子 {code}。",
@@ -276,6 +295,21 @@ const translations: Record<Locale, TranslationTable> = {
     "history.shortfall": "距目标还差 {amount}",
     "history.missedReminders": "错过 {count} 次提醒",
     "history.debtExplanation": "提醒折算缺口 {amount}",
+    "garden.seedStock": "种子库存",
+    "garden.seedCount": "{count} 颗",
+    "garden.harvested": "已收获",
+    "garden.harvestCount": "{count} 次",
+    "garden.plantable": "可播种",
+    "garden.plotCount": "{count} 格",
+    "garden.plantAction": "播种小青菜",
+    "garden.readyToHarvest": "可以收获",
+    "garden.growing": "成长 {percent}%",
+    "garden.harvestedCell": "已收获",
+    "garden.noSeeds": "种子不足",
+    "garden.emptyPlot": "先记录喝水才能种",
+    "garden.collectionTitle": "蔬菜图鉴",
+    "garden.collectionDescription": "成熟收获会进入图鉴，并返还一颗同类种子。",
+    "garden.collectionEmpty": "还没有收获。先在有喝水记录的格子里播种。",
     "notification.drinkNowTitle": "该喝水了",
     "notification.drinkNowBody":
       "新的喝水提醒窗口已经开始，记得按时补一杯水。",
@@ -307,6 +341,8 @@ const translations: Record<Locale, TranslationTable> = {
     "message.exportSuccess": "Data exported.",
     "message.importSuccess": "Data imported and refreshed.",
     "message.yesterdayCatchUpSaved": "Added {amount} to yesterday's log.",
+    "message.seedPlanted": "Planted on {day}.",
+    "message.cropHarvested": "Harvested bok choy from {day}.",
     "message.circleCreated": "Created circle {code}.",
     "message.circleJoined": "Joined circle {code}.",
     "message.circleSelected": "Switched to circle {code}.",
@@ -429,6 +465,21 @@ const translations: Record<Locale, TranslationTable> = {
     "history.shortfall": "Short by {amount}",
     "history.missedReminders": "Missed {count} reminders",
     "history.debtExplanation": "Reminder-based debt {amount}",
+    "garden.seedStock": "Seed stock",
+    "garden.seedCount": "{count} seeds",
+    "garden.harvested": "Harvested",
+    "garden.harvestCount": "{count} times",
+    "garden.plantable": "Plantable",
+    "garden.plotCount": "{count} plots",
+    "garden.plantAction": "Plant bok choy",
+    "garden.readyToHarvest": "Ready to harvest",
+    "garden.growing": "Growing {percent}%",
+    "garden.harvestedCell": "Harvested",
+    "garden.noSeeds": "No seeds left",
+    "garden.emptyPlot": "Log water first",
+    "garden.collectionTitle": "Vegetable collection",
+    "garden.collectionDescription": "Mature crops enter the collection and return one matching seed.",
+    "garden.collectionEmpty": "No harvests yet. Plant on a day with a water record first.",
     "notification.drinkNowTitle": "Time to drink water",
     "notification.drinkNowBody":
       "A new reminder window has started. Try to drink a cup now.",

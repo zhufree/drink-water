@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { HistoryItem, Settings, TodayStatus } from "./types";
+import type { GardenState, HistoryItem, Settings, TodayStatus } from "./types";
 
 export const getSettings = () => invoke<Settings>("get_settings");
 
@@ -18,6 +18,14 @@ export const toggleAutostart = (enabled: boolean) =>
 
 export const getHistory = (range: number) =>
   invoke<HistoryItem[]>("get_history", { range });
+
+export const getGardenState = () => invoke<GardenState>("get_garden_state");
+
+export const plantSeed = (dayKey: string, seedType: string) =>
+  invoke<GardenState>("plant_seed", { dayKey, seedType });
+
+export const harvestCrop = (dayKey: string) =>
+  invoke<GardenState>("harvest_crop", { dayKey });
 
 export const exportData = () => invoke<boolean>("export_data");
 

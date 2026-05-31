@@ -23,6 +23,9 @@ const STORE_FILE_NAME: &str = "drink-water-state.json";
 const STATE_EVENT: &str = "state-updated";
 const SNOOZE_MINUTES: i64 = 10;
 const LEADERBOARD_API_BASE: &str = "https://water-api.zhufree.fun";
+const BASIC_SEED_TYPE: &str = "bokChoy";
+const INITIAL_BASIC_SEEDS: u32 = 12;
+const DAY_SECONDS: i64 = 24 * 60 * 60;
 
 fn default_locale() -> String {
     "zh-CN".to_string()
@@ -194,10 +197,67 @@ pub struct TodayStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeedInventoryItem {
+    seed_type: String,
+    count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlantedCrop {
+    day_key: String,
+    seed_type: String,
+    planted_at: String,
+    #[serde(default)]
+    harvested_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GardenCollectionItem {
+    crop_type: String,
+    harvest_count: u32,
+    #[serde(default)]
+    first_harvested_at: Option<String>,
+    #[serde(default)]
+    last_harvested_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GardenState {
+    initial_grant_claimed: bool,
+    seeds: Vec<SeedInventoryItem>,
+    crops: Vec<PlantedCrop>,
+    collection: Vec<GardenCollectionItem>,
+}
+
+impl Default for GardenState {
+    fn default() -> Self {
+        Self {
+            initial_grant_claimed: true,
+            seeds: vec![SeedInventoryItem {
+                seed_type: BASIC_SEED_TYPE.to_string(),
+                count: INITIAL_BASIC_SEEDS,
+            }],
+            crops: Vec::new(),
+            collection: Vec::new(),
+        }
+    }
+}
+
+fn default_garden_state() -> GardenState {
+    GardenState::default()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct PersistedState {
     settings: Settings,
     today: DailyRecord,
     history: Vec<HistoryItem>,
+    #[serde(default = "default_garden_state")]
+    garden: GardenState,
 }
 
 impl PersistedState {
@@ -209,6 +269,7 @@ impl PersistedState {
             settings,
             today,
             history: Vec::new(),
+            garden: GardenState::default(),
         }
     }
 
@@ -217,6 +278,17 @@ impl PersistedState {
             item.consumed_ml = item.actual_intake_ml;
             item.goal_met = item.actual_intake_ml >= item.target_ml;
         }
+    }
+
+    fn normalize_garden(&mut self) {
+        if !self.garden.initial_grant_claimed {
+            add_seed(&mut self.garden, BASIC_SEED_TYPE, INITIAL_BASIC_SEEDS);
+            self.garden.initial_grant_claimed = true;
+        }
+
+        self.garden
+            .crops
+            .retain(|crop| crop.harvested_at.is_none());
     }
 }
 
@@ -289,6 +361,7 @@ impl AppState {
             parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
             parsed.today.debt_ml = 0;
             parsed.normalize_history();
+            parsed.normalize_garden();
             parsed
         } else {
             PersistedState::new(Local::now())
@@ -523,6 +596,65 @@ fn get_history(
 }
 
 #[tauri::command]
+fn get_garden_state(state: State<'_, AppState>) -> Result<GardenState, String> {
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn plant_seed(
+    _app: AppHandle,
+    state: State<'_, AppState>,
+    day_key: String,
+    seed_type: String,
+) -> Result<GardenState, String> {
+    let seed_type = normalize_seed_type(&seed_type)?;
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to plant seed".to_string())?;
+        reconcile(&mut guard, Local::now());
+        plant_seed_in_state(&mut guard, &day_key, &seed_type, Local::now())?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn harvest_crop(
+    _app: AppHandle,
+    state: State<'_, AppState>,
+    day_key: String,
+) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to harvest crop".to_string())?;
+        reconcile(&mut guard, Local::now());
+        harvest_crop_in_state(&mut guard, &day_key, Local::now())?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
 fn export_data(app: AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
     state.save()?;
 
@@ -570,6 +702,7 @@ fn import_data(app: AppHandle, state: State<'_, AppState>) -> Result<bool, Strin
     parsed.today.effective_intake_ml = parsed.today.actual_intake_ml;
     parsed.today.debt_ml = 0;
     parsed.normalize_history();
+    parsed.normalize_garden();
     reconcile(&mut parsed, Local::now());
 
     state.replace_data(parsed)?;
@@ -690,6 +823,177 @@ fn to_today_status(settings: &Settings, today: &DailyRecord) -> TodayStatus {
         can_undo_last_drink: today.last_log_undo.is_some(),
         last_logged_amount_ml: today.last_logged_amount_ml,
     }
+}
+
+fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
+    match seed_type.trim() {
+        BASIC_SEED_TYPE => Ok(BASIC_SEED_TYPE.to_string()),
+        _ => Err("unknown seed type".to_string()),
+    }
+}
+
+fn add_seed(garden: &mut GardenState, seed_type: &str, count: u32) {
+    if let Some(item) = garden
+        .seeds
+        .iter_mut()
+        .find(|item| item.seed_type == seed_type)
+    {
+        item.count = item.count.saturating_add(count);
+        return;
+    }
+
+    garden.seeds.push(SeedInventoryItem {
+        seed_type: seed_type.to_string(),
+        count,
+    });
+}
+
+fn spend_seed(garden: &mut GardenState, seed_type: &str) -> Result<(), String> {
+    let Some(item) = garden
+        .seeds
+        .iter_mut()
+        .find(|item| item.seed_type == seed_type)
+    else {
+        return Err("no seeds available".to_string());
+    };
+
+    if item.count == 0 {
+        return Err("no seeds available".to_string());
+    }
+
+    item.count -= 1;
+    Ok(())
+}
+
+fn history_item_for_day(state: &PersistedState, day_key: &str) -> Option<HistoryItem> {
+    if state.today.day_key == day_key {
+        return Some(state.today.summary());
+    }
+
+    state
+        .history
+        .iter()
+        .find(|item| item.day_key == day_key)
+        .cloned()
+}
+
+fn required_growth_days(item: &HistoryItem) -> u32 {
+    if item.actual_intake_ml == 0 {
+        return 0;
+    }
+
+    if item.target_ml == 0 {
+        return 1;
+    }
+
+    let completion_percent = (u64::from(item.actual_intake_ml) * 100) / u64::from(item.target_ml);
+    if completion_percent >= 100 {
+        1
+    } else if completion_percent >= 70 {
+        2
+    } else if completion_percent >= 40 {
+        3
+    } else {
+        4
+    }
+}
+
+fn crop_growth_percent(crop: &PlantedCrop, item: &HistoryItem, now: DateTime<Local>) -> u32 {
+    let required_days = required_growth_days(item);
+    if required_days == 0 {
+        return 0;
+    }
+
+    let Some(planted_at) = parse_local_datetime(&crop.planted_at) else {
+        return 0;
+    };
+
+    let elapsed_seconds = now
+        .signed_duration_since(planted_at)
+        .num_seconds()
+        .max(0);
+    let required_seconds = i64::from(required_days) * DAY_SECONDS;
+    ((elapsed_seconds * 100) / required_seconds).clamp(0, 100) as u32
+}
+
+fn plant_seed_in_state(
+    state: &mut PersistedState,
+    day_key: &str,
+    seed_type: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    let Some(item) = history_item_for_day(state, day_key) else {
+        return Err("this day has no water record".to_string());
+    };
+
+    if item.actual_intake_ml == 0 {
+        return Err("this day has no water record".to_string());
+    }
+
+    if state
+        .garden
+        .crops
+        .iter()
+        .any(|crop| crop.day_key == day_key)
+    {
+        return Err("this day is already planted".to_string());
+    }
+
+    spend_seed(&mut state.garden, seed_type)?;
+    state.garden.crops.push(PlantedCrop {
+        day_key: day_key.to_string(),
+        seed_type: seed_type.to_string(),
+        planted_at: now.to_rfc3339(),
+        harvested_at: None,
+    });
+
+    Ok(())
+}
+
+fn harvest_crop_in_state(
+    state: &mut PersistedState,
+    day_key: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    let crop_index = state
+        .garden
+        .crops
+        .iter()
+        .position(|crop| crop.day_key == day_key)
+        .ok_or_else(|| "this day has no planted crop".to_string())?;
+
+    let item = history_item_for_day(state, day_key)
+        .ok_or_else(|| "this day has no water record".to_string())?;
+    if crop_growth_percent(&state.garden.crops[crop_index], &item, now) < 100 {
+        return Err("this crop is not mature yet".to_string());
+    }
+
+    let crop_type = state.garden.crops[crop_index].seed_type.clone();
+    let harvested_at = now.to_rfc3339();
+    state.garden.crops.remove(crop_index);
+
+    if let Some(item) = state
+        .garden
+        .collection
+        .iter_mut()
+        .find(|item| item.crop_type == crop_type)
+    {
+        item.harvest_count = item.harvest_count.saturating_add(1);
+        if item.first_harvested_at.is_none() {
+            item.first_harvested_at = Some(harvested_at.clone());
+        }
+        item.last_harvested_at = Some(harvested_at);
+    } else {
+        state.garden.collection.push(GardenCollectionItem {
+            crop_type: crop_type.clone(),
+            harvest_count: 1,
+            first_harvested_at: Some(harvested_at.clone()),
+            last_harvested_at: Some(harvested_at),
+        });
+    }
+
+    add_seed(&mut state.garden, &crop_type, 1);
+    Ok(())
 }
 
 fn reconcile(state: &mut PersistedState, now: DateTime<Local>) -> bool {
@@ -1089,6 +1393,9 @@ pub fn run() {
             log_drink,
             undo_last_drink,
             log_yesterday_drink,
+            get_garden_state,
+            plant_seed,
+            harvest_crop,
             leaderboard_request,
             export_data,
             import_data,
@@ -1112,6 +1419,19 @@ mod tests {
         }
     }
 
+    fn history_item(day_key: &str, actual_intake_ml: u32, target_ml: u32) -> HistoryItem {
+        HistoryItem {
+            day_key: day_key.to_string(),
+            target_ml,
+            actual_intake_ml,
+            consumed_ml: actual_intake_ml,
+            debt_incurred_ml: 0,
+            goal_met: actual_intake_ml >= target_ml,
+            completed_reminder_slots: 0,
+            missed_reminder_slots: 0,
+        }
+    }
+
     #[test]
     fn missed_slots_accumulate_history_debt_by_cup_size() {
         let settings = Settings::default();
@@ -1119,6 +1439,7 @@ mod tests {
             today: DailyRecord::new(local_dt(2026, 5, 19, 8, 0), &settings),
             settings,
             history: Vec::new(),
+            garden: GardenState::default(),
         };
 
         let changed = reconcile(&mut state, local_dt(2026, 5, 19, 11, 0));
@@ -1157,6 +1478,7 @@ mod tests {
             today: DailyRecord::new(local_dt(2026, 5, 19, 9, 0), &settings),
             settings: settings.clone(),
             history: Vec::new(),
+            garden: GardenState::default(),
         };
 
         state.today.pending_slot_index = Some(3);
@@ -1226,6 +1548,7 @@ mod tests {
             settings,
             today,
             history: Vec::new(),
+            garden: GardenState::default(),
         };
 
         let saved = state.today.last_log_undo.clone().unwrap();
@@ -1255,6 +1578,7 @@ mod tests {
                 completed_reminder_slots: 6,
                 missed_reminder_slots: 2,
             }],
+            garden: GardenState::default(),
         };
 
         apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 9, 30), 250).unwrap();
@@ -1268,4 +1592,98 @@ mod tests {
         assert_eq!(state.history[0].actual_intake_ml, 2000);
         assert!(state.history[0].goal_met);
     }
+
+    #[test]
+    fn missing_garden_state_receives_initial_seed_grant_once() {
+        let settings = Settings::default();
+        let state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+        };
+        let mut value = serde_json::to_value(state).unwrap();
+        value.as_object_mut().unwrap().remove("garden");
+
+        let parsed = serde_json::from_value::<PersistedState>(value).unwrap();
+        assert!(parsed.garden.initial_grant_claimed);
+        assert_eq!(parsed.garden.seeds[0].seed_type, BASIC_SEED_TYPE);
+        assert_eq!(parsed.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+
+        let mut existing = parsed.clone();
+        existing.normalize_garden();
+        assert_eq!(existing.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+    }
+
+    #[test]
+    fn planting_requires_water_record_and_spends_seed() {
+        let settings = Settings::default();
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
+            history: vec![history_item("2026-05-19", 250, 2000)],
+            garden: GardenState::default(),
+        };
+
+        plant_seed_in_state(
+            &mut state,
+            "2026-05-19",
+            BASIC_SEED_TYPE,
+            local_dt(2026, 5, 20, 9, 0),
+        )
+        .unwrap();
+
+        assert_eq!(state.garden.crops.len(), 1);
+        assert_eq!(state.garden.seeds[0].count, INITIAL_BASIC_SEEDS - 1);
+        assert!(plant_seed_in_state(
+            &mut state,
+            "2026-05-19",
+            BASIC_SEED_TYPE,
+            local_dt(2026, 5, 20, 9, 0),
+        )
+        .is_err());
+        assert!(plant_seed_in_state(
+            &mut state,
+            "2026-05-18",
+            BASIC_SEED_TYPE,
+            local_dt(2026, 5, 20, 9, 0),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn growth_days_follow_completion_bands() {
+        assert_eq!(required_growth_days(&history_item("2026-05-19", 2000, 2000)), 1);
+        assert_eq!(required_growth_days(&history_item("2026-05-19", 1400, 2000)), 2);
+        assert_eq!(required_growth_days(&history_item("2026-05-19", 800, 2000)), 3);
+        assert_eq!(required_growth_days(&history_item("2026-05-19", 1, 2000)), 4);
+        assert_eq!(required_growth_days(&history_item("2026-05-19", 0, 2000)), 0);
+    }
+
+    #[test]
+    fn harvest_requires_maturity_and_updates_collection() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: vec![history_item("2026-05-19", 2000, 2000)],
+            garden: GardenState::default(),
+        };
+
+        plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
+        assert!(harvest_crop_in_state(&mut state, "2026-05-19", now).is_err());
+
+        state.garden.crops[0].planted_at = (now - chrono::Duration::days(1)).to_rfc3339();
+        harvest_crop_in_state(&mut state, "2026-05-19", now).unwrap();
+
+        assert_eq!(state.garden.collection.len(), 1);
+        assert_eq!(state.garden.collection[0].crop_type, BASIC_SEED_TYPE);
+        assert_eq!(state.garden.collection[0].harvest_count, 1);
+        assert_eq!(state.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+        assert!(state.garden.crops.is_empty());
+        plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
+        assert_eq!(state.garden.crops.len(), 1);
+    }
+
 }

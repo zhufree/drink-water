@@ -7,12 +7,15 @@ import {
 } from "@tauri-apps/plugin-notification";
 import {
   exportData,
+  getGardenState,
   getHistory,
   getSettings,
   getTodayStatus,
+  harvestCrop,
   importData,
   logYesterdayDrink,
   logDrink,
+  plantSeed,
   saveSettings,
   toggleAutostart,
   undoLastDrink
@@ -38,6 +41,7 @@ import {
 import type {
   AppUpdateInfo,
   CircleSummary,
+  GardenState,
   HistoryItem,
   LeaderboardEntry,
   Locale,
@@ -52,7 +56,7 @@ type CirclesLoadState = "loading" | "ready" | "error";
 type CloudIdentityState = "loading" | "ready" | "error";
 type NicknameSaveState = "idle" | "success" | "error";
 
-const APP_VERSION = "0.4.5";
+const APP_VERSION = "0.5.0";
 const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -74,12 +78,20 @@ const defaultSettings: Settings = {
   locale: "zh-CN"
 };
 
+const defaultGardenState: GardenState = {
+  initialGrantClaimed: true,
+  seeds: [],
+  crops: [],
+  collection: []
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("today");
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [draftSettings, setDraftSettings] = useState<Settings>(defaultSettings);
   const [status, setStatus] = useState<TodayStatus | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [gardenState, setGardenState] = useState<GardenState>(defaultGardenState);
   const [quickAmount, setQuickAmount] = useState<number>(defaultSettings.cupSizeMl);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -116,10 +128,11 @@ export default function App() {
   );
 
   const refreshAll = async () => {
-    const [nextSettings, nextStatus, nextHistory] = await Promise.all([
+    const [nextSettings, nextStatus, nextHistory, nextGardenState] = await Promise.all([
       getSettings(),
       getTodayStatus(),
-      getHistory(56)
+      getHistory(56),
+      getGardenState()
     ]);
 
     setSettings(nextSettings);
@@ -129,8 +142,9 @@ export default function App() {
     );
     setStatus(nextStatus);
     setHistory(nextHistory);
+    setGardenState(nextGardenState);
 
-    return { nextSettings, nextStatus, nextHistory };
+    return { nextSettings, nextStatus, nextHistory, nextGardenState };
   };
 
   useEffect(() => {
@@ -260,11 +274,24 @@ export default function App() {
     void refreshLeaderboard();
   }, [settings.activeCircleCode, leaderboardMetric]);
 
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setMessage("");
+    }, 3000);
+
+    return () => window.clearTimeout(timer);
+  }, [message]);
+
   const handleLog = async (amountMl: number) => {
     setMessage("");
     const nextStatus = await logDrink(amountMl);
     setStatus(nextStatus);
     setHistory(await getHistory(56));
+    setGardenState(await getGardenState());
     setMessage(i18n.t("message.logged", { amount: i18n.formatMl(amountMl) }));
   };
 
@@ -274,6 +301,7 @@ export default function App() {
     const nextStatus = await undoLastDrink();
     setStatus(nextStatus);
     setHistory(await getHistory(56));
+    setGardenState(await getGardenState());
     setMessage(
       i18n.t("message.undo", {
         amount: i18n.formatMl(previousAmount ?? 0)
@@ -376,6 +404,28 @@ export default function App() {
         amount: i18n.formatMl(amount)
       })
     );
+  };
+
+  const handlePlantSeed = async (dayKey: string) => {
+    setMessage("");
+    try {
+      const nextGardenState = await plantSeed(dayKey, "bokChoy");
+      setGardenState(nextGardenState);
+      setMessage(i18n.t("message.seedPlanted", { day: i18n.formatShortDay(dayKey) }));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleHarvestCrop = async (dayKey: string) => {
+    setMessage("");
+    try {
+      const nextGardenState = await harvestCrop(dayKey);
+      setGardenState(nextGardenState);
+      setMessage(i18n.t("message.cropHarvested", { day: i18n.formatShortDay(dayKey) }));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
   };
 
   const handleCreateCircle = async () => {
@@ -573,17 +623,21 @@ export default function App() {
             />
           </div>
 
+          {message ? (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none fixed bottom-4 right-4 z-50 max-w-[min(320px,calc(100vw-32px))] rounded-[16px] border border-cyan-200/20 bg-slate-950/92 px-4 py-3 text-sm text-cyan-50 shadow-[0_18px_48px_rgba(0,0,0,0.38)] backdrop-blur-md"
+            >
+              {message}
+            </div>
+          ) : null}
+
           <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
             <PrimaryTabs
               activeTab={activeTab}
               onChange={(tab) => setActiveTab(tab)}
             />
-
-            {message ? (
-              <p className="mb-3 rounded-[14px] bg-cyan-300/14 px-3 py-2 text-sm text-cyan-100">
-                {message}
-              </p>
-            ) : null}
 
             {activeTab === "today" ? (
               <TodayPanel
@@ -596,7 +650,14 @@ export default function App() {
               />
             ) : null}
 
-            {activeTab === "history" ? <HistoryPanel history={history} /> : null}
+            {activeTab === "history" ? (
+              <HistoryPanel
+                history={history}
+                gardenState={gardenState}
+                onPlantSeed={(dayKey) => void handlePlantSeed(dayKey)}
+                onHarvestCrop={(dayKey) => void handleHarvestCrop(dayKey)}
+              />
+            ) : null}
 
             {activeTab === "leaderboard" ? (
               <LeaderboardPanel
