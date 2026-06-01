@@ -23,9 +23,21 @@ const STORE_FILE_NAME: &str = "drink-water-state.json";
 const STATE_EVENT: &str = "state-updated";
 const SNOOZE_MINUTES: i64 = 10;
 const LEADERBOARD_API_BASE: &str = "https://water-api.zhufree.fun";
-const BASIC_SEED_TYPE: &str = "bokChoy";
+const BASIC_SEED_TYPE: &str = "bokChoySeed";
+const LEGACY_BASIC_SEED_TYPE: &str = "bokChoy";
+const ADVANCED_SEED_TYPE: &str = "cabbageSeed";
+const BASIC_CROP_TYPE: &str = "bokChoy";
+const ADVANCED_CROP_TYPE: &str = "cabbage";
 const INITIAL_BASIC_SEEDS: u32 = 12;
 const DAY_SECONDS: i64 = 24 * 60 * 60;
+const REST_COOLDOWN_MINUTES: i64 = 20;
+const REST_SHORT_BREAK_SECONDS: u32 = 60;
+const REST_MEDIUM_BREAK_SECONDS: u32 = 120;
+const REST_LONG_BREAK_SECONDS: u32 = 180;
+const REST_SHORT_BOOST_SECONDS: u32 = 60 * 60;
+const REST_MEDIUM_BOOST_SECONDS: u32 = 2 * 60 * 60;
+const REST_LONG_BOOST_SECONDS: u32 = 3 * 60 * 60;
+const BASIC_TO_ADVANCED_EXCHANGE_RULE_ID: &str = "bokchoy-to-cabbage";
 
 fn default_locale() -> String {
     "zh-CN".to_string()
@@ -205,12 +217,21 @@ pub struct SeedInventoryItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProduceInventoryItem {
+    crop_type: String,
+    count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PlantedCrop {
     day_key: String,
     seed_type: String,
     planted_at: String,
     #[serde(default)]
     harvested_at: Option<String>,
+    #[serde(default)]
+    boost_applied_seconds: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -226,23 +247,61 @@ pub struct GardenCollectionItem {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RestState {
+    active: bool,
+    #[serde(default)]
+    started_at: Option<String>,
+    #[serde(default)]
+    ends_at: Option<String>,
+    #[serde(default)]
+    cooldown_ends_at: Option<String>,
+    #[serde(default)]
+    max_duration_seconds: u32,
+    #[serde(default)]
+    planned_boost_seconds: u32,
+}
+
+impl Default for RestState {
+    fn default() -> Self {
+        Self {
+            active: false,
+            started_at: None,
+            ends_at: None,
+            cooldown_ends_at: None,
+            max_duration_seconds: 0,
+            planned_boost_seconds: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GardenState {
     initial_grant_claimed: bool,
+    #[serde(default)]
+    produce_migration_claimed: bool,
     seeds: Vec<SeedInventoryItem>,
+    #[serde(default)]
+    produce: Vec<ProduceInventoryItem>,
     crops: Vec<PlantedCrop>,
     collection: Vec<GardenCollectionItem>,
+    #[serde(default)]
+    rest: RestState,
 }
 
 impl Default for GardenState {
     fn default() -> Self {
         Self {
             initial_grant_claimed: true,
+            produce_migration_claimed: true,
             seeds: vec![SeedInventoryItem {
                 seed_type: BASIC_SEED_TYPE.to_string(),
                 count: INITIAL_BASIC_SEEDS,
             }],
+            produce: Vec::new(),
             crops: Vec::new(),
             collection: Vec::new(),
+            rest: RestState::default(),
         }
     }
 }
@@ -286,9 +345,43 @@ impl PersistedState {
             self.garden.initial_grant_claimed = true;
         }
 
+        for seed in &mut self.garden.seeds {
+            if seed.seed_type == LEGACY_BASIC_SEED_TYPE {
+                seed.seed_type = BASIC_SEED_TYPE.to_string();
+            }
+        }
+
+        for crop in &mut self.garden.crops {
+            if crop.seed_type == LEGACY_BASIC_SEED_TYPE {
+                crop.seed_type = BASIC_SEED_TYPE.to_string();
+            }
+        }
+
+        if !self.garden.produce_migration_claimed {
+            for item in self.garden.collection.clone() {
+                if item.harvest_count > 0 {
+                    add_produce(&mut self.garden, &item.crop_type, item.harvest_count);
+                }
+            }
+            self.garden.produce_migration_claimed = true;
+        }
+
+        merge_seed_inventory(&mut self.garden);
+        merge_produce_inventory(&mut self.garden);
         self.garden
             .crops
             .retain(|crop| crop.harvested_at.is_none());
+
+        if self.garden.rest.active {
+            if let Some(ends_at) = &self.garden.rest.ends_at {
+                if parse_local_datetime(ends_at)
+                    .map(|value| value <= Local::now())
+                    .unwrap_or(false)
+                {
+                    let _ = complete_rest_break_in_state(self, Local::now());
+                }
+            }
+        }
     }
 }
 
@@ -597,6 +690,16 @@ fn get_history(
 
 #[tauri::command]
 fn get_garden_state(state: State<'_, AppState>) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to read garden state".to_string())?;
+        reconcile(&mut guard, Local::now());
+    }
+
+    state.save()?;
+
     let guard = state
         .data
         .lock()
@@ -643,6 +746,89 @@ fn harvest_crop(
             .map_err(|_| "failed to harvest crop".to_string())?;
         reconcile(&mut guard, Local::now());
         harvest_crop_in_state(&mut guard, &day_key, Local::now())?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn exchange_produce(
+    state: State<'_, AppState>,
+    rule_id: String,
+) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to exchange produce".to_string())?;
+        reconcile(&mut guard, Local::now());
+        exchange_produce_in_state(&mut guard, &rule_id)?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn start_rest_break(state: State<'_, AppState>) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to start rest break".to_string())?;
+        reconcile(&mut guard, Local::now());
+        start_rest_break_in_state(&mut guard, Local::now())?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn cancel_rest_break(state: State<'_, AppState>) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to cancel rest break".to_string())?;
+        reconcile(&mut guard, Local::now());
+        cancel_rest_break_in_state(&mut guard)?;
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn complete_rest_break(state: State<'_, AppState>) -> Result<GardenState, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to complete rest break".to_string())?;
+        reconcile(&mut guard, Local::now());
+        complete_rest_break_in_state(&mut guard, Local::now())?;
     }
 
     state.save()?;
@@ -827,8 +1013,30 @@ fn to_today_status(settings: &Settings, today: &DailyRecord) -> TodayStatus {
 
 fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
     match seed_type.trim() {
-        BASIC_SEED_TYPE => Ok(BASIC_SEED_TYPE.to_string()),
+        BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE => Ok(BASIC_SEED_TYPE.to_string()),
+        ADVANCED_SEED_TYPE => Ok(ADVANCED_SEED_TYPE.to_string()),
         _ => Err("unknown seed type".to_string()),
+    }
+}
+
+fn crop_type_for_seed(seed_type: &str) -> &'static str {
+    match seed_type {
+        ADVANCED_SEED_TYPE => ADVANCED_CROP_TYPE,
+        _ => BASIC_CROP_TYPE,
+    }
+}
+
+fn rest_break_policy(now: DateTime<Local>, last_cooldown_end: Option<DateTime<Local>>) -> (u32, u32) {
+    let minutes_since_cooldown = last_cooldown_end
+        .map(|value| now.signed_duration_since(value).num_minutes().max(0))
+        .unwrap_or(120);
+
+    if minutes_since_cooldown >= 120 {
+        (REST_LONG_BREAK_SECONDS, REST_LONG_BOOST_SECONDS)
+    } else if minutes_since_cooldown >= 60 {
+        (REST_MEDIUM_BREAK_SECONDS, REST_MEDIUM_BOOST_SECONDS)
+    } else {
+        (REST_SHORT_BREAK_SECONDS, REST_SHORT_BOOST_SECONDS)
     }
 }
 
@@ -848,6 +1056,54 @@ fn add_seed(garden: &mut GardenState, seed_type: &str, count: u32) {
     });
 }
 
+fn merge_seed_inventory(garden: &mut GardenState) {
+    let mut merged: Vec<SeedInventoryItem> = Vec::new();
+    for item in garden.seeds.drain(..) {
+        if let Some(existing) = merged
+            .iter_mut()
+            .find(|existing| existing.seed_type == item.seed_type)
+        {
+            existing.count = existing.count.saturating_add(item.count);
+        } else {
+            merged.push(item);
+        }
+    }
+
+    garden.seeds = merged;
+}
+
+fn add_produce(garden: &mut GardenState, crop_type: &str, count: u32) {
+    if let Some(item) = garden
+        .produce
+        .iter_mut()
+        .find(|item| item.crop_type == crop_type)
+    {
+        item.count = item.count.saturating_add(count);
+        return;
+    }
+
+    garden.produce.push(ProduceInventoryItem {
+        crop_type: crop_type.to_string(),
+        count,
+    });
+}
+
+fn merge_produce_inventory(garden: &mut GardenState) {
+    let mut merged: Vec<ProduceInventoryItem> = Vec::new();
+    for item in garden.produce.drain(..) {
+        if let Some(existing) = merged
+            .iter_mut()
+            .find(|existing| existing.crop_type == item.crop_type)
+        {
+            existing.count = existing.count.saturating_add(item.count);
+        } else {
+            merged.push(item);
+        }
+    }
+
+    garden.produce = merged;
+}
+
 fn spend_seed(garden: &mut GardenState, seed_type: &str) -> Result<(), String> {
     let Some(item) = garden
         .seeds
@@ -863,6 +1119,47 @@ fn spend_seed(garden: &mut GardenState, seed_type: &str) -> Result<(), String> {
 
     item.count -= 1;
     Ok(())
+}
+
+fn spend_produce(garden: &mut GardenState, crop_type: &str, count: u32) -> Result<(), String> {
+    let total_available = garden
+        .produce
+        .iter()
+        .filter(|item| item.crop_type == crop_type)
+        .fold(0_u32, |total, item| total.saturating_add(item.count));
+
+    if total_available < count {
+        return Err("not enough produce to exchange".to_string());
+    }
+
+    let mut remaining = count;
+    for item in garden
+        .produce
+        .iter_mut()
+        .filter(|item| item.crop_type == crop_type)
+    {
+        if remaining == 0 {
+            break;
+        }
+
+        let spent = item.count.min(remaining);
+        item.count -= spent;
+        remaining -= spent;
+    }
+
+    garden.produce.retain(|item| item.count > 0);
+    Ok(())
+}
+
+fn random_seed_reward(now: DateTime<Local>, crop_type: &str, collection_len: usize) -> u32 {
+    let entropy = now
+        .timestamp_nanos_opt()
+        .unwrap_or_else(|| now.timestamp_micros())
+        .unsigned_abs();
+    let crop_bias = crop_type
+        .bytes()
+        .fold(0_u64, |acc, value| acc.saturating_add(u64::from(value)));
+    ((entropy + crop_bias + collection_len as u64) % 3 + 1) as u32
 }
 
 fn history_item_for_day(state: &PersistedState, day_key: &str) -> Option<HistoryItem> {
@@ -912,8 +1209,10 @@ fn crop_growth_percent(crop: &PlantedCrop, item: &HistoryItem, now: DateTime<Loc
         .signed_duration_since(planted_at)
         .num_seconds()
         .max(0);
+    let boosted_elapsed_seconds =
+        elapsed_seconds.saturating_add(i64::from(crop.boost_applied_seconds));
     let required_seconds = i64::from(required_days) * DAY_SECONDS;
-    ((elapsed_seconds * 100) / required_seconds).clamp(0, 100) as u32
+    ((boosted_elapsed_seconds * 100) / required_seconds).clamp(0, 100) as u32
 }
 
 fn plant_seed_in_state(
@@ -945,6 +1244,7 @@ fn plant_seed_in_state(
         seed_type: seed_type.to_string(),
         planted_at: now.to_rfc3339(),
         harvested_at: None,
+        boost_applied_seconds: 0,
     });
 
     Ok(())
@@ -968,9 +1268,11 @@ fn harvest_crop_in_state(
         return Err("this crop is not mature yet".to_string());
     }
 
-    let crop_type = state.garden.crops[crop_index].seed_type.clone();
+    let crop_type = crop_type_for_seed(&state.garden.crops[crop_index].seed_type).to_string();
     let harvested_at = now.to_rfc3339();
     state.garden.crops.remove(crop_index);
+    add_produce(&mut state.garden, &crop_type, 1);
+    let rewarded_seeds = random_seed_reward(now, &crop_type, state.garden.collection.len());
 
     if let Some(item) = state
         .garden
@@ -992,7 +1294,106 @@ fn harvest_crop_in_state(
         });
     }
 
-    add_seed(&mut state.garden, &crop_type, 1);
+    let rewarded_seed_type = if crop_type == ADVANCED_CROP_TYPE {
+        ADVANCED_SEED_TYPE
+    } else {
+        BASIC_SEED_TYPE
+    };
+    add_seed(&mut state.garden, rewarded_seed_type, rewarded_seeds);
+    Ok(())
+}
+
+fn exchange_produce_in_state(state: &mut PersistedState, rule_id: &str) -> Result<(), String> {
+    match rule_id {
+        BASIC_TO_ADVANCED_EXCHANGE_RULE_ID => {
+            spend_produce(&mut state.garden, BASIC_CROP_TYPE, 3)?;
+            add_seed(&mut state.garden, ADVANCED_SEED_TYPE, 1);
+            Ok(())
+        }
+        _ => Err("unknown exchange rule".to_string()),
+    }
+}
+
+fn start_rest_break_in_state(state: &mut PersistedState, now: DateTime<Local>) -> Result<(), String> {
+    if state.garden.rest.active {
+        return Err("a rest break is already active".to_string());
+    }
+
+    if let Some(cooldown_ends_at) = &state.garden.rest.cooldown_ends_at {
+        if parse_local_datetime(cooldown_ends_at)
+            .map(|value| value > now)
+            .unwrap_or(false)
+        {
+            return Err("rest break is still on cooldown".to_string());
+        }
+    }
+
+    let cooldown_end = state
+        .garden
+        .rest
+        .cooldown_ends_at
+        .as_deref()
+        .and_then(parse_local_datetime);
+    let (max_duration_seconds, planned_boost_seconds) = rest_break_policy(now, cooldown_end);
+    let ends_at = now + chrono::Duration::seconds(i64::from(max_duration_seconds));
+
+    state.garden.rest = RestState {
+        active: true,
+        started_at: Some(now.to_rfc3339()),
+        ends_at: Some(ends_at.to_rfc3339()),
+        cooldown_ends_at: Some(
+            (now + chrono::Duration::minutes(REST_COOLDOWN_MINUTES)).to_rfc3339(),
+        ),
+        max_duration_seconds,
+        planned_boost_seconds,
+    };
+
+    Ok(())
+}
+
+fn cancel_rest_break_in_state(state: &mut PersistedState) -> Result<(), String> {
+    if !state.garden.rest.active {
+        return Err("there is no active rest break".to_string());
+    }
+
+    state.garden.rest.active = false;
+    state.garden.rest.started_at = None;
+    state.garden.rest.ends_at = None;
+    state.garden.rest.max_duration_seconds = 0;
+    state.garden.rest.planned_boost_seconds = 0;
+    Ok(())
+}
+
+fn complete_rest_break_in_state(
+    state: &mut PersistedState,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    if !state.garden.rest.active {
+        return Err("there is no active rest break".to_string());
+    }
+
+    let ends_at = state
+        .garden
+        .rest
+        .ends_at
+        .as_deref()
+        .and_then(parse_local_datetime)
+        .ok_or_else(|| "rest break timing is invalid".to_string())?;
+
+    if now < ends_at {
+        return Err("rest break is not finished yet".to_string());
+    }
+
+    let boost_seconds = state.garden.rest.planned_boost_seconds;
+    for crop in &mut state.garden.crops {
+        crop.boost_applied_seconds = crop.boost_applied_seconds.saturating_add(boost_seconds);
+    }
+
+    state.garden.rest.active = false;
+    state.garden.rest.started_at = None;
+    state.garden.rest.ends_at = None;
+    state.garden.rest.max_duration_seconds = 0;
+    state.garden.rest.planned_boost_seconds = 0;
     Ok(())
 }
 
@@ -1396,6 +1797,10 @@ pub fn run() {
             get_garden_state,
             plant_seed,
             harvest_crop,
+            exchange_produce,
+            start_rest_break,
+            cancel_rest_break,
+            complete_rest_break,
             leaderboard_request,
             export_data,
             import_data,
@@ -1616,6 +2021,40 @@ mod tests {
     }
 
     #[test]
+    fn legacy_collection_is_migrated_into_produce_once() {
+        let settings = Settings::default();
+        let mut value = serde_json::json!({
+            "settings": settings,
+            "today": DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &Settings::default()),
+            "history": [],
+            "garden": {
+                "initialGrantClaimed": true,
+                "seeds": [
+                    { "seedType": BASIC_SEED_TYPE, "count": INITIAL_BASIC_SEEDS }
+                ],
+                "produce": [],
+                "crops": [],
+                "collection": [
+                    {
+                        "cropType": BASIC_CROP_TYPE,
+                        "harvestCount": 8,
+                        "firstHarvestedAt": null,
+                        "lastHarvestedAt": null
+                    }
+                ],
+                "rest": RestState::default()
+            }
+        });
+
+        let mut parsed = serde_json::from_value::<PersistedState>(value.take()).unwrap();
+        parsed.normalize_garden();
+        assert!(parsed.garden.produce_migration_claimed);
+        assert_eq!(parsed.garden.produce.len(), 1);
+        assert_eq!(parsed.garden.produce[0].crop_type, BASIC_CROP_TYPE);
+        assert_eq!(parsed.garden.produce[0].count, 8);
+    }
+
+    #[test]
     fn planting_requires_water_record_and_spends_seed() {
         let settings = Settings::default();
         let mut state = PersistedState {
@@ -1678,12 +2117,163 @@ mod tests {
         harvest_crop_in_state(&mut state, "2026-05-19", now).unwrap();
 
         assert_eq!(state.garden.collection.len(), 1);
-        assert_eq!(state.garden.collection[0].crop_type, BASIC_SEED_TYPE);
+        assert_eq!(state.garden.collection[0].crop_type, BASIC_CROP_TYPE);
         assert_eq!(state.garden.collection[0].harvest_count, 1);
-        assert_eq!(state.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+        let basic_seed_count = state
+            .garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == BASIC_SEED_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+        assert!((INITIAL_BASIC_SEEDS..=INITIAL_BASIC_SEEDS + 2).contains(&basic_seed_count));
+        assert_eq!(state.garden.produce.len(), 1);
+        assert_eq!(state.garden.produce[0].crop_type, BASIC_CROP_TYPE);
+        assert_eq!(state.garden.produce[0].count, 1);
         assert!(state.garden.crops.is_empty());
         plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
         assert_eq!(state.garden.crops.len(), 1);
+    }
+
+    #[test]
+    fn harvest_seed_reward_is_always_between_one_and_three() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+
+        for minute in 0..6 {
+            let mut state = PersistedState {
+                settings: settings.clone(),
+                today: DailyRecord::new(now, &settings),
+                history: vec![history_item("2026-05-19", 2000, 2000)],
+                garden: GardenState::default(),
+            };
+
+            plant_seed_in_state(
+                &mut state,
+                "2026-05-19",
+                BASIC_SEED_TYPE,
+                now - chrono::Duration::days(1),
+            )
+            .unwrap();
+
+            let harvest_time = now + chrono::Duration::minutes(minute);
+            harvest_crop_in_state(&mut state, "2026-05-19", harvest_time).unwrap();
+
+            let basic_seed_count = state
+                .garden
+                .seeds
+                .iter()
+                .find(|item| item.seed_type == BASIC_SEED_TYPE)
+                .map(|item| item.count)
+                .unwrap_or(0);
+            let rewarded = basic_seed_count.saturating_sub(INITIAL_BASIC_SEEDS - 1);
+            assert!((1..=3).contains(&rewarded));
+        }
+    }
+
+    #[test]
+    fn exchange_requires_three_basic_produce() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+        };
+
+        assert!(exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).is_err());
+
+        add_produce(&mut state.garden, BASIC_CROP_TYPE, 2);
+        assert!(exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).is_err());
+
+        add_produce(&mut state.garden, BASIC_CROP_TYPE, 1);
+        exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).unwrap();
+
+        let basic_produce_count = state
+            .garden
+            .produce
+            .iter()
+            .find(|item| item.crop_type == BASIC_CROP_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+        let advanced_seed_count = state
+            .garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == ADVANCED_SEED_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+
+        assert_eq!(basic_produce_count, 0);
+        assert_eq!(advanced_seed_count, 1);
+    }
+
+    #[test]
+    fn rest_break_policy_scales_by_recent_frequency() {
+        let now = local_dt(2026, 5, 20, 12, 0);
+
+        let short = rest_break_policy(now, Some(now - chrono::Duration::minutes(20)));
+        let medium = rest_break_policy(now, Some(now - chrono::Duration::minutes(80)));
+        let long = rest_break_policy(now, Some(now - chrono::Duration::minutes(160)));
+
+        assert_eq!(short, (REST_SHORT_BREAK_SECONDS, REST_SHORT_BOOST_SECONDS));
+        assert_eq!(medium, (REST_MEDIUM_BREAK_SECONDS, REST_MEDIUM_BOOST_SECONDS));
+        assert_eq!(long, (REST_LONG_BREAK_SECONDS, REST_LONG_BOOST_SECONDS));
+    }
+
+    #[test]
+    fn completed_rest_break_applies_boost_to_all_growing_crops() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 12, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: vec![
+                history_item("2026-05-19", 2000, 2000),
+                history_item("2026-05-18", 1400, 2000),
+            ],
+            garden: GardenState::default(),
+        };
+
+        plant_seed_in_state(
+            &mut state,
+            "2026-05-19",
+            BASIC_SEED_TYPE,
+            now - chrono::Duration::hours(12),
+        )
+        .unwrap();
+        plant_seed_in_state(
+            &mut state,
+            "2026-05-18",
+            BASIC_SEED_TYPE,
+            now - chrono::Duration::hours(12),
+        )
+        .unwrap();
+
+        let completion_time = now + chrono::Duration::seconds(i64::from(REST_LONG_BREAK_SECONDS));
+        let before_growth = crop_growth_percent(&state.garden.crops[0], &state.history[0], completion_time);
+
+        start_rest_break_in_state(&mut state, now).unwrap();
+        assert_eq!(state.garden.rest.max_duration_seconds, REST_LONG_BREAK_SECONDS);
+        assert_eq!(state.garden.rest.planned_boost_seconds, REST_LONG_BOOST_SECONDS);
+
+        assert!(complete_rest_break_in_state(&mut state, now).is_err());
+
+        complete_rest_break_in_state(&mut state, completion_time).unwrap();
+
+        assert!(!state.garden.rest.active);
+        assert!(state
+            .garden
+            .crops
+            .iter()
+            .all(|crop| crop.boost_applied_seconds == REST_LONG_BOOST_SECONDS));
+        let after_growth = crop_growth_percent(&state.garden.crops[0], &state.history[0], completion_time);
+        assert_eq!(before_growth, 50);
+        assert_eq!(
+            after_growth,
+            before_growth + ((REST_LONG_BOOST_SECONDS * 100) / DAY_SECONDS as u32)
+        );
     }
 
 }

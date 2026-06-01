@@ -12,6 +12,10 @@ type TranslationKey =
   | "message.yesterdayCatchUpSaved"
   | "message.seedPlanted"
   | "message.cropHarvested"
+  | "message.exchangeSuccess"
+  | "message.restStarted"
+  | "message.restCancelled"
+  | "message.restCompleted"
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
@@ -40,6 +44,17 @@ type TranslationKey =
   | "today.logAmount"
   | "today.undoAmount"
   | "today.undoLastLog"
+  | "rest.title"
+  | "rest.description"
+  | "rest.start"
+  | "rest.ready"
+  | "rest.cooldown"
+  | "rest.nextBoost"
+  | "rest.overlayEyebrow"
+  | "rest.overlayDescription"
+  | "rest.overlayBoost"
+  | "rest.overlayBoostValue"
+  | "rest.cancel"
   | "settings.title"
   | "settings.description"
   | "settings.dailyTarget"
@@ -138,6 +153,12 @@ type TranslationKey =
   | "garden.collectionTitle"
   | "garden.collectionDescription"
   | "garden.collectionEmpty"
+  | "garden.inventoryTitle"
+  | "garden.inventoryDescription"
+  | "garden.produceEmpty"
+  | "garden.exchangeTitle"
+  | "garden.exchangeRule"
+  | "garden.exchangeAction"
   | "notification.drinkNowTitle"
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
@@ -172,6 +193,10 @@ const translations: Record<Locale, TranslationTable> = {
       "已为昨天补记 {amount}。",
     "message.seedPlanted": "已在 {day} 播种。",
     "message.cropHarvested": "已收获 {day} 的小青菜。",
+    "message.exchangeSuccess": "已兑换到一颗卷心菜种子。",
+    "message.restStarted": "休息时间开始了。",
+    "message.restCancelled": "本次休息已取消，没有获得加成。",
+    "message.restCompleted": "休息完成，作物获得成长加速。",
     "message.circleCreated": "已创建圈子 {code}。",
     "message.circleJoined": "已加入圈子 {code}。",
     "message.circleSelected": "已切换到圈子 {code}。",
@@ -201,6 +226,17 @@ const translations: Record<Locale, TranslationTable> = {
     "today.logAmount": "记录 {amount}",
     "today.undoAmount": "撤销上次 {amount}",
     "today.undoLastLog": "撤销上次记录",
+    "rest.title": "主动休息 Boost",
+    "rest.description": "主动开始一次短暂休息，让田里的作物一起加速成长。",
+    "rest.start": "开始休息",
+    "rest.ready": "现在可以开始",
+    "rest.cooldown": "冷却中，还需约 {minutes} 分钟",
+    "rest.nextBoost": "休息完成可加速 {hours} 小时",
+    "rest.overlayEyebrow": "REST MODE",
+    "rest.overlayDescription": "保持离开屏幕一小会儿，完成后全部在种作物都会获得加速。",
+    "rest.overlayBoost": "本次成长加速",
+    "rest.overlayBoostValue": "{hours} 小时",
+    "rest.cancel": "提前结束",
     "settings.title": "常规设置",
     "settings.description":
       "提醒节奏会根据目标量、单杯容量和提醒时间自动计算。",
@@ -307,9 +343,15 @@ const translations: Record<Locale, TranslationTable> = {
     "garden.harvestedCell": "已收获",
     "garden.noSeeds": "种子不足",
     "garden.emptyPlot": "先记录喝水才能种",
-    "garden.collectionTitle": "蔬菜图鉴",
-    "garden.collectionDescription": "成熟收获会进入图鉴，并返还一颗同类种子。",
+    "garden.inventoryTitle": "种子与果实",
+    "garden.inventoryDescription": "这里显示当前还能继续播种或兑换的库存。",
+    "garden.produceEmpty": "还没有可兑换果实。收获后会先进入这里。",
+    "garden.collectionTitle": "图鉴累计",
+    "garden.collectionDescription": "这里记录历史累计收获次数，不会因为兑换而减少。",
     "garden.collectionEmpty": "还没有收获。先在有喝水记录的格子里播种。",
+    "garden.exchangeTitle": "兑换升级",
+    "garden.exchangeRule": "消耗 3 个小青菜，可换 1 颗卷心菜种子。",
+    "garden.exchangeAction": "立即兑换",
     "notification.drinkNowTitle": "该喝水了",
     "notification.drinkNowBody":
       "新的喝水提醒窗口已经开始，记得按时补一杯水。",
@@ -343,6 +385,10 @@ const translations: Record<Locale, TranslationTable> = {
     "message.yesterdayCatchUpSaved": "Added {amount} to yesterday's log.",
     "message.seedPlanted": "Planted on {day}.",
     "message.cropHarvested": "Harvested bok choy from {day}.",
+    "message.exchangeSuccess": "Exchanged for one cabbage seed.",
+    "message.restStarted": "Rest break started.",
+    "message.restCancelled": "Rest break cancelled. No boost was granted.",
+    "message.restCompleted": "Rest complete. Your crops received a growth boost.",
     "message.circleCreated": "Created circle {code}.",
     "message.circleJoined": "Joined circle {code}.",
     "message.circleSelected": "Switched to circle {code}.",
@@ -372,6 +418,17 @@ const translations: Record<Locale, TranslationTable> = {
     "today.logAmount": "Log {amount}",
     "today.undoAmount": "Undo {amount}",
     "today.undoLastLog": "Undo last log",
+    "rest.title": "Active rest boost",
+    "rest.description": "No timed nagging. You choose when to take a short break and boost every growing crop.",
+    "rest.start": "Start break",
+    "rest.ready": "Ready now",
+    "rest.cooldown": "Cooling down, about {minutes} min left",
+    "rest.nextBoost": "Complete a break to boost {hours} hours",
+    "rest.overlayEyebrow": "REST MODE",
+    "rest.overlayDescription": "Step away for a bit. When this finishes, all growing crops get a time boost.",
+    "rest.overlayBoost": "This break will grant",
+    "rest.overlayBoostValue": "{hours} hours",
+    "rest.cancel": "End early",
     "settings.title": "General settings",
     "settings.description":
       "Reminder pacing is calculated automatically from the target, cup size, and active hours.",
@@ -477,9 +534,15 @@ const translations: Record<Locale, TranslationTable> = {
     "garden.harvestedCell": "Harvested",
     "garden.noSeeds": "No seeds left",
     "garden.emptyPlot": "Log water first",
-    "garden.collectionTitle": "Vegetable collection",
-    "garden.collectionDescription": "Mature crops enter the collection and return one matching seed.",
+    "garden.inventoryTitle": "Seeds and produce",
+    "garden.inventoryDescription": "This shows what you can still plant or exchange right now.",
+    "garden.produceEmpty": "No exchangeable produce yet. Harvests will appear here first.",
+    "garden.collectionTitle": "Collection totals",
+    "garden.collectionDescription": "This tracks lifetime harvests and does not go down when you exchange produce.",
     "garden.collectionEmpty": "No harvests yet. Plant on a day with a water record first.",
+    "garden.exchangeTitle": "Exchange upgrade",
+    "garden.exchangeRule": "Spend 3 bok choy to get 1 cabbage seed.",
+    "garden.exchangeAction": "Exchange",
     "notification.drinkNowTitle": "Time to drink water",
     "notification.drinkNowBody":
       "A new reminder window has started. Try to drink a cup now.",

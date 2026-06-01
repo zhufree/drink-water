@@ -49,11 +49,17 @@ export type SeedInventoryItem = {
   count: number;
 };
 
+export type ProduceInventoryItem = {
+  cropType: string;
+  count: number;
+};
+
 export type PlantedCrop = {
   dayKey: string;
   seedType: string;
   plantedAt: string;
   harvestedAt?: string | null;
+  boostAppliedSeconds: number;
 };
 
 export type GardenCollectionItem = {
@@ -66,8 +72,19 @@ export type GardenCollectionItem = {
 export type GardenState = {
   initialGrantClaimed: boolean;
   seeds: SeedInventoryItem[];
+  produce: ProduceInventoryItem[];
   crops: PlantedCrop[];
   collection: GardenCollectionItem[];
+  rest: RestState;
+};
+
+export type RestState = {
+  active: boolean;
+  startedAt: string | null;
+  endsAt: string | null;
+  cooldownEndsAt: string | null;
+  maxDurationSeconds: number;
+  plannedBoostSeconds: number;
 };
 
 export type NotificationPermissionState =

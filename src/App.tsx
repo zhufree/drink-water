@@ -6,6 +6,9 @@ import {
   requestPermission
 } from "@tauri-apps/plugin-notification";
 import {
+  cancelRestBreak,
+  completeRestBreak,
+  exchangeProduce,
   exportData,
   getGardenState,
   getHistory,
@@ -17,6 +20,7 @@ import {
   logDrink,
   plantSeed,
   saveSettings,
+  startRestBreak,
   toggleAutostart,
   undoLastDrink
 } from "./api";
@@ -81,8 +85,17 @@ const defaultSettings: Settings = {
 const defaultGardenState: GardenState = {
   initialGrantClaimed: true,
   seeds: [],
+  produce: [],
   crops: [],
-  collection: []
+  collection: [],
+  rest: {
+    active: false,
+    startedAt: null,
+    endsAt: null,
+    cooldownEndsAt: null,
+    maxDurationSeconds: 0,
+    plannedBoostSeconds: 0
+  }
 };
 
 export default function App() {
@@ -115,6 +128,7 @@ export default function App() {
   const [nicknameSaving, setNicknameSaving] = useState(false);
   const [nicknameSaveState, setNicknameSaveState] = useState<NicknameSaveState>("idle");
   const [nicknameSaveMessage, setNicknameSaveMessage] = useState<string | null>(null);
+  const [restTick, setRestTick] = useState(() => Date.now());
 
   const startupPromptCheckedRef = useRef(false);
   const lastSyncedStatsKeyRef = useRef("");
@@ -286,6 +300,31 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [message]);
 
+  useEffect(() => {
+    if (!gardenState.rest.active) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setRestTick(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [gardenState.rest.active]);
+
+  useEffect(() => {
+    if (!gardenState.rest.active || !gardenState.rest.endsAt) {
+      return;
+    }
+
+    const remainingMs = new Date(gardenState.rest.endsAt).getTime() - restTick;
+    if (remainingMs > 0) {
+      return;
+    }
+
+    void handleCompleteRestBreak();
+  }, [gardenState.rest.active, gardenState.rest.endsAt, restTick]);
+
   const handleLog = async (amountMl: number) => {
     setMessage("");
     const nextStatus = await logDrink(amountMl);
@@ -423,6 +462,50 @@ export default function App() {
       const nextGardenState = await harvestCrop(dayKey);
       setGardenState(nextGardenState);
       setMessage(i18n.t("message.cropHarvested", { day: i18n.formatShortDay(dayKey) }));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleExchangeProduce = async (ruleId: string) => {
+    setMessage("");
+    try {
+      const nextGardenState = await exchangeProduce(ruleId);
+      setGardenState(nextGardenState);
+      setMessage(i18n.t("message.exchangeSuccess"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleStartRestBreak = async () => {
+    setMessage("");
+    try {
+      const nextGardenState = await startRestBreak();
+      setGardenState(nextGardenState);
+      setRestTick(Date.now());
+      setMessage(i18n.t("message.restStarted"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleCancelRestBreak = async () => {
+    setMessage("");
+    try {
+      const nextGardenState = await cancelRestBreak();
+      setGardenState(nextGardenState);
+      setMessage(i18n.t("message.restCancelled"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleCompleteRestBreak = async () => {
+    try {
+      const nextGardenState = await completeRestBreak();
+      setGardenState(nextGardenState);
+      setMessage(i18n.t("message.restCompleted"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -596,6 +679,20 @@ export default function App() {
     }
   };
 
+  const restRemainingSeconds = gardenState.rest.endsAt
+    ? Math.max(
+        0,
+        Math.ceil((new Date(gardenState.rest.endsAt).getTime() - restTick) / 1000)
+      )
+    : 0;
+
+  const restCooldownRemainingSeconds = gardenState.rest.cooldownEndsAt
+    ? Math.max(
+        0,
+        Math.ceil((new Date(gardenState.rest.cooldownEndsAt).getTime() - Date.now()) / 1000)
+      )
+    : 0;
+
   return (
     <I18nProvider locale={locale}>
       {loading || !status ? (
@@ -604,6 +701,41 @@ export default function App() {
         </main>
       ) : (
         <main className="flex h-screen flex-col overflow-hidden px-[14px] py-[12px]">
+          {gardenState.rest.active ? (
+            <div className="fixed inset-0 z-40 flex items-center justify-center bg-[radial-gradient(circle_at_top,rgba(85,208,255,0.18),transparent_28%),linear-gradient(180deg,rgba(7,13,24,0.98),rgba(4,8,16,0.99))] px-6">
+              <div className="w-full max-w-[420px] rounded-[28px] border border-white/10 bg-[rgba(8,15,28,0.92)] p-6 text-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+                <p className="m-0 text-sm font-medium tracking-[0.24em] text-cyan-200/72">
+                  {i18n.t("rest.overlayEyebrow")}
+                </p>
+                <h2 className="mt-3 text-[34px] font-bold text-slate-50">
+                  {formatCountdown(restRemainingSeconds)}
+                </h2>
+                <p className="mt-3 text-sm text-slate-300/80">
+                  {i18n.t("rest.overlayDescription", {
+                    hours: formatBoostHours(gardenState.rest.plannedBoostSeconds)
+                  })}
+                </p>
+                <div className="mt-5 rounded-[18px] bg-white/6 px-4 py-3 text-left">
+                  <span className="block text-xs text-slate-400">
+                    {i18n.t("rest.overlayBoost")}
+                  </span>
+                  <strong className="mt-1 block text-lg text-slate-50">
+                    {i18n.t("rest.overlayBoostValue", {
+                      hours: formatBoostHours(gardenState.rest.plannedBoostSeconds)
+                    })}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleCancelRestBreak()}
+                  className="mt-6 rounded-[16px] bg-white/10 px-4 py-3 font-semibold text-slate-100 transition hover:-translate-y-px hover:bg-white/16"
+                >
+                  {i18n.t("rest.cancel")}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
           {yesterdayCatchUpItem ? (
             <StartupCatchUpModal
               historyItem={yesterdayCatchUpItem}
@@ -654,8 +786,12 @@ export default function App() {
               <HistoryPanel
                 history={history}
                 gardenState={gardenState}
+                restState={gardenState.rest}
+                restCooldownRemainingSeconds={restCooldownRemainingSeconds}
                 onPlantSeed={(dayKey) => void handlePlantSeed(dayKey)}
                 onHarvestCrop={(dayKey) => void handleHarvestCrop(dayKey)}
+                onExchangeProduce={(ruleId) => void handleExchangeProduce(ruleId)}
+                onStartRest={() => void handleStartRestBreak()}
               />
             ) : null}
 
@@ -818,4 +954,14 @@ function dayKeyOffset(offsetDays: number) {
 
 function currentDayKey() {
   return dayKeyOffset(0);
+}
+
+function formatCountdown(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatBoostHours(totalSeconds: number) {
+  return Math.max(0, Math.round(totalSeconds / 3600));
 }

@@ -1,18 +1,26 @@
 import { useI18n } from "../i18n";
-import type { GardenState, HistoryItem, PlantedCrop } from "../types";
+import type { GardenState, HistoryItem, PlantedCrop, RestState } from "../types";
 
 type HistoryPanelProps = {
   history: HistoryItem[];
   gardenState: GardenState;
+  restState: RestState;
+  restCooldownRemainingSeconds: number;
   onPlantSeed: (dayKey: string) => void;
   onHarvestCrop: (dayKey: string) => void;
+  onExchangeProduce: (ruleId: string) => void;
+  onStartRest: () => void;
 };
 
 type HistoryCell = HistoryItem & {
   fillRatio: number;
 };
 
-const BASIC_SEED_TYPE = "bokChoy";
+const BASIC_SEED_TYPE = "bokChoySeed";
+const ADVANCED_SEED_TYPE = "cabbageSeed";
+const BASIC_CROP_TYPE = "bokChoy";
+const ADVANCED_CROP_TYPE = "cabbage";
+const EXCHANGE_RULE_ID = "bokchoy-to-cabbage";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function buildHistoryGrid(history: HistoryItem[], days = 56) {
@@ -29,23 +37,22 @@ function buildHistoryGrid(history: HistoryItem[], days = 56) {
 
     if (entry) {
       const fillRatio =
-        entry.targetMl > 0
-          ? Math.min(1, entry.actualIntakeMl / entry.targetMl)
-          : 0;
+        entry.targetMl > 0 ? Math.min(1, entry.actualIntakeMl / entry.targetMl) : 0;
       cells.push({ ...entry, fillRatio });
-    } else {
-      cells.push({
-        dayKey,
-        targetMl: 0,
-        actualIntakeMl: 0,
-        consumedMl: 0,
-        debtIncurredMl: 0,
-        goalMet: false,
-        completedReminderSlots: 0,
-        missedReminderSlots: 0,
-        fillRatio: 0
-      });
+      continue;
     }
+
+    cells.push({
+      dayKey,
+      targetMl: 0,
+      actualIntakeMl: 0,
+      consumedMl: 0,
+      debtIncurredMl: 0,
+      goalMet: false,
+      completedReminderSlots: 0,
+      missedReminderSlots: 0,
+      fillRatio: 0
+    });
   }
 
   return cells;
@@ -57,10 +64,7 @@ function getCellFillClass(cell: HistoryCell) {
   }
 
   if (cell.goalMet) {
-    if (cell.fillRatio >= 1) {
-      return "bg-emerald-400";
-    }
-    return "bg-emerald-500/80";
+    return cell.fillRatio >= 1 ? "bg-emerald-400" : "bg-emerald-500/80";
   }
 
   if (cell.fillRatio >= 0.7) {
@@ -119,7 +123,12 @@ function getCropGrowth(cell: HistoryCell, crop: PlantedCrop | undefined) {
 
   const plantedTime = new Date(crop.plantedAt).getTime();
   const elapsedMs = Number.isNaN(plantedTime) ? 0 : Math.max(0, Date.now() - plantedTime);
-  const growthPercent = Math.min(100, Math.floor((elapsedMs / (requiredDays * DAY_MS)) * 100));
+  const boostedMs = crop.boostAppliedSeconds * 1000;
+  const growthPercent = Math.min(
+    100,
+    Math.floor(((elapsedMs + boostedMs) / (requiredDays * DAY_MS)) * 100)
+  );
+
   return {
     requiredDays,
     growthPercent,
@@ -128,25 +137,98 @@ function getCropGrowth(cell: HistoryCell, crop: PlantedCrop | undefined) {
 }
 
 function getSeedLabel(seedType: string) {
-  if (seedType === BASIC_SEED_TYPE) {
-    return "小青菜";
+  switch (seedType) {
+    case BASIC_SEED_TYPE:
+      return "小青菜种子";
+    case ADVANCED_SEED_TYPE:
+      return "卷心菜种子";
+    default:
+      return seedType;
+  }
+}
+
+function getCropLabel(cropType: string) {
+  switch (cropType) {
+    case BASIC_CROP_TYPE:
+      return "小青菜";
+    case ADVANCED_CROP_TYPE:
+      return "卷心菜";
+    default:
+      return cropType;
+  }
+}
+
+function getCropIcon(cropType: string) {
+  return cropType === ADVANCED_CROP_TYPE ? "🥬" : "🥗";
+}
+
+function getSeedIcon(seedType: string) {
+  return seedType === ADVANCED_SEED_TYPE ? "🌰" : "🌱";
+}
+
+function sumInventoryByKey<T extends string>(
+  items: Array<{ key: T; count: number }>
+) {
+  const totals = new Map<T, number>();
+  for (const item of items) {
+    totals.set(item.key, (totals.get(item.key) ?? 0) + item.count);
+  }
+  return totals;
+}
+
+function getUpcomingBoostHours(restState: RestState, cooldownRemainingSeconds: number) {
+  if (restState.active) {
+    return Math.max(1, Math.round(restState.plannedBoostSeconds / 3600));
   }
 
-  return seedType;
+  if (cooldownRemainingSeconds > 0) {
+    return 1;
+  }
+
+  const cooldownEndsAt = restState.cooldownEndsAt
+    ? new Date(restState.cooldownEndsAt).getTime()
+    : Number.NaN;
+
+  if (Number.isNaN(cooldownEndsAt)) {
+    return 3;
+  }
+
+  const elapsedSinceCooldownEndMs = Math.max(0, Date.now() - cooldownEndsAt);
+  if (elapsedSinceCooldownEndMs < 60 * 60 * 1000) {
+    return 1;
+  }
+
+  if (elapsedSinceCooldownEndMs < 120 * 60 * 1000) {
+    return 2;
+  }
+
+  return 3;
 }
 
 export function HistoryPanel({
   history,
   gardenState,
+  restState,
+  restCooldownRemainingSeconds,
   onPlantSeed,
-  onHarvestCrop
+  onHarvestCrop,
+  onExchangeProduce,
+  onStartRest
 }: HistoryPanelProps) {
   const { t, formatMl, formatShortDay } = useI18n();
   const gridCells = buildHistoryGrid(history, 56);
   const activeCrops = gardenState.crops.filter((crop) => !crop.harvestedAt);
   const cropsByDay = new Map(activeCrops.map((crop) => [crop.dayKey, crop]));
-  const basicSeedCount =
-    gardenState.seeds.find((seed) => seed.seedType === BASIC_SEED_TYPE)?.count ?? 0;
+  const seedCountByType = sumInventoryByKey(
+    gardenState.seeds.map((seed) => ({ key: seed.seedType, count: seed.count }))
+  );
+  const produceCountByType = sumInventoryByKey(
+    gardenState.produce.map((produce) => ({ key: produce.cropType, count: produce.count }))
+  );
+  const basicSeedCount = seedCountByType.get(BASIC_SEED_TYPE) ?? 0;
+  const basicProduceCount = produceCountByType.get(BASIC_CROP_TYPE) ?? 0;
+  const canExchange = basicProduceCount >= 3;
+  const upcomingBoostHours = getUpcomingBoostHours(restState, restCooldownRemainingSeconds);
   const harvestCount = gardenState.collection.reduce(
     (total, item) => total + item.harvestCount,
     0
@@ -209,14 +291,14 @@ export function HistoryPanel({
             const canHarvest = Boolean(crop && cropGrowth.mature);
             const planted = Boolean(crop);
             const actionLabel = canHarvest
-                ? t("garden.readyToHarvest")
-                : planted
-                  ? t("garden.growing", { percent: cropGrowth.growthPercent })
-                  : canPlant
-                    ? t("garden.plantAction")
-                    : cell.actualIntakeMl > 0
-                      ? t("garden.noSeeds")
-                      : t("garden.emptyPlot");
+              ? t("garden.readyToHarvest")
+              : planted
+                ? t("garden.growing", { percent: cropGrowth.growthPercent })
+                : canPlant
+                  ? t("garden.plantAction")
+                  : cell.actualIntakeMl > 0
+                    ? t("garden.noSeeds")
+                    : t("garden.emptyPlot");
 
             return (
               <button
@@ -225,8 +307,7 @@ export function HistoryPanel({
                 title={`${t("history.tooltip", {
                   day: cell.dayKey,
                   actual: formatMl(cell.actualIntakeMl),
-                  target:
-                    cell.targetMl > 0 ? ` / ${formatMl(cell.targetMl)}` : ""
+                  target: cell.targetMl > 0 ? ` / ${formatMl(cell.targetMl)}` : ""
                 })} | ${actionLabel}`}
                 onClick={() => {
                   if (canHarvest) {
@@ -247,20 +328,18 @@ export function HistoryPanel({
               >
                 <div
                   className={`absolute inset-x-0 bottom-0 rounded-b-[5px] ${getCellFillClass(cell)}`}
-                  style={{
-                    height: `${Math.round(cell.fillRatio * 100)}%`
-                  }}
+                  style={{ height: `${Math.round(cell.fillRatio * 100)}%` }}
                 />
                 {crop ? (
                   <div className="absolute inset-0 grid place-items-center">
                     <span
                       className={`grid h-4 w-4 place-items-center rounded-full text-[10px] shadow-[0_4px_10px_rgba(0,0,0,0.3)] ${
                         canHarvest
-                            ? "bg-lime-200 text-lime-950"
-                            : "bg-emerald-900/85 text-emerald-100"
+                          ? "bg-lime-200 text-lime-950"
+                          : "bg-emerald-900/85 text-emerald-100"
                       }`}
                     >
-                      {canHarvest ? "🥬" : "🌱"}
+                      {canHarvest ? "🥬" : "🌿"}
                     </span>
                   </div>
                 ) : null}
@@ -293,17 +372,81 @@ export function HistoryPanel({
       </article>
 
       <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
-        <h3 className="m-0 text-lg font-semibold text-slate-50">{t("garden.collectionTitle")}</h3>
-        <p className="mt-1 text-sm text-slate-300/78">{t("garden.collectionDescription")}</p>
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="m-0 text-lg font-semibold text-slate-50">{t("rest.title")}</h3>
+            <p className="mt-1 text-sm text-slate-300/78">{t("rest.description")}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onStartRest}
+            disabled={restState.active || restCooldownRemainingSeconds > 0}
+            className="rounded-[16px] bg-gradient-to-r from-amber-200 to-emerald-200 px-4 py-3 font-semibold text-slate-950 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+          >
+            {t("rest.start")}
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-slate-100">
+            <span className="h-2.5 w-2.5 rounded-full bg-emerald-300" />
+            {t("rest.nextBoost", { hours: String(upcomingBoostHours) })}
+          </span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-2 text-sm text-slate-100">
+            <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
+            {restCooldownRemainingSeconds > 0
+              ? t("rest.cooldown", {
+                  minutes: String(Math.ceil(restCooldownRemainingSeconds / 60))
+                })
+              : t("rest.ready")}
+          </span>
+        </div>
+      </article>
+
+      <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+        <h3 className="m-0 text-lg font-semibold text-slate-50">{t("garden.inventoryTitle")}</h3>
+        <p className="mt-1 text-sm text-slate-300/78">{t("garden.inventoryDescription")}</p>
+
         <div className="mt-4 flex flex-wrap gap-2">
+          {Array.from(seedCountByType.entries()).map(([seedType, count]) => (
+            <span
+              key={seedType}
+              className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+            >
+              <span>{getSeedIcon(seedType)}</span>
+              {getSeedLabel(seedType)} × {count}
+            </span>
+          ))}
+          {Array.from(produceCountByType.entries()).map(([cropType, count]) => (
+            <span
+              key={cropType}
+              className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+            >
+              <span>{getCropIcon(cropType)}</span>
+              {getCropLabel(cropType)} × {count}
+            </span>
+          ))}
+          {produceCountByType.size === 0 ? (
+            <span className="rounded-full bg-white/5 px-3 py-2 text-sm text-slate-300/78">
+              {t("garden.produceEmpty")}
+            </span>
+          ) : null}
+        </div>
+
+        <h4 className="mt-5 text-sm font-semibold text-slate-200">
+          {t("garden.collectionTitle")}
+        </h4>
+        <p className="mt-1 text-sm text-slate-300/78">{t("garden.collectionDescription")}</p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
           {gardenState.collection.length > 0 ? (
             gardenState.collection.map((item) => (
               <span
                 key={item.cropType}
                 className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
               >
-                <span>🥬</span>
-                {getSeedLabel(item.cropType)} × {item.harvestCount}
+                <span>{getCropIcon(item.cropType)}</span>
+                {getCropLabel(item.cropType)} × {item.harvestCount}
               </span>
             ))
           ) : (
@@ -311,6 +454,31 @@ export function HistoryPanel({
               {t("garden.collectionEmpty")}
             </span>
           )}
+        </div>
+
+        <div className="mt-4 rounded-[18px] bg-white/5 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <strong className="text-sm font-semibold text-slate-50">
+                {t("garden.exchangeTitle")}
+              </strong>
+              <p className="mt-1 text-xs text-slate-300/72">
+                {t("garden.exchangeRule")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onExchangeProduce(EXCHANGE_RULE_ID)}
+              disabled={!canExchange}
+              className={`rounded-[14px] px-3 py-2 text-sm font-semibold transition ${
+                canExchange
+                  ? "bg-amber-200 text-slate-950 hover:-translate-y-px hover:bg-amber-100"
+                  : "cursor-not-allowed bg-amber-200/35 text-slate-200/70"
+              }`}
+            >
+              {t("garden.exchangeAction")}
+            </button>
+          </div>
         </div>
       </article>
 
