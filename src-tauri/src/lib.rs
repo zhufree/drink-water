@@ -26,8 +26,16 @@ const LEADERBOARD_API_BASE: &str = "https://water-api.zhufree.fun";
 const BASIC_SEED_TYPE: &str = "bokChoySeed";
 const LEGACY_BASIC_SEED_TYPE: &str = "bokChoy";
 const ADVANCED_SEED_TYPE: &str = "cabbageSeed";
+const PEA_SEED_TYPE: &str = "peaSeed";
+const TOMATO_SEED_TYPE: &str = "tomatoSeed";
+const CORN_SEED_TYPE: &str = "cornSeed";
+const PUMPKIN_SEED_TYPE: &str = "pumpkinSeed";
 const BASIC_CROP_TYPE: &str = "bokChoy";
 const ADVANCED_CROP_TYPE: &str = "cabbage";
+const PEA_CROP_TYPE: &str = "pea";
+const TOMATO_CROP_TYPE: &str = "tomato";
+const CORN_CROP_TYPE: &str = "corn";
+const PUMPKIN_CROP_TYPE: &str = "pumpkin";
 const INITIAL_BASIC_SEEDS: u32 = 12;
 const DAY_SECONDS: i64 = 24 * 60 * 60;
 const REST_COOLDOWN_MINUTES: i64 = 20;
@@ -37,7 +45,6 @@ const REST_LONG_BREAK_SECONDS: u32 = 180;
 const REST_SHORT_BOOST_SECONDS: u32 = 60 * 60;
 const REST_MEDIUM_BOOST_SECONDS: u32 = 2 * 60 * 60;
 const REST_LONG_BOOST_SECONDS: u32 = 3 * 60 * 60;
-const BASIC_TO_ADVANCED_EXCHANGE_RULE_ID: &str = "bokchoy-to-cabbage";
 
 fn default_locale() -> String {
     "zh-CN".to_string()
@@ -760,15 +767,18 @@ fn harvest_crop(
 #[tauri::command]
 fn exchange_produce(
     state: State<'_, AppState>,
-    rule_id: String,
+    source_crop_type: String,
+    target_seed_type: String,
 ) -> Result<GardenState, String> {
+    let target_seed_type = normalize_seed_type(&target_seed_type)?;
+    let source_crop_type = source_crop_type.trim().to_string();
     {
         let mut guard = state
             .data
             .lock()
             .map_err(|_| "failed to exchange produce".to_string())?;
         reconcile(&mut guard, Local::now());
-        exchange_produce_in_state(&mut guard, &rule_id)?;
+        exchange_produce_in_state(&mut guard, &source_crop_type, &target_seed_type)?;
     }
 
     state.save()?;
@@ -1015,6 +1025,10 @@ fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
     match seed_type.trim() {
         BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE => Ok(BASIC_SEED_TYPE.to_string()),
         ADVANCED_SEED_TYPE => Ok(ADVANCED_SEED_TYPE.to_string()),
+        PEA_SEED_TYPE => Ok(PEA_SEED_TYPE.to_string()),
+        TOMATO_SEED_TYPE => Ok(TOMATO_SEED_TYPE.to_string()),
+        CORN_SEED_TYPE => Ok(CORN_SEED_TYPE.to_string()),
+        PUMPKIN_SEED_TYPE => Ok(PUMPKIN_SEED_TYPE.to_string()),
         _ => Err("unknown seed type".to_string()),
     }
 }
@@ -1022,7 +1036,40 @@ fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
 fn crop_type_for_seed(seed_type: &str) -> &'static str {
     match seed_type {
         ADVANCED_SEED_TYPE => ADVANCED_CROP_TYPE,
+        PEA_SEED_TYPE => PEA_CROP_TYPE,
+        TOMATO_SEED_TYPE => TOMATO_CROP_TYPE,
+        CORN_SEED_TYPE => CORN_CROP_TYPE,
+        PUMPKIN_SEED_TYPE => PUMPKIN_CROP_TYPE,
         _ => BASIC_CROP_TYPE,
+    }
+}
+
+fn seed_type_for_crop(crop_type: &str) -> &'static str {
+    match crop_type {
+        ADVANCED_CROP_TYPE => ADVANCED_SEED_TYPE,
+        PEA_CROP_TYPE => PEA_SEED_TYPE,
+        TOMATO_CROP_TYPE => TOMATO_SEED_TYPE,
+        CORN_CROP_TYPE => CORN_SEED_TYPE,
+        PUMPKIN_CROP_TYPE => PUMPKIN_SEED_TYPE,
+        _ => BASIC_SEED_TYPE,
+    }
+}
+
+fn crop_tier(crop_type: &str) -> Option<u8> {
+    match crop_type {
+        BASIC_CROP_TYPE | ADVANCED_CROP_TYPE | PEA_CROP_TYPE => Some(1),
+        TOMATO_CROP_TYPE | CORN_CROP_TYPE => Some(2),
+        PUMPKIN_CROP_TYPE => Some(3),
+        _ => None,
+    }
+}
+
+fn seed_tier(seed_type: &str) -> Option<u8> {
+    match seed_type {
+        BASIC_SEED_TYPE | ADVANCED_SEED_TYPE | PEA_SEED_TYPE => Some(1),
+        TOMATO_SEED_TYPE | CORN_SEED_TYPE => Some(2),
+        PUMPKIN_SEED_TYPE => Some(3),
+        _ => None,
     }
 }
 
@@ -1159,7 +1206,7 @@ fn random_seed_reward(now: DateTime<Local>, crop_type: &str, collection_len: usi
     let crop_bias = crop_type
         .bytes()
         .fold(0_u64, |acc, value| acc.saturating_add(u64::from(value)));
-    ((entropy + crop_bias + collection_len as u64) % 3 + 1) as u32
+    ((entropy + crop_bias + collection_len as u64) % 2 + 1) as u32
 }
 
 fn history_item_for_day(state: &PersistedState, day_key: &str) -> Option<HistoryItem> {
@@ -1294,24 +1341,35 @@ fn harvest_crop_in_state(
         });
     }
 
-    let rewarded_seed_type = if crop_type == ADVANCED_CROP_TYPE {
-        ADVANCED_SEED_TYPE
-    } else {
-        BASIC_SEED_TYPE
-    };
+    let rewarded_seed_type = seed_type_for_crop(&crop_type);
     add_seed(&mut state.garden, rewarded_seed_type, rewarded_seeds);
     Ok(())
 }
 
-fn exchange_produce_in_state(state: &mut PersistedState, rule_id: &str) -> Result<(), String> {
-    match rule_id {
-        BASIC_TO_ADVANCED_EXCHANGE_RULE_ID => {
-            spend_produce(&mut state.garden, BASIC_CROP_TYPE, 3)?;
-            add_seed(&mut state.garden, ADVANCED_SEED_TYPE, 1);
-            Ok(())
-        }
-        _ => Err("unknown exchange rule".to_string()),
+fn exchange_produce_in_state(
+    state: &mut PersistedState,
+    source_crop_type: &str,
+    target_seed_type: &str,
+) -> Result<(), String> {
+    let source_tier = crop_tier(source_crop_type).ok_or_else(|| "unknown exchange source".to_string())?;
+    let target_tier = seed_tier(target_seed_type).ok_or_else(|| "unknown exchange target".to_string())?;
+    let target_crop_type = crop_type_for_seed(target_seed_type);
+
+    if source_crop_type == target_crop_type {
+        return Err("cannot exchange into the same crop".to_string());
     }
+
+    let cost = if target_tier == source_tier {
+        1
+    } else if target_tier == source_tier + 1 {
+        3
+    } else {
+        return Err("unknown exchange target".to_string());
+    };
+
+    spend_produce(&mut state.garden, source_crop_type, cost)?;
+    add_seed(&mut state.garden, target_seed_type, 1);
+    Ok(())
 }
 
 fn start_rest_break_in_state(state: &mut PersistedState, now: DateTime<Local>) -> Result<(), String> {
@@ -2136,7 +2194,7 @@ mod tests {
     }
 
     #[test]
-    fn harvest_seed_reward_is_always_between_one_and_three() {
+    fn harvest_seed_reward_is_always_between_one_and_two() {
         let settings = Settings::default();
         let now = local_dt(2026, 5, 20, 9, 0);
 
@@ -2167,12 +2225,12 @@ mod tests {
                 .map(|item| item.count)
                 .unwrap_or(0);
             let rewarded = basic_seed_count.saturating_sub(INITIAL_BASIC_SEEDS - 1);
-            assert!((1..=3).contains(&rewarded));
+            assert!((1..=2).contains(&rewarded));
         }
     }
 
     #[test]
-    fn exchange_requires_three_basic_produce() {
+    fn exchange_requires_one_basic_produce_for_cabbage_seed() {
         let settings = Settings::default();
         let now = local_dt(2026, 5, 20, 9, 0);
         let mut state = PersistedState {
@@ -2182,13 +2240,10 @@ mod tests {
             garden: GardenState::default(),
         };
 
-        assert!(exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).is_err());
-
-        add_produce(&mut state.garden, BASIC_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).is_err());
+        assert!(exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).is_err());
 
         add_produce(&mut state.garden, BASIC_CROP_TYPE, 1);
-        exchange_produce_in_state(&mut state, BASIC_TO_ADVANCED_EXCHANGE_RULE_ID).unwrap();
+        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).unwrap();
 
         let basic_produce_count = state
             .garden
@@ -2207,6 +2262,61 @@ mod tests {
 
         assert_eq!(basic_produce_count, 0);
         assert_eq!(advanced_seed_count, 1);
+    }
+
+    #[test]
+    fn exchange_allows_multiple_targets_from_selected_source_crop() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+        };
+
+        add_produce(&mut state.garden, BASIC_CROP_TYPE, 2);
+        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).unwrap();
+        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, PEA_SEED_TYPE).unwrap();
+
+        let pea_seed_count = state
+            .garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == PEA_SEED_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+        let cabbage_seed_count = state
+            .garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == ADVANCED_SEED_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+
+        assert_eq!(pea_seed_count, 1);
+        assert_eq!(cabbage_seed_count, 1);
+    }
+
+    #[test]
+    fn exchange_cost_depends_on_tier_gap() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+        };
+
+        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 2);
+        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, PEA_SEED_TYPE).is_ok());
+
+        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 1);
+        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, TOMATO_SEED_TYPE).is_err());
+
+        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 2);
+        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, TOMATO_SEED_TYPE).is_ok());
     }
 
     #[test]

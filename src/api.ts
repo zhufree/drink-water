@@ -27,8 +27,8 @@ export const plantSeed = (dayKey: string, seedType: string) =>
 export const harvestCrop = (dayKey: string) =>
   invoke<GardenState>("harvest_crop", { dayKey });
 
-export const exchangeProduce = (ruleId: string) =>
-  invoke<GardenState>("exchange_produce", { ruleId });
+export const exchangeProduce = (sourceCropType: string, targetSeedType: string) =>
+  invoke<GardenState>("exchange_produce", { sourceCropType, targetSeedType });
 
 export const startRestBreak = () =>
   invoke<GardenState>("start_rest_break");
