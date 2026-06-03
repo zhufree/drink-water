@@ -22,10 +22,12 @@ export function GardenCollectionCard({ collection }: GardenCollectionCardProps) 
             return (
               <span
                 key={item.cropType}
+                title={definition.cropLabel}
+                aria-label={`${definition.cropLabel} x ${item.harvestCount}`}
                 className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
               >
-                <PixelIcon src={definition.cropIcon} size={26} />
-                {definition.cropLabel} x {item.harvestCount}
+                <PixelIcon src={definition.cropIcon} size={30} />
+                <span className="tabular-nums">x {item.harvestCount}</span>
               </span>
             );
           })

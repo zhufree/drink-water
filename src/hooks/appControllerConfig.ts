@@ -5,7 +5,7 @@ export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.5.5";
+export const APP_VERSION = "0.5.6";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -42,21 +42,45 @@ export const defaultGardenState: GardenState = {
 };
 
 export function getSeedDisplayName(seedType: string, locale: Locale) {
-  if (seedType === "cabbageSeed") {
-    return locale === "zh-CN" ? "卷心菜" : "cabbage";
+  if (seedType === "potatoSeed") {
+    return locale === "zh-CN" ? "土豆" : "potato";
   }
-  if (seedType === "peaSeed") {
+  if (seedType === "bellPepperSeed") {
+    return locale === "zh-CN" ? "青椒" : "bell pepper";
+  }
+  if (seedType === "carrotSeed") {
+    return locale === "zh-CN" ? "胡萝卜" : "carrot";
+  }
+  if (seedType === "napaCabbageSeed") {
+    return locale === "zh-CN" ? "大白菜" : "napa cabbage";
+  }
+  if (seedType === "broccoliSeed") {
+    return locale === "zh-CN" ? "西兰花" : "broccoli";
+  }
+  if (seedType === "radishSeed") {
+    return locale === "zh-CN" ? "萝卜" : "radish";
+  }
+  if (seedType === "onionSeed") {
+    return locale === "zh-CN" ? "洋葱" : "onion";
+  }
+  if (seedType === "eggplantSeed") {
+    return locale === "zh-CN" ? "茄子" : "eggplant";
+  }
+  if (seedType === "cabbageSeed") {
+    return locale === "zh-CN" ? "青椒" : "bell pepper";
+  }
+  if (seedType === "gardenPeaSeed") {
     return locale === "zh-CN" ? "豌豆" : "pea";
   }
   if (seedType === "tomatoSeed") {
-    return locale === "zh-CN" ? "西红柿" : "tomato";
+    return locale === "zh-CN" ? "西兰花" : "broccoli";
   }
   if (seedType === "cornSeed") {
-    return locale === "zh-CN" ? "玉米" : "corn";
+    return locale === "zh-CN" ? "萝卜" : "radish";
   }
   if (seedType === "pumpkinSeed") {
     return locale === "zh-CN" ? "南瓜" : "pumpkin";
   }
 
-  return locale === "zh-CN" ? "小青菜" : "bok choy";
+  return locale === "zh-CN" ? "土豆" : "potato";
 }

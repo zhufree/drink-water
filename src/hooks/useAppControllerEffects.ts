@@ -109,7 +109,7 @@ export function useAppControllerEffects({
             deviceId: crypto.randomUUID()
           });
           nextSettings = saved;
-          await refreshAll();
+          ({ nextSettings, nextHistory } = await refreshAll());
         }
 
         setCloudIdentityState("loading");

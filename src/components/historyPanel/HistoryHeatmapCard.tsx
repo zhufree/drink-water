@@ -88,15 +88,17 @@ export function HistoryHeatmapCard({
                 <button
                   key={seedType}
                   type="button"
+                  title={definition.seedLabel}
+                  aria-label={`${definition.seedLabel} x ${count}`}
                   onClick={() => onSelectSeed(seedType)}
-                  className={`inline-flex items-center gap-2.5 rounded-full border px-3.5 py-2.5 text-sm transition ${
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
                     selected
                       ? "border-emerald-200/70 bg-emerald-300/18 text-emerald-50"
                       : "border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8"
                   }`}
                 >
-                  <PixelIcon src={definition.seedIcon} size={28} />
-                  {definition.seedLabel} x {count}
+                  <PixelIcon src={definition.seedIcon} size={30} />
+                  <span className="tabular-nums">x {count}</span>
                 </button>
               );
             })
@@ -108,7 +110,7 @@ export function HistoryHeatmapCard({
         </div>
       </div>
 
-      <div className="grid grid-cols-14 gap-2">
+      <div className="grid grid-cols-7 gap-2">
         {gridCells.map((cell) => {
           const crop = cropsByDay.get(cell.dayKey);
           const cropGrowth = getCropGrowth(cell, crop);
@@ -160,7 +162,7 @@ export function HistoryHeatmapCard({
               {crop ? (
                 <div className="absolute inset-0 grid place-items-center">
                   <span className="grid h-5 w-5 place-items-center">
-                    <PixelIcon src={plantedDefinition.cropIcon} size={16} />
+                    <PixelIcon src={plantedDefinition.cropIcon} size={18} />
                   </span>
                 </div>
               ) : null}

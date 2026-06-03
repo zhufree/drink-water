@@ -1,16 +1,25 @@
-import bokChoyCropIcon from "../../assets/garden/bok-choy-crop.png";
-import bokChoySeedIcon from "../../assets/garden/bok-choy-seed.png";
-import cabbageCropIcon from "../../assets/garden/cabbage-crop.png";
-import cabbageSeedIcon from "../../assets/garden/cabbage-seed.png";
-import cornCropIcon from "../../assets/garden/corn-crop.png";
-import cornSeedIcon from "../../assets/garden/corn-seed.png";
-import peaCropIcon from "../../assets/garden/pea-crop.png";
-import peaSeedIcon from "../../assets/garden/pea-seed.png";
+import potatoCropIcon from "../../assets/garden/potato-crop.png";
+import potatoSeedIcon from "../../assets/garden/potato-seed.png";
+import bellPepperCropIcon from "../../assets/garden/bell-pepper-crop.png";
+import bellPepperSeedIcon from "../../assets/garden/bell-pepper-seed.png";
+import broccoliCropIcon from "../../assets/garden/broccoli-crop.png";
+import broccoliSeedIcon from "../../assets/garden/broccoli-seed.png";
+import carrotCropIcon from "../../assets/garden/carrot-crop.png";
+import carrotSeedIcon from "../../assets/garden/carrot-seed.png";
+import radishCropIcon from "../../assets/garden/radish-crop.png";
+import radishSeedIcon from "../../assets/garden/radish-seed.png";
 import pumpkinCropIcon from "../../assets/garden/pumpkin-crop.png";
 import pumpkinSeedIcon from "../../assets/garden/pumpkin-seed.png";
-import tomatoCropIcon from "../../assets/garden/tomato-crop.png";
-import tomatoSeedIcon from "../../assets/garden/tomato-seed.png";
+import napaCabbageCropIcon from "../../assets/garden/napa-cabbage-crop.png";
+import napaCabbageSeedIcon from "../../assets/garden/napa-cabbage-seed.png";
+import onionCropIcon from "../../assets/garden/onion-crop.png";
+import onionSeedIcon from "../../assets/garden/onion-seed.png";
+import eggplantCropIcon from "../../assets/garden/eggplant-crop.png";
+import eggplantSeedIcon from "../../assets/garden/eggplant-seed.png";
+import peaCropIcon from "../../assets/garden/pea-crop.png";
+import peaSeedIcon from "../../assets/garden/pea-seed.png";
 import type { HistoryItem, PlantedCrop, RestState } from "../../types";
+import { formatLocalDayKey } from "../../hooks/appControllerUtils";
 
 export type HistoryCell = HistoryItem & {
   fillRatio: number;
@@ -32,18 +41,26 @@ export type ExchangeOption = {
   cost: number;
 };
 
-export const BASIC_SEED_TYPE = "bokChoySeed";
-export const ADVANCED_SEED_TYPE = "cabbageSeed";
-export const PEA_SEED_TYPE = "peaSeed";
-export const TOMATO_SEED_TYPE = "tomatoSeed";
-export const CORN_SEED_TYPE = "cornSeed";
+export const BASIC_SEED_TYPE = "potatoSeed";
+export const ADVANCED_SEED_TYPE = "bellPepperSeed";
+export const CARROT_SEED_TYPE = "carrotSeed";
+export const NAPA_CABBAGE_SEED_TYPE = "napaCabbageSeed";
+export const BROCCOLI_SEED_TYPE = "broccoliSeed";
+export const RADISH_SEED_TYPE = "radishSeed";
 export const PUMPKIN_SEED_TYPE = "pumpkinSeed";
-export const BASIC_CROP_TYPE = "bokChoy";
-export const ADVANCED_CROP_TYPE = "cabbage";
-export const PEA_CROP_TYPE = "pea";
-export const TOMATO_CROP_TYPE = "tomato";
-export const CORN_CROP_TYPE = "corn";
+export const ONION_SEED_TYPE = "onionSeed";
+export const EGGPLANT_SEED_TYPE = "eggplantSeed";
+export const PEA_SEED_TYPE = "gardenPeaSeed";
+export const BASIC_CROP_TYPE = "potato";
+export const ADVANCED_CROP_TYPE = "bellPepper";
+export const CARROT_CROP_TYPE = "carrot";
+export const NAPA_CABBAGE_CROP_TYPE = "napaCabbage";
+export const BROCCOLI_CROP_TYPE = "broccoli";
+export const RADISH_CROP_TYPE = "radish";
 export const PUMPKIN_CROP_TYPE = "pumpkin";
+export const ONION_CROP_TYPE = "onion";
+export const EGGPLANT_CROP_TYPE = "eggplant";
+export const PEA_CROP_TYPE = "gardenPea";
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export const CROP_DEFINITIONS: CropDefinition[] = [
@@ -51,55 +68,91 @@ export const CROP_DEFINITIONS: CropDefinition[] = [
     cropType: BASIC_CROP_TYPE,
     seedType: BASIC_SEED_TYPE,
     tier: 1,
-    cropLabel: "小青菜",
-    seedLabel: "小青菜",
-    cropIcon: bokChoyCropIcon,
-    seedIcon: bokChoySeedIcon
+    cropLabel: "土豆",
+    seedLabel: "土豆",
+    cropIcon: potatoCropIcon,
+    seedIcon: potatoSeedIcon
   },
   {
     cropType: ADVANCED_CROP_TYPE,
     seedType: ADVANCED_SEED_TYPE,
     tier: 1,
-    cropLabel: "卷心菜",
-    seedLabel: "卷心菜",
-    cropIcon: cabbageCropIcon,
-    seedIcon: cabbageSeedIcon
+    cropLabel: "青椒",
+    seedLabel: "青椒",
+    cropIcon: bellPepperCropIcon,
+    seedIcon: bellPepperSeedIcon
   },
   {
-    cropType: PEA_CROP_TYPE,
-    seedType: PEA_SEED_TYPE,
+    cropType: CARROT_CROP_TYPE,
+    seedType: CARROT_SEED_TYPE,
     tier: 1,
-    cropLabel: "豌豆",
-    seedLabel: "豌豆",
-    cropIcon: peaCropIcon,
-    seedIcon: peaSeedIcon
+    cropLabel: "胡萝卜",
+    seedLabel: "胡萝卜",
+    cropIcon: carrotCropIcon,
+    seedIcon: carrotSeedIcon
   },
   {
-    cropType: TOMATO_CROP_TYPE,
-    seedType: TOMATO_SEED_TYPE,
-    tier: 2,
-    cropLabel: "西红柿",
-    seedLabel: "西红柿",
-    cropIcon: tomatoCropIcon,
-    seedIcon: tomatoSeedIcon
+    cropType: NAPA_CABBAGE_CROP_TYPE,
+    seedType: NAPA_CABBAGE_SEED_TYPE,
+    tier: 1,
+    cropLabel: "大白菜",
+    seedLabel: "大白菜",
+    cropIcon: napaCabbageCropIcon,
+    seedIcon: napaCabbageSeedIcon
   },
   {
-    cropType: CORN_CROP_TYPE,
-    seedType: CORN_SEED_TYPE,
+    cropType: BROCCOLI_CROP_TYPE,
+    seedType: BROCCOLI_SEED_TYPE,
     tier: 2,
-    cropLabel: "玉米",
-    seedLabel: "玉米",
-    cropIcon: cornCropIcon,
-    seedIcon: cornSeedIcon
+    cropLabel: "西兰花",
+    seedLabel: "西兰花",
+    cropIcon: broccoliCropIcon,
+    seedIcon: broccoliSeedIcon
+  },
+  {
+    cropType: RADISH_CROP_TYPE,
+    seedType: RADISH_SEED_TYPE,
+    tier: 2,
+    cropLabel: "萝卜",
+    seedLabel: "萝卜",
+    cropIcon: radishCropIcon,
+    seedIcon: radishSeedIcon
   },
   {
     cropType: PUMPKIN_CROP_TYPE,
     seedType: PUMPKIN_SEED_TYPE,
-    tier: 3,
+    tier: 2,
     cropLabel: "南瓜",
     seedLabel: "南瓜",
     cropIcon: pumpkinCropIcon,
     seedIcon: pumpkinSeedIcon
+  },
+  {
+    cropType: ONION_CROP_TYPE,
+    seedType: ONION_SEED_TYPE,
+    tier: 1,
+    cropLabel: "洋葱",
+    seedLabel: "洋葱",
+    cropIcon: onionCropIcon,
+    seedIcon: onionSeedIcon
+  },
+  {
+    cropType: EGGPLANT_CROP_TYPE,
+    seedType: EGGPLANT_SEED_TYPE,
+    tier: 3,
+    cropLabel: "茄子",
+    seedLabel: "茄子",
+    cropIcon: eggplantCropIcon,
+    seedIcon: eggplantSeedIcon
+  },
+  {
+    cropType: PEA_CROP_TYPE,
+    seedType: PEA_SEED_TYPE,
+    tier: 2,
+    cropLabel: "豌豆",
+    seedLabel: "豌豆",
+    cropIcon: peaCropIcon,
+    seedIcon: peaSeedIcon
   }
 ];
 
@@ -116,7 +169,11 @@ export const EXCHANGE_OPTIONS: ExchangeOption[] = CROP_DEFINITIONS.flatMap((sour
   }))
 );
 
-export function buildHistoryGrid(history: HistoryItem[], days = 56) {
+export function buildHistoryGrid(
+  history: HistoryItem[],
+  days = 56,
+  startOffsetDays = 1
+) {
   const map = new Map(history.map((item) => [item.dayKey, item]));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -124,8 +181,8 @@ export function buildHistoryGrid(history: HistoryItem[], days = 56) {
   const cells: HistoryCell[] = [];
   for (let index = 0; index < days; index += 1) {
     const date = new Date(today);
-    date.setDate(today.getDate() - index);
-    const dayKey = date.toISOString().slice(0, 10);
+    date.setDate(today.getDate() - index - startOffsetDays);
+    const dayKey = formatLocalDayKey(date);
     const entry = map.get(dayKey);
 
     if (entry) {

@@ -23,19 +23,40 @@ const STORE_FILE_NAME: &str = "drink-water-state.json";
 const STATE_EVENT: &str = "state-updated";
 const SNOOZE_MINUTES: i64 = 10;
 const LEADERBOARD_API_BASE: &str = "https://water-api.zhufree.fun";
-const BASIC_SEED_TYPE: &str = "bokChoySeed";
-const LEGACY_BASIC_SEED_TYPE: &str = "bokChoy";
-const ADVANCED_SEED_TYPE: &str = "cabbageSeed";
-const PEA_SEED_TYPE: &str = "peaSeed";
-const TOMATO_SEED_TYPE: &str = "tomatoSeed";
-const CORN_SEED_TYPE: &str = "cornSeed";
+const POTATO_SEED_TYPE: &str = "potatoSeed";
+const BELL_PEPPER_SEED_TYPE: &str = "bellPepperSeed";
+const CARROT_SEED_TYPE: &str = "carrotSeed";
+const NAPA_CABBAGE_SEED_TYPE: &str = "napaCabbageSeed";
+const BROCCOLI_SEED_TYPE: &str = "broccoliSeed";
+const RADISH_SEED_TYPE: &str = "radishSeed";
 const PUMPKIN_SEED_TYPE: &str = "pumpkinSeed";
-const BASIC_CROP_TYPE: &str = "bokChoy";
-const ADVANCED_CROP_TYPE: &str = "cabbage";
-const PEA_CROP_TYPE: &str = "pea";
-const TOMATO_CROP_TYPE: &str = "tomato";
-const CORN_CROP_TYPE: &str = "corn";
+const ONION_SEED_TYPE: &str = "onionSeed";
+const EGGPLANT_SEED_TYPE: &str = "eggplantSeed";
+const PEA_SEED_TYPE: &str = "gardenPeaSeed";
+const POTATO_CROP_TYPE: &str = "potato";
+const BELL_PEPPER_CROP_TYPE: &str = "bellPepper";
+const CARROT_CROP_TYPE: &str = "carrot";
+const NAPA_CABBAGE_CROP_TYPE: &str = "napaCabbage";
+const BROCCOLI_CROP_TYPE: &str = "broccoli";
+const RADISH_CROP_TYPE: &str = "radish";
 const PUMPKIN_CROP_TYPE: &str = "pumpkin";
+const ONION_CROP_TYPE: &str = "onion";
+const EGGPLANT_CROP_TYPE: &str = "eggplant";
+const PEA_CROP_TYPE: &str = "gardenPea";
+
+const BASIC_SEED_TYPE: &str = POTATO_SEED_TYPE;
+
+const LEGACY_BASIC_SEED_TYPE: &str = "bokChoy";
+const LEGACY_BASIC_SEED_TYPE_V2: &str = "bokChoySeed";
+const LEGACY_ADVANCED_SEED_TYPE: &str = "cabbageSeed";
+const LEGACY_CARROT_SEED_TYPE: &str = "peaSeed";
+const LEGACY_BROCCOLI_SEED_TYPE: &str = "tomatoSeed";
+const LEGACY_RADISH_SEED_TYPE: &str = "cornSeed";
+const LEGACY_BASIC_CROP_TYPE: &str = "bokChoy";
+const LEGACY_ADVANCED_CROP_TYPE: &str = "cabbage";
+const LEGACY_CARROT_CROP_TYPE: &str = "pea";
+const LEGACY_BROCCOLI_CROP_TYPE: &str = "tomato";
+const LEGACY_RADISH_CROP_TYPE: &str = "corn";
 const INITIAL_BASIC_SEEDS: u32 = 12;
 const DAY_SECONDS: i64 = 24 * 60 * 60;
 const REST_COOLDOWN_MINUTES: i64 = 20;
@@ -353,14 +374,26 @@ impl PersistedState {
         }
 
         for seed in &mut self.garden.seeds {
-            if seed.seed_type == LEGACY_BASIC_SEED_TYPE {
-                seed.seed_type = BASIC_SEED_TYPE.to_string();
+            if let Some(normalized) = canonical_seed_type(&seed.seed_type) {
+                seed.seed_type = normalized.to_string();
             }
         }
 
         for crop in &mut self.garden.crops {
-            if crop.seed_type == LEGACY_BASIC_SEED_TYPE {
-                crop.seed_type = BASIC_SEED_TYPE.to_string();
+            if let Some(normalized) = canonical_seed_type(&crop.seed_type) {
+                crop.seed_type = normalized.to_string();
+            }
+        }
+
+        for produce in &mut self.garden.produce {
+            if let Some(normalized) = canonical_crop_type(&produce.crop_type) {
+                produce.crop_type = normalized.to_string();
+            }
+        }
+
+        for item in &mut self.garden.collection {
+            if let Some(normalized) = canonical_crop_type(&item.crop_type) {
+                item.crop_type = normalized.to_string();
             }
         }
 
@@ -1022,53 +1055,97 @@ fn to_today_status(settings: &Settings, today: &DailyRecord) -> TodayStatus {
 }
 
 fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
-    match seed_type.trim() {
-        BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE => Ok(BASIC_SEED_TYPE.to_string()),
-        ADVANCED_SEED_TYPE => Ok(ADVANCED_SEED_TYPE.to_string()),
-        PEA_SEED_TYPE => Ok(PEA_SEED_TYPE.to_string()),
-        TOMATO_SEED_TYPE => Ok(TOMATO_SEED_TYPE.to_string()),
-        CORN_SEED_TYPE => Ok(CORN_SEED_TYPE.to_string()),
-        PUMPKIN_SEED_TYPE => Ok(PUMPKIN_SEED_TYPE.to_string()),
-        _ => Err("unknown seed type".to_string()),
-    }
+    canonical_seed_type(seed_type)
+        .map(|value| value.to_string())
+        .ok_or_else(|| "unknown seed type".to_string())
 }
 
 fn crop_type_for_seed(seed_type: &str) -> &'static str {
     match seed_type {
-        ADVANCED_SEED_TYPE => ADVANCED_CROP_TYPE,
+        BELL_PEPPER_SEED_TYPE => BELL_PEPPER_CROP_TYPE,
+        CARROT_SEED_TYPE => CARROT_CROP_TYPE,
+        NAPA_CABBAGE_SEED_TYPE => NAPA_CABBAGE_CROP_TYPE,
+        BROCCOLI_SEED_TYPE => BROCCOLI_CROP_TYPE,
+        RADISH_SEED_TYPE => RADISH_CROP_TYPE,
+        ONION_SEED_TYPE => ONION_CROP_TYPE,
+        EGGPLANT_SEED_TYPE => EGGPLANT_CROP_TYPE,
         PEA_SEED_TYPE => PEA_CROP_TYPE,
-        TOMATO_SEED_TYPE => TOMATO_CROP_TYPE,
-        CORN_SEED_TYPE => CORN_CROP_TYPE,
         PUMPKIN_SEED_TYPE => PUMPKIN_CROP_TYPE,
-        _ => BASIC_CROP_TYPE,
+        _ => POTATO_CROP_TYPE,
     }
 }
 
 fn seed_type_for_crop(crop_type: &str) -> &'static str {
     match crop_type {
-        ADVANCED_CROP_TYPE => ADVANCED_SEED_TYPE,
+        BELL_PEPPER_CROP_TYPE => BELL_PEPPER_SEED_TYPE,
+        CARROT_CROP_TYPE => CARROT_SEED_TYPE,
+        NAPA_CABBAGE_CROP_TYPE => NAPA_CABBAGE_SEED_TYPE,
+        BROCCOLI_CROP_TYPE => BROCCOLI_SEED_TYPE,
+        RADISH_CROP_TYPE => RADISH_SEED_TYPE,
+        ONION_CROP_TYPE => ONION_SEED_TYPE,
+        EGGPLANT_CROP_TYPE => EGGPLANT_SEED_TYPE,
         PEA_CROP_TYPE => PEA_SEED_TYPE,
-        TOMATO_CROP_TYPE => TOMATO_SEED_TYPE,
-        CORN_CROP_TYPE => CORN_SEED_TYPE,
         PUMPKIN_CROP_TYPE => PUMPKIN_SEED_TYPE,
-        _ => BASIC_SEED_TYPE,
+        _ => POTATO_SEED_TYPE,
     }
 }
 
 fn crop_tier(crop_type: &str) -> Option<u8> {
     match crop_type {
-        BASIC_CROP_TYPE | ADVANCED_CROP_TYPE | PEA_CROP_TYPE => Some(1),
-        TOMATO_CROP_TYPE | CORN_CROP_TYPE => Some(2),
-        PUMPKIN_CROP_TYPE => Some(3),
+        POTATO_CROP_TYPE
+        | BELL_PEPPER_CROP_TYPE
+        | CARROT_CROP_TYPE
+        | NAPA_CABBAGE_CROP_TYPE
+        | PEA_CROP_TYPE => Some(1),
+        BROCCOLI_CROP_TYPE | RADISH_CROP_TYPE | ONION_CROP_TYPE | PUMPKIN_CROP_TYPE => Some(2),
+        EGGPLANT_CROP_TYPE => Some(3),
         _ => None,
     }
 }
 
 fn seed_tier(seed_type: &str) -> Option<u8> {
     match seed_type {
-        BASIC_SEED_TYPE | ADVANCED_SEED_TYPE | PEA_SEED_TYPE => Some(1),
-        TOMATO_SEED_TYPE | CORN_SEED_TYPE => Some(2),
-        PUMPKIN_SEED_TYPE => Some(3),
+        POTATO_SEED_TYPE
+        | BELL_PEPPER_SEED_TYPE
+        | CARROT_SEED_TYPE
+        | NAPA_CABBAGE_SEED_TYPE
+        | PEA_SEED_TYPE => Some(1),
+        BROCCOLI_SEED_TYPE | RADISH_SEED_TYPE | ONION_SEED_TYPE | PUMPKIN_SEED_TYPE => Some(2),
+        EGGPLANT_SEED_TYPE => Some(3),
+        _ => None,
+    }
+}
+
+fn canonical_seed_type(seed_type: &str) -> Option<&'static str> {
+    match seed_type.trim() {
+        POTATO_SEED_TYPE | LEGACY_BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE_V2 => {
+            Some(POTATO_SEED_TYPE)
+        }
+        BELL_PEPPER_SEED_TYPE | LEGACY_ADVANCED_SEED_TYPE => Some(BELL_PEPPER_SEED_TYPE),
+        CARROT_SEED_TYPE | LEGACY_CARROT_SEED_TYPE => Some(CARROT_SEED_TYPE),
+        NAPA_CABBAGE_SEED_TYPE => Some(NAPA_CABBAGE_SEED_TYPE),
+        BROCCOLI_SEED_TYPE | LEGACY_BROCCOLI_SEED_TYPE => Some(BROCCOLI_SEED_TYPE),
+        RADISH_SEED_TYPE | LEGACY_RADISH_SEED_TYPE => Some(RADISH_SEED_TYPE),
+        PUMPKIN_SEED_TYPE => Some(PUMPKIN_SEED_TYPE),
+        ONION_SEED_TYPE => Some(ONION_SEED_TYPE),
+        EGGPLANT_SEED_TYPE => Some(EGGPLANT_SEED_TYPE),
+        PEA_SEED_TYPE => Some(PEA_SEED_TYPE),
+        _ => None,
+    }
+}
+
+fn canonical_crop_type(crop_type: &str) -> Option<&'static str> {
+    match crop_type.trim() {
+        POTATO_CROP_TYPE | LEGACY_BASIC_CROP_TYPE => Some(POTATO_CROP_TYPE),
+        BELL_PEPPER_CROP_TYPE | LEGACY_ADVANCED_CROP_TYPE => Some(BELL_PEPPER_CROP_TYPE),
+        CARROT_CROP_TYPE | LEGACY_CARROT_CROP_TYPE => Some(CARROT_CROP_TYPE),
+        NAPA_CABBAGE_CROP_TYPE => Some(NAPA_CABBAGE_CROP_TYPE),
+        BROCCOLI_CROP_TYPE | LEGACY_BROCCOLI_CROP_TYPE => Some(BROCCOLI_CROP_TYPE),
+        RADISH_CROP_TYPE | LEGACY_RADISH_CROP_TYPE => Some(RADISH_CROP_TYPE),
+        PUMPKIN_CROP_TYPE => Some(PUMPKIN_CROP_TYPE),
+        ONION_CROP_TYPE => Some(ONION_CROP_TYPE),
+        EGGPLANT_CROP_TYPE => Some(EGGPLANT_CROP_TYPE),
+        PEA_CROP_TYPE => Some(PEA_CROP_TYPE),
         _ => None,
     }
 }
@@ -2094,7 +2171,7 @@ mod tests {
                 "crops": [],
                 "collection": [
                     {
-                        "cropType": BASIC_CROP_TYPE,
+                        "cropType": POTATO_CROP_TYPE,
                         "harvestCount": 8,
                         "firstHarvestedAt": null,
                         "lastHarvestedAt": null
@@ -2108,7 +2185,7 @@ mod tests {
         parsed.normalize_garden();
         assert!(parsed.garden.produce_migration_claimed);
         assert_eq!(parsed.garden.produce.len(), 1);
-        assert_eq!(parsed.garden.produce[0].crop_type, BASIC_CROP_TYPE);
+        assert_eq!(parsed.garden.produce[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(parsed.garden.produce[0].count, 8);
     }
 
@@ -2175,7 +2252,7 @@ mod tests {
         harvest_crop_in_state(&mut state, "2026-05-19", now).unwrap();
 
         assert_eq!(state.garden.collection.len(), 1);
-        assert_eq!(state.garden.collection[0].crop_type, BASIC_CROP_TYPE);
+        assert_eq!(state.garden.collection[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(state.garden.collection[0].harvest_count, 1);
         let basic_seed_count = state
             .garden
@@ -2186,7 +2263,7 @@ mod tests {
             .unwrap_or(0);
         assert!((INITIAL_BASIC_SEEDS..=INITIAL_BASIC_SEEDS + 2).contains(&basic_seed_count));
         assert_eq!(state.garden.produce.len(), 1);
-        assert_eq!(state.garden.produce[0].crop_type, BASIC_CROP_TYPE);
+        assert_eq!(state.garden.produce[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(state.garden.produce[0].count, 1);
         assert!(state.garden.crops.is_empty());
         plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
@@ -2240,23 +2317,23 @@ mod tests {
             garden: GardenState::default(),
         };
 
-        assert!(exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).is_err());
+        assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).is_err());
 
-        add_produce(&mut state.garden, BASIC_CROP_TYPE, 1);
-        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).unwrap();
+        add_produce(&mut state.garden, POTATO_CROP_TYPE, 1);
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).unwrap();
 
         let basic_produce_count = state
             .garden
             .produce
             .iter()
-            .find(|item| item.crop_type == BASIC_CROP_TYPE)
+            .find(|item| item.crop_type == POTATO_CROP_TYPE)
             .map(|item| item.count)
             .unwrap_or(0);
         let advanced_seed_count = state
             .garden
             .seeds
             .iter()
-            .find(|item| item.seed_type == ADVANCED_SEED_TYPE)
+            .find(|item| item.seed_type == BELL_PEPPER_SEED_TYPE)
             .map(|item| item.count)
             .unwrap_or(0);
 
@@ -2275,9 +2352,9 @@ mod tests {
             garden: GardenState::default(),
         };
 
-        add_produce(&mut state.garden, BASIC_CROP_TYPE, 2);
-        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, ADVANCED_SEED_TYPE).unwrap();
-        exchange_produce_in_state(&mut state, BASIC_CROP_TYPE, PEA_SEED_TYPE).unwrap();
+        add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).unwrap();
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, PEA_SEED_TYPE).unwrap();
 
         let pea_seed_count = state
             .garden
@@ -2290,7 +2367,7 @@ mod tests {
             .garden
             .seeds
             .iter()
-            .find(|item| item.seed_type == ADVANCED_SEED_TYPE)
+            .find(|item| item.seed_type == BELL_PEPPER_SEED_TYPE)
             .map(|item| item.count)
             .unwrap_or(0);
 
@@ -2309,14 +2386,14 @@ mod tests {
             garden: GardenState::default(),
         };
 
-        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, PEA_SEED_TYPE).is_ok());
+        add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE).is_ok());
 
-        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 1);
-        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, TOMATO_SEED_TYPE).is_err());
+        add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 1);
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE).is_err());
 
-        add_produce(&mut state.garden, ADVANCED_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, ADVANCED_CROP_TYPE, TOMATO_SEED_TYPE).is_ok());
+        add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE).is_ok());
     }
 
     #[test]

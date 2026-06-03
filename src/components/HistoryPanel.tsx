@@ -41,7 +41,7 @@ export function HistoryPanel({
   onStartRest
 }: HistoryPanelProps) {
   const { t } = useI18n();
-  const gridCells = buildHistoryGrid(history, 56);
+  const gridCells = buildHistoryGrid(history, 28);
   const activeCrops = gardenState.crops.filter((crop) => !crop.harvestedAt);
   const cropsByDay = new Map(activeCrops.map((crop) => [crop.dayKey, crop]));
   const seedCountByType = useMemo(

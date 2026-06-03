@@ -4,7 +4,12 @@ export function PixelIcon({ src, size = 24 }: { src: string; size?: number }) {
       src={src}
       alt=""
       className="shrink-0"
-      style={{ width: size, height: size, imageRendering: "pixelated" }}
+      style={{
+        width: size,
+        height: size,
+        objectFit: "contain",
+        imageRendering: "auto"
+      }}
     />
   );
 }

@@ -54,10 +54,12 @@ export function GardenInventoryCard({
               return (
                 <span
                   key={seedType}
+                  title={definition.seedLabel}
+                  aria-label={`${definition.seedLabel} x ${count}`}
                   className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
                 >
-                  <PixelIcon src={definition.seedIcon} size={26} />
-                  {definition.seedLabel} x {count}
+                  <PixelIcon src={definition.seedIcon} size={30} />
+                  <span className="tabular-nums">x {count}</span>
                 </span>
               );
             })}
@@ -80,10 +82,12 @@ export function GardenInventoryCard({
               return (
                 <span
                   key={cropType}
+                  title={definition.cropLabel}
+                  aria-label={`${definition.cropLabel} x ${count}`}
                   className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
                 >
-                  <PixelIcon src={definition.cropIcon} size={26} />
-                  {definition.cropLabel} x {count}
+                  <PixelIcon src={definition.cropIcon} size={30} />
+                  <span className="tabular-nums">x {count}</span>
                 </span>
               );
             })}
