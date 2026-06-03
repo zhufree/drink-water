@@ -14,13 +14,15 @@
       {
         "title": "Drink Water",
         "label": "main",
-        "width": 460,
-        "height": 760,
-        "minWidth": 380,
-        "minHeight": 640,
+        "width": 520,
+        "height": 935,
+        "minWidth": 520,
+        "minHeight": 935,
+        "maxWidth": 520,
+        "maxHeight": 935,
         "visible": true,
         "decorations": false,
-        "resizable": true,
+        "resizable": false,
         "fullscreen": false
       }
     ],
