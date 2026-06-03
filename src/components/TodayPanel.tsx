@@ -40,7 +40,7 @@ export function TodayPanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <article className="panel-surface rounded-[22px] p-4">
         <div className="mb-4 flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -56,16 +56,16 @@ export function TodayPanel({
                 </strong>
               </div>
             </div>
-            <div className="min-w-[88px] rounded-2xl bg-white/5 px-3 py-2 text-center">
-              <span className="block text-xs text-slate-300/70">{t("today.progress")}</span>
-              <strong className="mt-1 block text-3xl font-bold text-slate-50">
+            <div className="min-w-[88px] rounded-2xl border border-white/8 bg-white/4 px-3 py-2 text-center">
+              <span className="text-clarity block text-xs text-slate-300/70">{t("today.progress")}</span>
+              <strong className="text-clarity mt-1 block text-3xl font-bold text-slate-50">
                 {progressPercent}%
               </strong>
             </div>
           </div>
         </div>
 
-        <div className="relative h-14 overflow-hidden rounded-full border border-white/10 bg-white/5">
+        <div className="relative h-14 overflow-hidden rounded-full border border-white/8 bg-white/4">
           {expectedWidth > 0 ? (
             <div
               className="absolute inset-y-0 left-0 rounded-l-full rounded-r-none bg-gradient-to-r from-sky-400/35 to-blue-500/35"
@@ -82,37 +82,37 @@ export function TodayPanel({
 
           {actualWidth > 0 ? (
             <div
-              className="absolute inset-y-0 left-0 rounded-l-full rounded-r-none bg-gradient-to-r from-emerald-300 to-emerald-500 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.16)]"
+              className="absolute inset-y-0 left-0 rounded-l-full rounded-r-none bg-gradient-to-r from-emerald-300 to-emerald-500"
               style={{ width: `${actualWidth}%` }}
             />
           ) : null}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-black/18 px-3 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-100">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white/35 ring-4 ring-white/6" />
-            {t("today.target", { amount: formatMl(status.targetMl) })}
+            <span className="text-clarity">{t("today.target", { amount: formatMl(status.targetMl) })}</span>
           </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-sky-300/10 bg-sky-400/8 px-3 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-sky-300/10 bg-sky-400/8 px-3 py-2 text-sm text-slate-100">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-sky-400/80 ring-4 ring-sky-400/10" />
-            {t("today.expected", { amount: formatMl(status.expectedMl) })}
+            <span className="text-clarity">{t("today.expected", { amount: formatMl(status.expectedMl) })}</span>
           </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-emerald-300/10 bg-emerald-400/8 px-3 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-emerald-300/10 bg-emerald-400/8 px-3 py-2 text-sm text-slate-100">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-4 ring-emerald-400/10" />
-            {t("today.actual", { amount: formatMl(status.actualIntakeMl) })}
+            <span className="text-clarity">{t("today.actual", { amount: formatMl(status.actualIntakeMl) })}</span>
           </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-rose-300/10 bg-rose-400/8 px-3 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-rose-300/10 bg-rose-400/8 px-3 py-2 text-sm text-slate-100">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400 ring-4 ring-rose-400/10" />
-            {t("today.debt", { amount: formatMl(status.debtMl) })}
+            <span className="text-clarity">{t("today.debt", { amount: formatMl(status.debtMl) })}</span>
           </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-white/6 px-3 py-2 text-sm text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] col-span-2">
+          <span className="col-span-2 inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-100">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-slate-300/70 ring-4 ring-white/6" />
-            {t("today.remaining", { amount: formatMl(status.remainingMl) })}
+            <span className="text-clarity">{t("today.remaining", { amount: formatMl(status.remainingMl) })}</span>
           </span>
         </div>
       </article>
 
-      <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <article className="panel-surface rounded-[22px] p-4">
         <div className="mb-4">
           <div>
             <h2 className="m-0 text-lg font-semibold text-slate-50">{t("today.quickLog")}</h2>
@@ -121,16 +121,16 @@ export function TodayPanel({
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-[18px] border border-white/8 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="rounded-[18px] border border-white/8 bg-white/4 p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <span className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300/68">
                 Amount
               </span>
-              <div className="rounded-[16px] bg-white/8 px-4 py-2 text-right shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                <span className="text-[11px] uppercase tracking-[0.2em] text-slate-300/55">
+              <div className="rounded-[16px] border border-white/8 bg-white/5 px-4 py-2 text-right">
+                <span className="text-clarity text-[11px] uppercase tracking-[0.2em] text-slate-300/55">
                   Current
                 </span>
-                <div className="text-2xl font-semibold leading-none text-slate-50">
+                <div className="text-clarity text-2xl font-semibold leading-none text-slate-50">
                   {quickAmount}
                   <span className="ml-1 text-sm font-medium text-slate-300/80">ml</span>
                 </div>
@@ -140,21 +140,21 @@ export function TodayPanel({
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
               <button
                 onClick={() => setQuickAmount((value) => Math.max(cupStep, value - cupStep))}
-                className="rounded-[14px] bg-white/8 px-3 py-3 text-sm font-medium text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
+                className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
               >
-                -{cupStep} ml
+                <span className="text-clarity">-{cupStep} ml</span>
               </button>
               <button
                 onClick={() => setQuickAmount(settings.cupSizeMl)}
-                className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-3 text-sm font-medium text-slate-200 transition hover:-translate-y-px hover:bg-white/12"
+                className="rounded-[14px] border border-white/8 bg-white/4 px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/8"
               >
-                {t("today.resetToCup")}
+                <span className="text-clarity">{t("today.resetToCup")}</span>
               </button>
               <button
                 onClick={() => setQuickAmount((value) => value + cupStep)}
-                className="rounded-[14px] bg-white/8 px-3 py-3 text-sm font-medium text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
+                className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
               >
-                +{cupStep} ml
+                <span className="text-clarity">+{cupStep} ml</span>
               </button>
             </div>
           </div>
@@ -162,23 +162,23 @@ export function TodayPanel({
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => onLog(settings.cupSizeMl)}
-              className="rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-4 text-left text-slate-950 shadow-[0_12px_30px_rgba(78,226,194,0.28)] transition hover:-translate-y-px"
+              className="no-text-clarity rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-4 text-left text-slate-950 transition hover:brightness-105"
             >
-              <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-900/60">
+              <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-900/60">
                 Default
               </span>
-              <span className="mt-2 block text-lg font-semibold leading-tight">
+              <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
                 {t("today.logOneCup", { amount: formatMl(settings.cupSizeMl) })}
               </span>
             </button>
             <button
               onClick={() => onLog(quickAmount)}
-              className="rounded-[18px] border border-white/10 bg-white/10 px-4 py-4 text-left text-slate-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:-translate-y-px hover:bg-white/14"
+              className="rounded-[18px] border border-white/8 bg-white/5 px-4 py-4 text-left text-slate-50 transition hover:bg-white/8"
             >
-              <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-300/62">
+              <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-300/62">
                 Adjusted
               </span>
-              <span className="mt-2 block text-lg font-semibold leading-tight">
+              <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
                 {t("today.logAmount", { amount: formatMl(quickAmount) })}
               </span>
             </button>
@@ -187,13 +187,15 @@ export function TodayPanel({
           <button
             onClick={onUndo}
             disabled={!status.canUndoLastDrink}
-            className="w-full rounded-[16px] border border-rose-300/12 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-50 transition hover:-translate-y-px hover:bg-rose-400/14 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+            className="w-full rounded-[16px] border border-rose-300/12 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-50 transition hover:bg-rose-400/14 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {status.lastLoggedAmountMl
-              ? t("today.undoAmount", {
-                  amount: formatMl(status.lastLoggedAmountMl)
-                })
-              : t("today.undoLastLog")}
+            <span className="text-clarity">
+              {status.lastLoggedAmountMl
+                ? t("today.undoAmount", {
+                    amount: formatMl(status.lastLoggedAmountMl)
+                  })
+                : t("today.undoLastLog")}
+            </span>
           </button>
         </div>
       </article>

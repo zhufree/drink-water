@@ -41,7 +41,7 @@ export function HistoryHeatmapCard({
   const selectedDefinition = getCropDefinitionBySeed(selectedSeedType);
 
   return (
-    <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+    <article className="panel-surface rounded-[22px] p-4">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3 className="m-0 text-lg font-semibold text-slate-50">{t("history.heatmapTitle")}</h3>
@@ -77,7 +77,7 @@ export function HistoryHeatmapCard({
         <span>{t("history.oldestLast", { day: formatShortDay(oldestGridDay) })}</span>
       </div>
 
-      <div className="mb-3 rounded-[16px] bg-white/5 p-3">
+      <div className="mb-3 rounded-[16px] border border-white/8 bg-white/4 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-300/78">当前播种：</span>
           {selectableSeeds.length > 0 ? (
@@ -94,7 +94,7 @@ export function HistoryHeatmapCard({
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
                     selected
                       ? "border-emerald-200/70 bg-emerald-300/18 text-emerald-50"
-                      : "border-white/10 bg-white/5 text-slate-200 hover:border-white/20 hover:bg-white/8"
+                      : "border-white/8 bg-white/4 text-slate-200 hover:border-white/12 hover:bg-white/7"
                   }`}
                 >
                   <PixelIcon src={definition.seedIcon} size={30} />
@@ -149,9 +149,9 @@ export function HistoryHeatmapCard({
                 }
               }}
               disabled={!canPlant && !canHarvest}
-              className={`relative aspect-square overflow-hidden rounded-[5px] border border-white/8 bg-white/6 text-[10px] transition ${
+              className={`relative aspect-square overflow-hidden rounded-[5px] border border-white/8 bg-white/4 text-[10px] transition ${
                 canPlant || canHarvest
-                  ? "cursor-pointer hover:-translate-y-0.5 hover:border-emerald-200/60"
+                  ? "cursor-pointer hover:border-emerald-200/60"
                   : "cursor-default"
               }`}
             >

@@ -7,7 +7,6 @@ type GardenInventoryCardProps = {
   produceEntries: Array<[string, number]>;
   totalSeedCount: number;
   totalProduceCount: number;
-  canOpenExchange: boolean;
   onOpenExchange: () => void;
 };
 
@@ -16,13 +15,13 @@ export function GardenInventoryCard({
   produceEntries,
   totalSeedCount,
   totalProduceCount,
-  canOpenExchange,
   onOpenExchange
 }: GardenInventoryCardProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const isZh = locale === "zh-CN";
 
   return (
-    <article className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+    <article className="panel-surface rounded-[22px] p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="m-0 text-lg font-semibold text-slate-50">{t("garden.inventoryTitle")}</h3>
@@ -31,14 +30,9 @@ export function GardenInventoryCard({
         <button
           type="button"
           onClick={onOpenExchange}
-          disabled={!canOpenExchange}
-          className={`rounded-[14px] px-3 py-2 text-sm font-semibold transition ${
-            canOpenExchange
-              ? "bg-amber-200 text-slate-950 hover:-translate-y-px hover:bg-amber-100"
-              : "cursor-not-allowed bg-white/10 text-slate-400"
-          }`}
+          className="no-text-clarity rounded-[14px] bg-amber-200 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-100"
         >
-          {t("garden.exchangeTitle")}
+          {isZh ? "兑换中心" : "Exchange hub"}
         </button>
       </div>
 

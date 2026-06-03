@@ -5,7 +5,7 @@ export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.5.6";
+export const APP_VERSION = "0.5.7";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -13,6 +13,8 @@ export const defaultSettings: Settings = {
   dailyTargetMl: 2000,
   cupSizeMl: 250,
   cupStepMl: 50,
+  panelOpacityPercent: 68,
+  panelBlurPx: 8,
   deviceId: "",
   displayName: "",
   activeCircleCode: "",
@@ -31,6 +33,8 @@ export const defaultGardenState: GardenState = {
   produce: [],
   crops: [],
   collection: [],
+  activeBackground: "default",
+  unlockedBackgrounds: [],
   rest: {
     active: false,
     startedAt: null,

@@ -13,6 +13,7 @@ import {
   BASIC_CROP_TYPE,
   BASIC_SEED_TYPE,
   EXCHANGE_OPTIONS,
+  RADISH_CROP_TYPE,
   buildHistoryGrid,
   getCropDefinitionByCrop,
   getUpcomingBoostHours,
@@ -27,6 +28,7 @@ type HistoryPanelProps = {
   onPlantSeed: (dayKey: string, seedType: string) => void;
   onHarvestCrop: (dayKey: string) => void;
   onExchangeProduce: (sourceCropType: string, targetSeedType: string) => void;
+  onRedeemBackgroundReward: (rewardId: string) => void;
   onStartRest: () => void;
 };
 
@@ -38,6 +40,7 @@ export function HistoryPanel({
   onPlantSeed,
   onHarvestCrop,
   onExchangeProduce,
+  onRedeemBackgroundReward,
   onStartRest
 }: HistoryPanelProps) {
   const { t } = useI18n();
@@ -97,12 +100,10 @@ export function HistoryPanel({
   }, [selectableSeeds, selectedSeedType]);
 
   useEffect(() => {
-    if (availableExchangeSources.length === 0) {
-      setExchangeOpen(false);
-      return;
-    }
     if (!availableExchangeSources.some((entry) => entry.cropType === selectedSourceCropType)) {
-      setSelectedSourceCropType(availableExchangeSources[0].cropType);
+      if (availableExchangeSources.length > 0) {
+        setSelectedSourceCropType(availableExchangeSources[0].cropType);
+      }
     }
   }, [availableExchangeSources, selectedSourceCropType]);
 
@@ -124,7 +125,10 @@ export function HistoryPanel({
   const selectedSeedCount = seedCountByType.get(selectedSeedType) ?? 0;
   const totalSeedCount = seedEntries.reduce((total, [, count]) => total + count, 0);
   const totalProduceCount = produceEntries.reduce((total, [, count]) => total + count, 0);
-  const canOpenExchange = availableExchangeSources.length > 0;
+  const potatoCount = produceCountByType.get(BASIC_CROP_TYPE) ?? 0;
+  const radishCount = produceCountByType.get(RADISH_CROP_TYPE) ?? 0;
+  const backgroundUnlocked = gardenState.unlockedBackgrounds.includes("catCollage");
+  const backgroundReady = potatoCount >= 6 && radishCount >= 6;
   const canConfirmExchange = Boolean(
     selectedSourceEntry &&
       selectedTargetOption &&
@@ -144,7 +148,7 @@ export function HistoryPanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <div className="panel-surface panel-surface-flat rounded-[22px] p-4">
         <h2 className="m-0 text-lg font-semibold text-slate-50">{t("history.title")}</h2>
         <p className="mt-1 text-sm text-slate-300/78">{t("history.description")}</p>
       </div>
@@ -175,7 +179,6 @@ export function HistoryPanel({
         produceEntries={produceEntries}
         totalSeedCount={totalSeedCount}
         totalProduceCount={totalProduceCount}
-        canOpenExchange={canOpenExchange}
         onOpenExchange={() => setExchangeOpen(true)}
       />
 
@@ -189,9 +192,14 @@ export function HistoryPanel({
         selectedTargetSeedType={selectedTargetSeedType}
         selectedTargetOption={selectedTargetOption}
         canConfirmExchange={canConfirmExchange}
+        backgroundUnlocked={backgroundUnlocked}
+        backgroundReady={backgroundReady}
+        rewardPotatoCount={potatoCount}
+        rewardRadishCount={radishCount}
         onClose={() => setExchangeOpen(false)}
         onSelectSource={setSelectedSourceCropType}
         onSelectTarget={setSelectedTargetSeedType}
+        onRedeemBackgroundReward={() => onRedeemBackgroundReward("catCollage")}
         onConfirmExchange={() => {
           if (!selectedTargetOption) {
             return;

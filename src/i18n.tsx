@@ -64,6 +64,10 @@ type TranslationKey =
   | "settings.intervalHelp"
   | "settings.startHour"
   | "settings.endHour"
+  | "settings.panelOpacity"
+  | "settings.panelOpacityHelp"
+  | "settings.panelBlur"
+  | "settings.panelBlurHelp"
   | "settings.language"
   | "settings.notifications"
   | "settings.autostart"
@@ -241,6 +245,10 @@ const enUs: TranslationTable = {
   "settings.intervalHelp": "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
   "settings.startHour": "Start hour",
   "settings.endHour": "End hour",
+  "settings.panelOpacity": "Panel opacity",
+  "settings.panelOpacityHelp": "Higher values make cards more solid and easier to read over the wallpaper.",
+  "settings.panelBlur": "Panel blur",
+  "settings.panelBlurHelp": "Lower values reduce the frosted glass effect. Set it to 0 for a crisp background.",
   "settings.language": "Interface language",
   "settings.notifications": "System notifications",
   "settings.autostart": "Launch at startup",

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { LeaderboardPanel } from "./components/LeaderboardPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
@@ -17,16 +18,30 @@ import {
 
 export default function App() {
   const controller = useAppController();
+  const panelOpacity = controller.draftSettings.panelOpacityPercent / 100;
+  const shellStyle = {
+    "--panel-opacity": `${panelOpacity}`,
+    "--panel-blur": `${controller.draftSettings.panelBlurPx}px`
+  } as CSSProperties;
+  const activeBackground = controller.gardenState.activeBackground || "default";
 
   return (
     <I18nProvider locale={controller.locale}>
       {controller.loading || !controller.status ? (
-        <main className="app-shell grid h-screen place-items-center px-[14px] py-[12px] text-slate-100">
+        <main
+          className="app-shell grid h-screen place-items-center px-[14px] py-[12px] text-slate-100"
+          style={shellStyle}
+          data-background-theme={activeBackground}
+        >
           <div className="app-shell__overlay" />
           <div className="relative z-10">{controller.i18n.t("app.loading")}</div>
         </main>
       ) : (
-        <main className="app-shell relative flex h-screen flex-col overflow-hidden px-[14px] py-[12px]">
+        <main
+          className="app-shell relative flex h-screen flex-col overflow-hidden px-[14px] py-[12px]"
+          style={shellStyle}
+          data-background-theme={activeBackground}
+        >
           <div className="app-shell__overlay" />
           <div className="relative z-10 flex min-h-0 flex-1 flex-col">
             {controller.gardenState.rest.active ? (
@@ -97,6 +112,9 @@ export default function App() {
                   onExchangeProduce={(sourceCropType, targetSeedType) =>
                     void controller.handleExchangeProduce(sourceCropType, targetSeedType)
                   }
+                  onRedeemBackgroundReward={(rewardId) =>
+                    void controller.handleRedeemBackgroundReward(rewardId)
+                  }
                   onStartRest={() => void controller.handleStartRestBreak()}
                 />
               ) : null}
@@ -142,6 +160,7 @@ export default function App() {
               {controller.activeTab === "settings" ? (
                 <SettingsPanel
                   draftSettings={controller.draftSettings}
+                  activeBackground={activeBackground}
                   reminderIntervalMinutes={controller.reminderMeta.reminderIntervalMinutes}
                   drinksPerDay={controller.reminderMeta.drinksPerDay}
                   version={APP_VERSION}
@@ -156,6 +175,7 @@ export default function App() {
                   }
                   onExportData={() => void controller.handleExportData()}
                   onImportData={() => void controller.handleImportData()}
+                  onPreviewBackgroundChange={controller.handlePreviewBackgroundChange}
                   onSave={() => void controller.handleSaveSettings()}
                 />
               ) : null}

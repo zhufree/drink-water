@@ -82,7 +82,7 @@ export function LeaderboardPanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <div className="panel-surface rounded-[22px] p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="m-0 text-lg font-semibold text-slate-50">{t("leaderboard.title")}</h2>
@@ -92,7 +92,7 @@ export function LeaderboardPanel({
             onClick={onRefresh}
             title={loading ? t("leaderboard.loading") : t("leaderboard.refresh")}
             aria-label={loading ? t("leaderboard.loading") : t("leaderboard.refresh")}
-            className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/8 text-slate-100 transition hover:-translate-y-px hover:bg-white/14"
+            className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/8 text-slate-100 transition hover:bg-white/14"
           >
             <RefreshCw className={`h-[18px] w-[18px] ${loading ? "animate-spin" : ""}`} strokeWidth={1.9} />
           </button>
@@ -138,8 +138,8 @@ export function LeaderboardPanel({
                 onClick={() => onMetricChange("intake")}
                 className={`rounded-[14px] px-3 py-2.5 text-sm font-semibold transition ${
                   metric === "intake"
-                    ? "bg-gradient-to-r from-sky-300 to-blue-500 text-slate-950"
-                    : "bg-white/7 text-slate-100 hover:-translate-y-px"
+                    ? "no-text-clarity bg-gradient-to-r from-sky-300 to-blue-500 text-slate-950"
+                    : "bg-white/5 text-slate-100 hover:bg-white/8"
                 }`}
               >
                 {t("leaderboard.metricIntake")}
@@ -148,15 +148,15 @@ export function LeaderboardPanel({
                 onClick={() => onMetricChange("progress")}
                 className={`rounded-[14px] px-3 py-2.5 text-sm font-semibold transition ${
                   metric === "progress"
-                    ? "bg-gradient-to-r from-emerald-300 to-cyan-300 text-slate-950"
-                    : "bg-white/7 text-slate-100 hover:-translate-y-px"
+                    ? "no-text-clarity bg-gradient-to-r from-emerald-300 to-cyan-300 text-slate-950"
+                    : "bg-white/5 text-slate-100 hover:bg-white/8"
                 }`}
               >
                 {t("leaderboard.metricProgress")}
               </button>
             </div>
 
-            <div className="mt-3 rounded-[22px] border border-white/8 bg-[rgba(255,255,255,0.04)] p-4">
+            <div className="mt-3">
               {leaderboard.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {leaderboard.map((entry) => (
@@ -252,7 +252,7 @@ export function LeaderboardPanel({
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <div className="panel-surface rounded-[22px] p-4">
         <label className="flex flex-col gap-2">
           <span className="text-sm text-slate-300/70">{t("leaderboard.displayName")}</span>
           <div className="flex gap-3">
@@ -276,7 +276,7 @@ export function LeaderboardPanel({
         </p>
       </div>
 
-      <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+      <div className="panel-surface rounded-[22px] p-4">
         <strong className="text-sm font-semibold text-slate-50">{t("leaderboard.circleTitle")}</strong>
         <p className="mt-2 text-sm text-slate-300/78">{t("leaderboard.circleDescription")}</p>
 
@@ -345,7 +345,7 @@ export function LeaderboardPanel({
                   onClick={() => onSelectCircle(circle)}
                   className={`rounded-full px-3 py-2 text-sm transition ${
                     active
-                      ? "bg-gradient-to-r from-sky-300 to-blue-500 font-semibold text-slate-950 shadow-[0_10px_26px_rgba(59,130,246,0.28)]"
+                      ? "no-text-clarity bg-gradient-to-r from-sky-300 to-blue-500 font-semibold text-slate-950 shadow-[0_10px_26px_rgba(59,130,246,0.28)]"
                       : "border border-white/10 bg-white/7 text-slate-100 hover:-translate-y-px hover:border-cyan-200/30 hover:bg-white/10"
                   }`}
                 >

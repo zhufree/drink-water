@@ -22,11 +22,11 @@ export function PrimaryTabs({ activeTab, onChange }: PrimaryTabsProps) {
           onClick={() => onChange(tab.key)}
           className={`rounded-[14px] px-3 py-2.5 text-base font-semibold transition ${
             activeTab === tab.key
-              ? "bg-gradient-to-r from-sky-300 to-blue-500 text-slate-950"
-              : "bg-white/7 text-slate-100 hover:-translate-y-px"
+              ? "no-text-clarity bg-gradient-to-r from-sky-300 to-blue-500 text-slate-950"
+              : "border border-white/8 bg-white/5 text-slate-100 hover:bg-white/8"
           }`}
         >
-          {tab.label}
+          <span className="text-clarity">{tab.label}</span>
         </button>
       ))}
     </nav>

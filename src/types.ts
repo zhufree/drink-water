@@ -4,6 +4,8 @@ export type Settings = {
   dailyTargetMl: number;
   cupSizeMl: number;
   cupStepMl: number;
+  panelOpacityPercent: number;
+  panelBlurPx: number;
   deviceId: string;
   displayName: string;
   activeCircleCode: string;
@@ -75,6 +77,8 @@ export type GardenState = {
   produce: ProduceInventoryItem[];
   crops: PlantedCrop[];
   collection: GardenCollectionItem[];
+  activeBackground: string;
+  unlockedBackgrounds: string[];
   rest: RestState;
 };
 

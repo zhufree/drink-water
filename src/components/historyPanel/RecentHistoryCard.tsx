@@ -9,13 +9,13 @@ export function RecentHistoryCard({ recentItems }: RecentHistoryCardProps) {
   const { t, formatMl, formatShortDay } = useI18n();
 
   return (
-    <div className="rounded-[22px] border border-white/8 bg-[rgba(7,13,24,0.52)] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.24)] backdrop-blur-md">
+    <div className="panel-surface rounded-[22px] p-4">
       <h3 className="m-0 text-lg font-semibold text-slate-50">{t("history.recentTitle")}</h3>
       <div className="mt-4 flex flex-col gap-2">
         {recentItems.map((item) => (
           <article
             key={item.dayKey}
-            className="flex flex-col gap-2 rounded-[18px] bg-white/5 p-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-2 rounded-[18px] border border-white/8 bg-white/4 p-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <strong className="text-sm font-semibold text-slate-50">

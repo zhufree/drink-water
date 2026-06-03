@@ -30,6 +30,9 @@ export const harvestCrop = (dayKey: string) =>
 export const exchangeProduce = (sourceCropType: string, targetSeedType: string) =>
   invoke<GardenState>("exchange_produce", { sourceCropType, targetSeedType });
 
+export const redeemBackgroundReward = (rewardId: string) =>
+  invoke<GardenState>("redeem_background_reward", { rewardId });
+
 export const startRestBreak = () =>
   invoke<GardenState>("start_rest_break");
 

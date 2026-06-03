@@ -14,6 +14,7 @@ import {
   logYesterdayDrink,
   logDrink,
   plantSeed,
+  redeemBackgroundReward,
   saveSettings,
   startRestBreak,
   toggleAutostart,
@@ -220,6 +221,29 @@ export function useAppController() {
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
+  };
+
+  const handleRedeemBackgroundReward = async (rewardId: string) => {
+    setMessage("");
+    try {
+      const nextGardenState = await redeemBackgroundReward(rewardId);
+      setGardenState(nextGardenState);
+      setMessage(
+        locale === "zh-CN"
+          ? "已兑换猫猫背景，并自动应用。"
+          : "Unlocked the cat collage background and applied it."
+      );
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handlePreviewBackgroundChange = (backgroundId: string) => {
+    setGardenState((current) => ({
+      ...current,
+      activeBackground: backgroundId
+    }));
+    setMessage("");
   };
 
   const handleStartRestBreak = async () => {
@@ -505,6 +529,8 @@ export function useAppController() {
     handlePlantSeed,
     handleHarvestCrop,
     handleExchangeProduce,
+    handleRedeemBackgroundReward,
+    handlePreviewBackgroundChange,
     handleStartRestBreak,
     handleCancelRestBreak,
     handleCreateCircle,

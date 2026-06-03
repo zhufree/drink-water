@@ -27,10 +27,10 @@ export function WindowChrome({
             data-tauri-drag-region
           />
           <div data-tauri-drag-region>
-            <strong className="block text-[13px] font-semibold text-slate-50" data-tauri-drag-region>
+            <strong className="text-clarity block text-[13px] font-semibold text-slate-50" data-tauri-drag-region>
               Drink Water
             </strong>
-            <span className="block text-[11px] text-slate-300/80" data-tauri-drag-region>
+            <span className="text-clarity block text-[11px] text-slate-300/80" data-tauri-drag-region>
               {t("window.subtitle")}
             </span>
           </div>
@@ -48,7 +48,7 @@ export function WindowChrome({
               : "bg-white/8 text-slate-200 hover:bg-white/14"
           }`}
         >
-          <Settings className="h-4 w-4" strokeWidth={1.9} />
+          <Settings className="icon-clarity h-4 w-4" strokeWidth={1.9} />
         </button>
         <button
           type="button"
@@ -56,7 +56,7 @@ export function WindowChrome({
           onClick={onMinimize}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >
-          <Minus className="h-4 w-4" strokeWidth={2.2} />
+          <Minus className="icon-clarity h-4 w-4" strokeWidth={2.2} />
         </button>
         <button
           type="button"
@@ -64,7 +64,7 @@ export function WindowChrome({
           onClick={onHide}
           className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-sm text-slate-200 transition hover:bg-white/14"
         >
-          <X className="h-4 w-4" strokeWidth={2.2} />
+          <X className="icon-clarity h-4 w-4" strokeWidth={2.2} />
         </button>
       </div>
     </header>
