@@ -1,0 +1,47 @@
+﻿[
+  {
+    "id": "catCollage",
+    "title": {
+      "zh-CN": "奶盖乌龙",
+      "en-US": "Cat collage"
+    },
+    "description": {
+      "zh-CN": "by 北极圈",
+      "en-US": "by 北极圈"
+    },
+    "previewAsset": "bg1",
+    "redeemable": true,
+    "requirements": [
+      { "cropType": "potato", "count": 6 },
+      { "cropType": "carrot", "count": 6 }
+    ]
+  },
+  {
+    "id": "bg2",
+    "title": {
+      "zh-CN": "三发猎鱼弓",
+      "en-US": "Three-Strike Angler"
+    },
+    "description": {
+      "zh-CN": "当前仅作预览展示，暂不开放兑换。",
+      "en-US": "Preview only for now. This background is not redeemable yet."
+    },
+    "previewAsset": "bg2",
+    "redeemable": false,
+    "requirements": []
+  },
+  {
+    "id": "bg3",
+    "title": {
+      "zh-CN": "斯普拉顿三周年",
+      "en-US": "Splatoon 3 Anniversary"
+    },
+    "description": {
+      "zh-CN": "当前仅作预览展示，暂不开放兑换。",
+      "en-US": "Preview only for now. This background is not redeemable yet."
+    },
+    "previewAsset": "bg3",
+    "redeemable": false,
+    "requirements": []
+  }
+]

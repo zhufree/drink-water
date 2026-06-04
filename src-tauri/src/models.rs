@@ -189,12 +189,115 @@ fn default_garden_state() -> GardenState {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncMeta {
+    #[serde(default)]
+    account_id: Option<String>,
+    #[serde(default)]
+    pairing_device_id: String,
+    #[serde(default)]
+    last_startup_catch_up_prompt_day: Option<String>,
+    #[serde(default)]
+    last_daily_pull_at: Option<String>,
+    #[serde(default)]
+    last_garden_pull_at: Option<String>,
+    #[serde(default)]
+    last_backup_at: Option<String>,
+    #[serde(default)]
+    daily_snapshot_updated_at_by_day: BTreeMap<String, String>,
+    #[serde(default)]
+    daily_snapshot_updated_by_device_id_by_day: BTreeMap<String, String>,
+    #[serde(default)]
+    garden_updated_at: Option<String>,
+    #[serde(default)]
+    garden_updated_by_device_id: Option<String>,
+}
+
+impl Default for SyncMeta {
+    fn default() -> Self {
+        Self {
+            account_id: None,
+            pairing_device_id: String::new(),
+            last_startup_catch_up_prompt_day: None,
+            last_daily_pull_at: None,
+            last_garden_pull_at: None,
+            last_backup_at: None,
+            daily_snapshot_updated_at_by_day: BTreeMap::new(),
+            daily_snapshot_updated_by_device_id_by_day: BTreeMap::new(),
+            garden_updated_at: None,
+            garden_updated_by_device_id: None,
+        }
+    }
+}
+
+impl SyncMeta {
+    fn with_device_id(device_id: &str) -> Self {
+        Self {
+            pairing_device_id: device_id.to_string(),
+            ..Self::default()
+        }
+    }
+
+    fn normalize(&mut self, device_id: &str) {
+        self.account_id = self
+            .account_id
+            .as_ref()
+            .map(|value| value.trim().chars().take(128).collect::<String>())
+            .filter(|value| !value.is_empty());
+        self.last_startup_catch_up_prompt_day = self
+            .last_startup_catch_up_prompt_day
+            .as_ref()
+            .map(|value| value.trim().chars().take(32).collect::<String>())
+            .filter(|value| !value.is_empty());
+        self.pairing_device_id = device_id.trim().chars().take(128).collect();
+        self.daily_snapshot_updated_at_by_day
+            .retain(|day_key, updated_at| !day_key.trim().is_empty() && !updated_at.trim().is_empty());
+        self.daily_snapshot_updated_by_device_id_by_day
+            .retain(|day_key, device_id| !day_key.trim().is_empty() && !device_id.trim().is_empty());
+        self.garden_updated_by_device_id = self
+            .garden_updated_by_device_id
+            .as_ref()
+            .map(|value| value.trim().chars().take(128).collect::<String>())
+            .filter(|value| !value.is_empty());
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DailySnapshotRecord {
+    day_key: String,
+    snapshot: HistoryItem,
+    updated_at: String,
+    updated_by_device_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GardenSnapshotRecord {
+    snapshot: GardenState,
+    updated_at: String,
+    updated_by_device_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CloudBackupMeta {
+    object_key: String,
+    created_at: String,
+    device_id: String,
+    size_bytes: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct PersistedState {
     settings: Settings,
     today: DailyRecord,
     history: Vec<HistoryItem>,
     #[serde(default = "default_garden_state")]
     garden: GardenState,
+    #[serde(default)]
+    sync_meta: SyncMeta,
 }
 
 impl PersistedState {
@@ -203,6 +306,7 @@ impl PersistedState {
         let today = DailyRecord::new(now, &settings);
 
         Self {
+            sync_meta: SyncMeta::with_device_id(&settings.device_id),
             settings,
             today,
             history: Vec::new(),
@@ -270,9 +374,7 @@ impl PersistedState {
         {
             self.garden.active_background = default_active_background();
         }
-        self.garden
-            .crops
-            .retain(|crop| crop.harvested_at.is_none());
+        self.garden.crops.retain(|crop| crop.harvested_at.is_none());
 
         if self.garden.rest.active {
             if let Some(ends_at) = &self.garden.rest.ends_at {
@@ -284,6 +386,10 @@ impl PersistedState {
                 }
             }
         }
+    }
+
+    fn normalize_sync_meta(&mut self) {
+        self.sync_meta.normalize(&self.settings.device_id);
     }
 }
 
@@ -357,6 +463,7 @@ impl AppState {
             parsed.today.debt_ml = 0;
             parsed.normalize_history();
             parsed.normalize_garden();
+            parsed.normalize_sync_meta();
             parsed
         } else {
             PersistedState::new(Local::now())
@@ -387,4 +494,3 @@ impl AppState {
         Ok(())
     }
 }
-

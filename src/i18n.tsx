@@ -82,6 +82,20 @@ type TranslationKey =
   | "settings.dataDescription"
   | "settings.exportData"
   | "settings.importData"
+  | "settings.cloudSyncTitle"
+  | "settings.cloudSyncDescription"
+  | "settings.cloudSyncPullNow"
+  | "settings.cloudSyncAccount"
+  | "settings.cloudSyncAccountMissing"
+  | "settings.cloudSyncLastPull"
+  | "settings.cloudSyncPairCode"
+  | "settings.cloudSyncPairCodeMissing"
+  | "settings.cloudSyncCreatePairCode"
+  | "settings.cloudSyncPairCodePlaceholder"
+  | "settings.cloudSyncBindDevice"
+  | "settings.cloudBackupUpload"
+  | "settings.cloudBackupRestore"
+  | "settings.cloudBackupLast"
   | "settings.save"
   | "settings.saving"
   | "settings.languageZhCn"
@@ -90,6 +104,13 @@ type TranslationKey =
   | "settings.updateAvailable"
   | "settings.downloadUpdate"
   | "settings.downloadLatest"
+  | "message.syncGapWarning"
+  | "message.backgroundSynced"
+  | "message.pairCodeCreated"
+  | "message.deviceBound"
+  | "message.snapshotsPulled"
+  | "message.cloudBackupUploaded"
+  | "message.cloudBackupRestored"
   | "leaderboard.title"
   | "leaderboard.description"
   | "leaderboard.loading"
@@ -118,6 +139,10 @@ type TranslationKey =
   | "leaderboard.circleEmpty"
   | "leaderboard.circleLoading"
   | "leaderboard.circleLoadFailed"
+  | "leaderboard.memberRemove"
+  | "leaderboard.leaveCircle"
+  | "leaderboard.disbandCircle"
+  | "leaderboard.ownerLeaveBlocked"
   | "leaderboard.metricIntake"
   | "leaderboard.metricProgress"
   | "leaderboard.intakeValue"
@@ -263,6 +288,20 @@ const enUs: TranslationTable = {
   "settings.dataDescription": "Export a backup file, or import it on a new computer to restore your history and settings.",
   "settings.exportData": "Export data",
   "settings.importData": "Import data",
+  "settings.cloudSyncTitle": "Cloud sync",
+  "settings.cloudSyncDescription": "Bind desktop and mobile into the same private sync account with a pair code. The app syncs recent hydration snapshots and garden state.",
+  "settings.cloudSyncPullNow": "Pull now",
+  "settings.cloudSyncAccount": "Sync account",
+  "settings.cloudSyncAccountMissing": "Not created yet",
+  "settings.cloudSyncLastPull": "Last pull",
+  "settings.cloudSyncPairCode": "Current pair code",
+  "settings.cloudSyncPairCodeMissing": "Not generated",
+  "settings.cloudSyncCreatePairCode": "Create pair code",
+  "settings.cloudSyncPairCodePlaceholder": "Enter a pair code from another device",
+  "settings.cloudSyncBindDevice": "Bind device",
+  "settings.cloudBackupUpload": "Upload cloud backup",
+  "settings.cloudBackupRestore": "Restore from cloud",
+  "settings.cloudBackupLast": "Last cloud backup",
   "settings.save": "Save settings",
   "settings.saving": "Saving...",
   "settings.languageZhCn": "Simplified Chinese",
@@ -271,6 +310,13 @@ const enUs: TranslationTable = {
   "settings.updateAvailable": "Version {version} is available here if you want to update.",
   "settings.downloadUpdate": "Download this update",
   "settings.downloadLatest": "Download new version",
+  "message.syncGapWarning": "Recent cloud snapshots may not fully catch this device up. Consider restoring from cloud backup.",
+  "message.backgroundSynced": "Unlocked the cat collage background and synced it to the cloud.",
+  "message.pairCodeCreated": "Pair code created: {code}",
+  "message.deviceBound": "Device paired successfully.",
+  "message.snapshotsPulled": "Pulled the latest cloud snapshots.",
+  "message.cloudBackupUploaded": "Cloud backup uploaded.",
+  "message.cloudBackupRestored": "Restored data from cloud backup.",
   "leaderboard.title": "Hydration leaderboard",
   "leaderboard.description": "Use a circle code to bring a few people into one small group and compare today's hydration at a glance.",
   "leaderboard.loading": "Refreshing...",
@@ -299,6 +345,10 @@ const enUs: TranslationTable = {
   "leaderboard.circleEmpty": "No joined circles yet.",
   "leaderboard.circleLoading": "Syncing joined circles...",
   "leaderboard.circleLoadFailed": "Couldn't sync the joined circles right now. Please try again later.",
+  "leaderboard.memberRemove": "Remove",
+  "leaderboard.leaveCircle": "Leave circle",
+  "leaderboard.disbandCircle": "Disband circle",
+  "leaderboard.ownerLeaveBlocked": "As the circle owner, remove other members first before disbanding.",
   "leaderboard.metricIntake": "By intake",
   "leaderboard.metricProgress": "By progress",
   "leaderboard.intakeValue": "Drank {amount}",
@@ -438,6 +488,20 @@ const zhCn: TranslationTable = {
   "settings.dataDescription": "可导出备份文件，也可在新电脑上导入恢复历史记录和设置。",
   "settings.exportData": "导出数据",
   "settings.importData": "导入数据",
+  "settings.cloudSyncTitle": "云端同步",
+  "settings.cloudSyncDescription": "用配对码把桌面端和移动端绑定到同一个同步账户，系统会同步最近 7 天的喝水快照和花园状态。",
+  "settings.cloudSyncPullNow": "立即拉取",
+  "settings.cloudSyncAccount": "同步账户",
+  "settings.cloudSyncAccountMissing": "尚未创建",
+  "settings.cloudSyncLastPull": "最近拉取",
+  "settings.cloudSyncPairCode": "当前配对码",
+  "settings.cloudSyncPairCodeMissing": "尚未生成",
+  "settings.cloudSyncCreatePairCode": "生成配对码",
+  "settings.cloudSyncPairCodePlaceholder": "输入另一台设备上的配对码",
+  "settings.cloudSyncBindDevice": "绑定设备",
+  "settings.cloudBackupUpload": "上传云备份",
+  "settings.cloudBackupRestore": "从云端恢复",
+  "settings.cloudBackupLast": "最近云备份",
   "settings.save": "保存设置",
   "settings.saving": "正在保存...",
   "settings.languageZhCn": "简体中文",
@@ -446,6 +510,13 @@ const zhCn: TranslationTable = {
   "settings.updateAvailable": "发现新版本 {version}",
   "settings.downloadUpdate": "下载这个更新",
   "settings.downloadLatest": "下载新版本",
+  "message.syncGapWarning": "近期云端快照可能已不足以补齐当前设备，请考虑从云备份恢复。",
+  "message.backgroundSynced": "已兑换猫猫背景，并已同步到云端。",
+  "message.pairCodeCreated": "配对码已生成：{code}",
+  "message.deviceBound": "设备配对成功。",
+  "message.snapshotsPulled": "已拉取最新云端快照。",
+  "message.cloudBackupUploaded": "云备份已上传。",
+  "message.cloudBackupRestored": "已从云备份恢复数据。",
   "leaderboard.title": "饮水排行榜",
   "leaderboard.description": "加入喝水圈子，和朋友一起比较今天的喝水进度。",
   "leaderboard.loading": "正在刷新...",
@@ -474,6 +545,10 @@ const zhCn: TranslationTable = {
   "leaderboard.circleEmpty": "还没有已加入的圈子。",
   "leaderboard.circleLoading": "正在同步已加入的圈子...",
   "leaderboard.circleLoadFailed": "圈子列表暂时同步失败，可以稍后再试。",
+  "leaderboard.memberRemove": "移出",
+  "leaderboard.leaveCircle": "退出圈子",
+  "leaderboard.disbandCircle": "解散圈子",
+  "leaderboard.ownerLeaveBlocked": "你是圈主，请先移除其他成员后再解散圈子。",
   "leaderboard.metricIntake": "按饮水量",
   "leaderboard.metricProgress": "按完成率",
   "leaderboard.intakeValue": "已喝 {amount}",

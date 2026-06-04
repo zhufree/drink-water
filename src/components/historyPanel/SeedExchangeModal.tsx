@@ -1,11 +1,9 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { useI18n } from "../../i18n";
-import bg1 from "../../assets/bg/1.jpg";
-import bg2 from "../../assets/bg/2.jpg";
-import bg3 from "../../assets/bg/3.jpg";
+import type { BackgroundReward } from "../../config/backgroundRewards";
 import { PixelIcon } from "./PixelIcon";
-import { getCropDefinitionBySeed } from "./historyPanelData";
+import { getCropDefinitionByCrop, getCropDefinitionBySeed } from "./historyPanelData";
 
 type SourceEntry = {
   cropType: string;
@@ -18,6 +16,16 @@ type SourceEntry = {
     sourceCropType: string;
     targetSeedType: string;
     cost: number;
+  }>;
+};
+
+type RewardState = BackgroundReward & {
+  unlocked: boolean;
+  ready: boolean;
+  requirementProgress: Array<{
+    cropType: string;
+    count: number;
+    current: number;
   }>;
 };
 
@@ -34,50 +42,15 @@ type SeedExchangeModalProps = {
       }
     | null;
   canConfirmExchange: boolean;
-  backgroundUnlocked: boolean;
-  backgroundReady: boolean;
-  rewardPotatoCount: number;
-  rewardRadishCount: number;
+  backgroundRewards: RewardState[];
   onClose: () => void;
   onSelectSource: (cropType: string) => void;
   onSelectTarget: (seedType: string) => void;
-  onRedeemBackgroundReward: () => void;
+  onRedeemBackgroundReward: (rewardId: string) => void;
   onConfirmExchange: () => void;
 };
 
 type ExchangeView = "seed" | "background";
-
-type BackgroundReward = {
-  id: string;
-  nameZh: string;
-  nameEn: string;
-  preview: string;
-  supported: boolean;
-};
-
-const BACKGROUND_REWARDS: BackgroundReward[] = [
-  {
-    id: "catCollage",
-    nameZh: "猫猫拼贴",
-    nameEn: "Cat collage",
-    preview: bg1,
-    supported: true
-  },
-  {
-    id: "bg2",
-    nameZh: "背景 2",
-    nameEn: "Background 2",
-    preview: bg2,
-    supported: false
-  },
-  {
-    id: "bg3",
-    nameZh: "背景 3",
-    nameEn: "Background 3",
-    preview: bg3,
-    supported: false
-  }
-];
 
 export function SeedExchangeModal({
   open,
@@ -86,19 +59,16 @@ export function SeedExchangeModal({
   selectedTargetSeedType,
   selectedTargetOption,
   canConfirmExchange,
-  backgroundUnlocked,
-  backgroundReady,
-  rewardPotatoCount,
-  rewardRadishCount,
+  backgroundRewards,
   onClose,
   onSelectSource,
   onSelectTarget,
   onRedeemBackgroundReward,
   onConfirmExchange
 }: SeedExchangeModalProps) {
-  const { t, locale } = useI18n();
+  const { locale } = useI18n();
   const [view, setView] = useState<ExchangeView>("seed");
-  const [previewImage, setPreviewImage] = useState<BackgroundReward | null>(null);
+  const [previewImage, setPreviewImage] = useState<RewardState | null>(null);
 
   const isZh = locale === "zh-CN";
   const targetOptions = selectedSourceEntry?.options ?? [];
@@ -106,17 +76,15 @@ export function SeedExchangeModal({
   const footerHint = useMemo(() => {
     if (view === "background") {
       return isZh
-        ? "点击图片可查看大图；目前只支持兑换第 1 张背景。"
-        : "Click an image to preview it larger. Only the first background can be redeemed right now.";
+        ? "点击图片可以放大预览，是否可兑换和所需资源都来自当前背景配置。"
+        : "Click an image to preview it larger. Availability and costs come from the background config.";
     }
 
     if (selectedSourceEntry && selectedTargetOption) {
       return null;
     }
 
-    return isZh
-      ? "请先选择上面的作物和下面的种子。"
-      : "Select a produce source and a seed target first.";
+    return isZh ? "请先选择上面的作物和下面的种子。" : "Select a produce source and a seed target first.";
   }, [isZh, selectedSourceEntry, selectedTargetOption, view]);
 
   if (!open) {
@@ -134,8 +102,8 @@ export function SeedExchangeModal({
               </h3>
               <p className="mt-1 text-sm text-slate-300/78">
                 {isZh
-                  ? "这里同时包含种子兑换和背景兑换。背景目前只能看大图。"
-                  : "This modal contains both seed exchanges and background rewards. Backgrounds can be previewed, but cannot be applied manually yet."}
+                  ? "这里同时包含种子兑换和背景兑换。背景的标题、描述和资源需求都由配置驱动。"
+                  : "This modal contains both seed exchanges and background rewards. Background titles, descriptions, and costs are config-driven."}
               </p>
             </div>
             <button
@@ -183,7 +151,7 @@ export function SeedExchangeModal({
                     </strong>
                     <p className="mt-1 text-xs text-slate-400">
                       {isZh
-                        ? "这里只显示当前背包里确实拥有的果实库存。"
+                        ? "这里显示当前背包里确实拥有的果实库存。"
                         : "Only produce that you currently own appears here."}
                     </p>
                   </div>
@@ -265,10 +233,9 @@ export function SeedExchangeModal({
               </div>
             ) : (
               <div className="grid gap-3 md:grid-cols-2">
-                {BACKGROUND_REWARDS.map((reward) => {
-                  const unlocked = reward.id === "catCollage" ? backgroundUnlocked : false;
-                  const ready = reward.id === "catCollage" ? backgroundReady : false;
-                  const title = isZh ? reward.nameZh : reward.nameEn;
+                {backgroundRewards.map((reward) => {
+                  const title = reward.title[locale] ?? reward.title["en-US"];
+                  const description = reward.description[locale] ?? reward.description["en-US"];
 
                   return (
                     <article
@@ -296,39 +263,39 @@ export function SeedExchangeModal({
                       </button>
 
                       <div className="mt-3">
-                        {reward.supported ? (
+                        <p className="m-0 text-xs leading-5 text-slate-300/80">{description}</p>
+                        {reward.redeemable ? (
                           <>
-                            <p className="m-0 text-xs leading-5 text-slate-300/80">
-                              {isZh ? "6 个土豆 + 6 个萝卜" : "6 potatoes + 6 radishes"}
-                            </p>
                             <div className="mt-3 flex flex-wrap gap-2">
-                              <span className="rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100">
-                                {isZh ? "土豆" : "Potato"}{" "}
-                                <span className="tabular-nums text-slate-300/85">
-                                  {rewardPotatoCount} / 6
-                                </span>
-                              </span>
-                              <span className="rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100">
-                                {isZh ? "萝卜" : "Radish"}{" "}
-                                <span className="tabular-nums text-slate-300/85">
-                                  {rewardRadishCount} / 6
-                                </span>
-                              </span>
+                              {reward.requirementProgress.map((requirement) => {
+                                const definition = getCropDefinitionByCrop(requirement.cropType);
+                                return (
+                                  <span
+                                    key={`${reward.id}-${requirement.cropType}`}
+                                    className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+                                  >
+                                    <PixelIcon src={definition.cropIcon} size={26} />
+                                    <span className="tabular-nums text-slate-300/85">
+                                      {requirement.current} / {requirement.count}
+                                    </span>
+                                  </span>
+                                );
+                              })}
                             </div>
                             <div className="mt-3">
                               <button
                                 type="button"
-                                onClick={onRedeemBackgroundReward}
-                                disabled={!ready || unlocked}
+                                onClick={() => onRedeemBackgroundReward(reward.id)}
+                                disabled={!reward.ready || reward.unlocked}
                                 className={`rounded-[14px] px-3 py-2 text-sm font-semibold transition ${
-                                  unlocked
+                                  reward.unlocked
                                     ? "cursor-default bg-emerald-200/18 text-emerald-100"
-                                    : ready
+                                    : reward.ready
                                       ? "bg-sky-300 text-slate-950 hover:-translate-y-px hover:bg-sky-200"
                                       : "cursor-not-allowed bg-white/10 text-slate-400"
                                 }`}
                               >
-                                {unlocked
+                                {reward.unlocked
                                   ? isZh
                                     ? "已解锁"
                                     : "Unlocked"
@@ -339,16 +306,11 @@ export function SeedExchangeModal({
                             </div>
                           </>
                         ) : (
-                          <>
-                            <p className="m-0 text-xs leading-5 text-slate-300/80">
+                          <div className="mt-3">
+                            <span className="inline-flex rounded-[14px] bg-white/10 px-3 py-2 text-sm font-semibold text-slate-400">
                               {isZh ? "暂不支持兑换" : "Not supported yet"}
-                            </p>
-                            <div className="mt-3">
-                              <span className="inline-flex rounded-[14px] bg-white/10 px-3 py-2 text-sm font-semibold text-slate-400">
-                                {isZh ? "暂不支持兑换" : "Not supported yet"}
-                              </span>
-                            </div>
-                          </>
+                            </span>
+                          </div>
                         )}
                       </div>
                     </article>
@@ -394,7 +356,7 @@ export function SeedExchangeModal({
                       : "cursor-not-allowed bg-white/10 text-slate-400"
                   }`}
                 >
-                  {t("garden.exchangeAction")}
+                  {isZh ? "立即兑换" : "Exchange"}
                 </button>
               ) : null}
             </div>
@@ -413,7 +375,7 @@ export function SeedExchangeModal({
           >
             <div className="mb-3 flex items-center justify-between gap-3">
               <strong className="text-base font-semibold text-slate-50">
-                {isZh ? previewImage.nameZh : previewImage.nameEn}
+                {previewImage.title[locale] ?? previewImage.title["en-US"]}
               </strong>
               <button
                 type="button"
@@ -427,7 +389,7 @@ export function SeedExchangeModal({
             <div className="aspect-[520/935] overflow-hidden rounded-[18px] bg-slate-900/70">
               <img
                 src={previewImage.preview}
-                alt={isZh ? previewImage.nameZh : previewImage.nameEn}
+                alt={previewImage.title[locale] ?? previewImage.title["en-US"]}
                 className="h-full w-full object-cover"
               />
             </div>

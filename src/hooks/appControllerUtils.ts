@@ -23,6 +23,22 @@ export function findYesterdayCatchUpCandidate(history: HistoryItem[]) {
   ) ?? null;
 }
 
+export function buildYesterdayCatchUpPromptItem(history: HistoryItem[], fallbackTargetMl: number) {
+  const yesterdayKey = dayKeyOffset(-1);
+  return (
+    history.find((item) => item.dayKey === yesterdayKey) ?? {
+      dayKey: yesterdayKey,
+      targetMl: fallbackTargetMl,
+      actualIntakeMl: 0,
+      consumedMl: 0,
+      debtIncurredMl: 0,
+      goalMet: false,
+      completedReminderSlots: 0,
+      missedReminderSlots: 0
+    }
+  );
+}
+
 export function dayKeyOffset(offsetDays: number) {
   const date = new Date();
   date.setHours(0, 0, 0, 0);

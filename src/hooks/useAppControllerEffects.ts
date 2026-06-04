@@ -4,7 +4,7 @@ import {
   isPermissionGranted,
   requestPermission
 } from "@tauri-apps/plugin-notification";
-import { saveSettings } from "../api";
+import { markStartupCatchUpPromptShown, saveSettings } from "../api";
 import { checkForAppUpdate, upsertLeaderboardStats } from "../leaderboardApi";
 import type {
   AppUpdateInfo,
@@ -13,14 +13,20 @@ import type {
   LeaderboardEntry,
   NotificationPermissionState,
   Settings,
+  SyncMeta,
   TodayStatus
 } from "../types";
 import { APP_VERSION } from "./appControllerConfig";
-import { currentDayKey, extractErrorMessage, findYesterdayCatchUpCandidate } from "./appControllerUtils";
+import {
+  buildYesterdayCatchUpPromptItem,
+  currentDayKey,
+  extractErrorMessage
+} from "./appControllerUtils";
 
 type BootstrapResult = {
   nextSettings: Settings;
   nextHistory: HistoryItem[];
+  nextSyncMeta: SyncMeta;
 };
 
 type UseAppControllerEffectsParams = {
@@ -43,6 +49,7 @@ type UseAppControllerEffectsParams = {
   setUpdateInfo: Dispatch<SetStateAction<AppUpdateInfo | null>>;
   setYesterdayCatchUpItem: Dispatch<SetStateAction<HistoryItem | null>>;
   setYesterdayCatchUpAmount: Dispatch<SetStateAction<number>>;
+  setSyncMeta: Dispatch<SetStateAction<SyncMeta>>;
   setMessage: Dispatch<SetStateAction<string>>;
   setLeaderboardEntries: Dispatch<SetStateAction<LeaderboardEntry[]>>;
   setRestTick: Dispatch<SetStateAction<number>>;
@@ -53,6 +60,7 @@ type UseAppControllerEffectsParams = {
   ) => Promise<Settings>;
   refreshLeaderboard: () => Promise<void>;
   handleCompleteRestBreak: () => Promise<void>;
+  bootstrapSnapshotSync: (settings: Settings) => Promise<void>;
 };
 
 export function useAppControllerEffects({
@@ -75,13 +83,15 @@ export function useAppControllerEffects({
   setUpdateInfo,
   setYesterdayCatchUpItem,
   setYesterdayCatchUpAmount,
+  setSyncMeta,
   setMessage,
   setLeaderboardEntries,
   setRestTick,
   syncCloudIdentity,
   applyCircleSnapshot,
   refreshLeaderboard,
-  handleCompleteRestBreak
+  handleCompleteRestBreak,
+  bootstrapSnapshotSync
 }: UseAppControllerEffectsParams) {
   useEffect(() => {
     let disposed = false;
@@ -101,7 +111,7 @@ export function useAppControllerEffects({
       }
 
       try {
-        let { nextSettings, nextHistory } = await refreshAll();
+        let { nextSettings, nextHistory, nextSyncMeta } = await refreshAll();
 
         if (!nextSettings.deviceId) {
           const saved = await saveSettings({
@@ -109,7 +119,7 @@ export function useAppControllerEffects({
             deviceId: crypto.randomUUID()
           });
           nextSettings = saved;
-          ({ nextSettings, nextHistory } = await refreshAll());
+          ({ nextSettings, nextHistory, nextSyncMeta } = await refreshAll());
         }
 
         setCloudIdentityState("loading");
@@ -125,6 +135,13 @@ export function useAppControllerEffects({
         }
 
         try {
+          await bootstrapSnapshotSync(nextSettings);
+          ({ nextSettings, nextHistory, nextSyncMeta } = await refreshAll());
+        } catch (error) {
+          console.error("[sync] bootstrap failed", error);
+        }
+
+        try {
           const nextUpdateInfo = await checkForAppUpdate({
             appId: "drink-water",
             platform: "desktop-windows",
@@ -135,13 +152,16 @@ export function useAppControllerEffects({
           setUpdateInfo(null);
         }
 
-        if (!startupPromptCheckedRef.current) {
+        if (
+          !startupPromptCheckedRef.current &&
+          nextSyncMeta.lastStartupCatchUpPromptDay !== currentDayKey()
+        ) {
           startupPromptCheckedRef.current = true;
-          const yesterdayCandidate = findYesterdayCatchUpCandidate(nextHistory);
-          if (yesterdayCandidate) {
-            setYesterdayCatchUpItem(yesterdayCandidate);
-            setYesterdayCatchUpAmount(250);
-          }
+          setYesterdayCatchUpItem(
+            buildYesterdayCatchUpPromptItem(nextHistory, nextSettings.dailyTargetMl)
+          );
+          setYesterdayCatchUpAmount(250);
+          setSyncMeta(await markStartupCatchUpPromptShown());
         }
       } finally {
         if (!disposed) {

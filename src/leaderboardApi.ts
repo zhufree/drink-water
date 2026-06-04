@@ -1,9 +1,14 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { AppUpdateInfo, CircleSummary, LeaderboardEntry } from "./types";
+import type {
+  AppUpdateInfo,
+  CircleSummary,
+  LeaderboardCircleMeta,
+  LeaderboardEntry
+} from "./types";
 
 type BootstrapResponse = {
   user: {
-    deviceId: string;
+    accountId: string;
     displayName: string | null;
   };
   circles: CircleSummary[];
@@ -19,6 +24,8 @@ type LeaderboardResponse = {
   circleName: string | null;
   dayKey: string;
   metric: "intake" | "progress";
+  ownerAccountId: string | null;
+  memberCount: number;
   leaderboard: LeaderboardEntry[];
 };
 
@@ -148,6 +155,36 @@ export async function getLeaderboard(input: {
 
   return request<LeaderboardResponse>(`/api/leaderboard?${params.toString()}`);
 }
+
+export async function removeLeaderboardMember(input: {
+  deviceId: string;
+  circleCode: string;
+  targetAccountId: string;
+}) {
+  return request<{ ok: true }>("/api/circle/remove-member", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function leaveLeaderboardCircle(input: { deviceId: string; circleCode: string }) {
+  return request<{ ok: true }>("/api/circle/leave", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export async function disbandLeaderboardCircle(input: {
+  deviceId: string;
+  circleCode: string;
+}) {
+  return request<{ ok: true }>("/api/circle/disband", {
+    method: "POST",
+    body: JSON.stringify(input)
+  });
+}
+
+export type { LeaderboardResponse, LeaderboardCircleMeta };
 
 export async function checkForAppUpdate(input: {
   appId: string;

@@ -1,11 +1,14 @@
+﻿import { useMemo, useState } from "react";
 import type { HistoryItem, PlantedCrop } from "../../types";
 import { useI18n } from "../../i18n";
+import { GardenPlotDetailModal } from "./GardenPlotDetailModal";
 import { PixelIcon } from "./PixelIcon";
 import {
   type HistoryCell,
   getCellFillClass,
   getCropDefinitionBySeed,
-  getCropGrowth
+  getCropGrowth,
+  getCropStageIcon
 } from "./historyPanelData";
 
 type HistoryHeatmapCardProps = {
@@ -39,6 +42,20 @@ export function HistoryHeatmapCard({
   const newestGridDay = gridCells[0]?.dayKey ?? "";
   const oldestGridDay = gridCells[gridCells.length - 1]?.dayKey ?? "";
   const selectedDefinition = getCropDefinitionBySeed(selectedSeedType);
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
+  const selectedCell = useMemo(
+    () => gridCells.find((item) => item.dayKey === selectedDayKey) ?? null,
+    [gridCells, selectedDayKey]
+  );
+  const selectedCrop = selectedCell ? cropsByDay.get(selectedCell.dayKey) : undefined;
+  const selectedGrowth = selectedCell
+    ? getCropGrowth(selectedCell, selectedCrop)
+    : { requiredDays: 0, growthPercent: 0, stage: 0, mature: false };
+  const selectedCanPlant = Boolean(
+    selectedCell && selectedCell.actualIntakeMl > 0 && !selectedCrop && selectedSeedCount > 0
+  );
+  const selectedCanHarvest = Boolean(selectedCrop && selectedGrowth.mature);
+  void history;
 
   return (
     <article className="panel-surface rounded-[22px] p-4">
@@ -117,9 +134,7 @@ export function HistoryHeatmapCard({
           const canPlant = cell.actualIntakeMl > 0 && !crop && selectedSeedCount > 0;
           const canHarvest = Boolean(crop && cropGrowth.mature);
           const planted = Boolean(crop);
-          const plantedDefinition = crop
-            ? getCropDefinitionBySeed(crop.seedType)
-            : selectedDefinition;
+          const plantedDefinition = crop ? getCropDefinitionBySeed(crop.seedType) : selectedDefinition;
           const actionLabel = canHarvest
             ? t("garden.readyToHarvest")
             : planted
@@ -134,25 +149,16 @@ export function HistoryHeatmapCard({
             <button
               key={cell.dayKey}
               type="button"
-              title={`${t("history.tooltip", {
+              onClick={() => setSelectedDayKey(cell.dayKey)}
+              aria-label={`${t("history.tooltip", {
                 day: cell.dayKey,
                 actual: formatMl(cell.actualIntakeMl),
                 target: cell.targetMl > 0 ? ` / ${formatMl(cell.targetMl)}` : ""
               })} | ${actionLabel}`}
-              onClick={() => {
-                if (canHarvest) {
-                  onHarvestCrop(cell.dayKey);
-                  return;
-                }
-                if (canPlant) {
-                  onPlantSeed(cell.dayKey, selectedSeedType);
-                }
-              }}
-              disabled={!canPlant && !canHarvest}
               className={`relative aspect-square overflow-hidden rounded-[5px] border border-white/8 bg-white/4 text-[10px] transition ${
-                canPlant || canHarvest
+                canPlant || canHarvest || planted
                   ? "cursor-pointer hover:border-emerald-200/60"
-                  : "cursor-default"
+                  : "cursor-pointer hover:border-white/20"
               }`}
             >
               <div
@@ -161,8 +167,17 @@ export function HistoryHeatmapCard({
               />
               {crop ? (
                 <div className="absolute inset-0 grid place-items-center">
-                  <span className="grid h-5 w-5 place-items-center">
-                    <PixelIcon src={plantedDefinition.cropIcon} size={18} />
+                  <span className="grid h-10 w-10 place-items-center">
+                    {cropGrowth.stage < 3 ? (
+                      <PixelIcon src={getCropStageIcon(cropGrowth.stage)} size={30} />
+                    ) : (
+                      <span className={cropGrowth.mature ? "" : "opacity-45"}>
+                        <PixelIcon src={plantedDefinition.cropIcon} size={40} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="absolute bottom-0.5 right-0.5 rounded-full bg-slate-950/70 p-[2px]">
+                    <PixelIcon src={plantedDefinition.cropIcon} size={10} />
                   </span>
                 </div>
               ) : null}
@@ -195,6 +210,33 @@ export function HistoryHeatmapCard({
           {t("history.veryLow")}
         </span>
       </div>
+
+      <GardenPlotDetailModal
+        open={Boolean(selectedCell)}
+        cell={selectedCell}
+        crop={selectedCrop}
+        growthPercent={selectedGrowth.growthPercent}
+        growthStage={selectedGrowth.stage}
+        mature={selectedGrowth.mature}
+        selectedSeedLabel={selectedDefinition.seedLabel}
+        canPlant={selectedCanPlant}
+        canHarvest={selectedCanHarvest}
+        onClose={() => setSelectedDayKey(null)}
+        onPlant={() => {
+          if (!selectedCell) {
+            return;
+          }
+          onPlantSeed(selectedCell.dayKey, selectedSeedType);
+          setSelectedDayKey(null);
+        }}
+        onHarvest={() => {
+          if (!selectedCell) {
+            return;
+          }
+          onHarvestCrop(selectedCell.dayKey);
+          setSelectedDayKey(null);
+        }}
+      />
     </article>
   );
 }

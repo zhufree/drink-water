@@ -1,21 +1,29 @@
-import { useMemo, useRef, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  applyRemoteSnapshots,
   cancelRestBreak,
   completeRestBreak,
   exchangeProduce,
+  exportCloudBackupPayload,
   exportData,
+  getGardenSnapshot,
   getGardenState,
   getHistory,
+  getRecentDailySnapshots,
   getSettings,
+  getSyncMeta,
   getTodayStatus,
   harvestCrop,
+  importCloudBackupPayload,
   importData,
-  logYesterdayDrink,
   logDrink,
+  logYesterdayDrink,
+  markCloudBackupUploaded,
   plantSeed,
   redeemBackgroundReward,
   saveSettings,
+  setSyncAccount,
   startRestBreak,
   toggleAutostart,
   undoLastDrink
@@ -23,9 +31,23 @@ import {
 import { createI18n } from "../i18n";
 import {
   createLeaderboardCircle,
+  disbandLeaderboardCircle,
   getLeaderboard,
-  joinLeaderboardCircle
+  joinLeaderboardCircle,
+  leaveLeaderboardCircle,
+  removeLeaderboardMember
 } from "../leaderboardApi";
+import {
+  bindPairCode,
+  bootstrapSnapshotSync,
+  createPairCode,
+  pullDailySnapshots,
+  pullGardenSnapshot,
+  pushDailySnapshots,
+  pushGardenSnapshot,
+  restoreCloudBackup,
+  uploadCloudBackup
+} from "../syncApi";
 import type {
   AppUpdateInfo,
   CircleSummary,
@@ -34,6 +56,7 @@ import type {
   Locale,
   NotificationPermissionState,
   Settings,
+  SyncMeta,
   TodayStatus
 } from "../types";
 import { computeReminderMeta } from "../utils";
@@ -59,6 +82,20 @@ import { createAppUiActions } from "./appControllerUiActions";
 import { useAppControllerEffects } from "./useAppControllerEffects";
 
 const appWindow = getCurrentWindow();
+const SYNC_STALE_THRESHOLD_MS = 45_000;
+const SYNC_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+const defaultSyncMeta: SyncMeta = {
+  accountId: null,
+  pairingDeviceId: "",
+  lastStartupCatchUpPromptDay: null,
+  lastDailyPullAt: null,
+  lastGardenPullAt: null,
+  lastBackupAt: null,
+  dailySnapshotUpdatedAtByDay: {},
+  dailySnapshotUpdatedByDeviceIdByDay: {},
+  gardenUpdatedAt: null,
+  gardenUpdatedByDeviceId: null
+};
 
 export { APP_VERSION, COPYRIGHT, RELEASE_URL };
 
@@ -69,6 +106,7 @@ export function useAppController() {
   const [status, setStatus] = useState<TodayStatus | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [gardenState, setGardenState] = useState(defaultGardenState);
+  const [syncMeta, setSyncMeta] = useState<SyncMeta>(defaultSyncMeta);
   const [quickAmount, setQuickAmount] = useState<number>(defaultSettings.cupSizeMl);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -85,6 +123,8 @@ export function useAppController() {
     useState<"intake" | "progress">("intake");
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [activeCircleOwnerAccountId, setActiveCircleOwnerAccountId] = useState<string | null>(null);
+  const [activeCircleMemberCount, setActiveCircleMemberCount] = useState(0);
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
   const [cloudIdentityState, setCloudIdentityState] = useState<CloudIdentityState>("loading");
   const [cloudIdentityError, setCloudIdentityError] = useState<string | null>(null);
@@ -92,6 +132,9 @@ export function useAppController() {
   const [nicknameSaveState, setNicknameSaveState] = useState<NicknameSaveState>("idle");
   const [nicknameSaveMessage, setNicknameSaveMessage] = useState<string | null>(null);
   const [restTick, setRestTick] = useState(() => Date.now());
+  const [pairCode, setPairCode] = useState("");
+  const [pairCodeInput, setPairCodeInput] = useState("");
+  const [syncBusy, setSyncBusy] = useState(false);
 
   const startupPromptCheckedRef = useRef(false);
   const lastSyncedStatsKeyRef = useRef("");
@@ -111,12 +154,14 @@ export function useAppController() {
       setCircles,
       setCirclesLoadState
     });
+
   const refreshAll = async () => {
-    const [nextSettings, nextStatus, nextHistory, nextGardenState] = await Promise.all([
+    const [nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta] = await Promise.all([
       getSettings(),
       getTodayStatus(),
       getHistory(56),
-      getGardenState()
+      getGardenState(),
+      getSyncMeta()
     ]);
 
     setSettings(nextSettings);
@@ -127,9 +172,112 @@ export function useAppController() {
     setStatus(nextStatus);
     setHistory(nextHistory);
     setGardenState(nextGardenState);
+    setSyncMeta(nextSyncMeta);
 
-    return { nextSettings, nextStatus, nextHistory, nextGardenState };
+    return { nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta };
   };
+
+  const syncRecentSnapshots = async (input: { dayKeys?: string[]; garden?: boolean }) => {
+    const meta = await getSyncMeta();
+    setSyncMeta(meta);
+    if (!settings.deviceId || !meta.accountId) {
+      return;
+    }
+
+    if (input.dayKeys && input.dayKeys.length > 0) {
+      const snapshots = await getRecentDailySnapshots(7);
+      const wanted = new Set(input.dayKeys);
+      const filtered = snapshots.filter((item) => wanted.has(item.dayKey));
+      if (filtered.length > 0) {
+        await pushDailySnapshots(meta.accountId, settings.deviceId, filtered);
+      }
+    }
+
+    if (input.garden) {
+      const snapshot = await getGardenSnapshot();
+      await pushGardenSnapshot(meta.accountId, settings.deviceId, snapshot);
+    }
+
+    setSyncMeta(await getSyncMeta());
+  };
+
+  const pullRemoteSnapshotsToLocal = async (accountId: string, deviceId: string) => {
+    const [dailyResult, gardenResult] = await Promise.all([
+      pullDailySnapshots(accountId, deviceId),
+      pullGardenSnapshot(accountId, deviceId)
+    ]);
+
+    await applyRemoteSnapshots(
+      accountId,
+      dailyResult.snapshots,
+      gardenResult.snapshot,
+      new Date().toISOString()
+    );
+
+    return refreshAll();
+  };
+
+  const ensureSyncAccount = async (deviceId: string) => {
+    const localMeta = await getSyncMeta();
+    setSyncMeta(localMeta);
+    const result = await bootstrapSnapshotSync(deviceId, localMeta.accountId);
+    if (result.accountId !== localMeta.accountId) {
+      const nextMeta = await setSyncAccount(result.accountId);
+      setSyncMeta(nextMeta);
+    }
+    return result.accountId;
+  };
+
+  const maybeWarnSyncGap = (meta: SyncMeta) => {
+    if (!meta.lastDailyPullAt) {
+      return;
+    }
+    const gapMs = Date.now() - new Date(meta.lastDailyPullAt).getTime();
+    if (gapMs > SYNC_RETENTION_MS) {
+      setMessage(i18n.t("message.syncGapWarning"));
+    }
+  };
+
+  const bootstrapAndPullSync = async (targetSettings: Settings) => {
+    if (!targetSettings.deviceId) {
+      return;
+    }
+
+    const meta = await getSyncMeta();
+    setSyncMeta(meta);
+    maybeWarnSyncGap(meta);
+    const accountId = await ensureSyncAccount(targetSettings.deviceId);
+    await pullRemoteSnapshotsToLocal(accountId, targetSettings.deviceId);
+  };
+
+  const prepareSyncBeforeWrite = async () => {
+    const meta = await getSyncMeta();
+    setSyncMeta(meta);
+    if (!settings.deviceId || !meta.accountId) {
+      return;
+    }
+
+    const latestPullAt = [meta.lastDailyPullAt, meta.lastGardenPullAt]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => new Date(value).getTime())
+      .reduce((best, value) => Math.max(best, value), 0);
+
+    if (!latestPullAt || Date.now() - latestPullAt > SYNC_STALE_THRESHOLD_MS) {
+      await pullRemoteSnapshotsToLocal(meta.accountId, settings.deviceId);
+    }
+  };
+
+  const syncAfterLocalWrite = (input: { dayKeys?: string[]; garden?: boolean }) => {
+    void (async () => {
+      try {
+        await prepareSyncBeforeWrite();
+        await syncRecentSnapshots(input);
+      } catch (error) {
+        console.error("background snapshot sync failed", error);
+      }
+    })();
+  };
+
   const {
     handleWindowAction,
     handleSaveSettings,
@@ -148,6 +296,9 @@ export function useAppController() {
     refreshAll,
     syncCloudIdentity,
     applyCircleSnapshot,
+    syncDailyDayKeys: async (dayKeys) => {
+      await syncRecentSnapshots({ dayKeys });
+    },
     setSettings,
     setDraftSettings,
     setQuickAmount,
@@ -165,20 +316,18 @@ export function useAppController() {
 
   const handleLog = async (amountMl: number) => {
     setMessage("");
-    const nextStatus = await logDrink(amountMl);
-    setStatus(nextStatus);
-    setHistory(await getHistory(56));
-    setGardenState(await getGardenState());
+    await logDrink(amountMl);
+    await refreshAll();
+    syncAfterLocalWrite({ dayKeys: [currentDayKey()] });
     setMessage(i18n.t("message.logged", { amount: i18n.formatMl(amountMl) }));
   };
 
   const handleUndoLastDrink = async () => {
     setMessage("");
     const previousAmount = status?.lastLoggedAmountMl ?? null;
-    const nextStatus = await undoLastDrink();
-    setStatus(nextStatus);
-    setHistory(await getHistory(56));
-    setGardenState(await getGardenState());
+    await undoLastDrink();
+    await refreshAll();
+    syncAfterLocalWrite({ dayKeys: [currentDayKey()] });
     setMessage(
       i18n.t("message.undo", {
         amount: i18n.formatMl(previousAmount ?? 0)
@@ -189,8 +338,9 @@ export function useAppController() {
   const handlePlantSeed = async (dayKey: string, seedType: string) => {
     setMessage("");
     try {
-      const nextGardenState = await plantSeed(dayKey, seedType);
-      setGardenState(nextGardenState);
+      await plantSeed(dayKey, seedType);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.seedPlanted", { day: i18n.formatShortDay(dayKey) }));
     } catch (error) {
       setMessage(extractErrorMessage(error));
@@ -200,8 +350,9 @@ export function useAppController() {
   const handleHarvestCrop = async (dayKey: string) => {
     setMessage("");
     try {
-      const nextGardenState = await harvestCrop(dayKey);
-      setGardenState(nextGardenState);
+      await harvestCrop(dayKey);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.cropHarvested", { day: i18n.formatShortDay(dayKey) }));
     } catch (error) {
       setMessage(extractErrorMessage(error));
@@ -211,8 +362,9 @@ export function useAppController() {
   const handleExchangeProduce = async (sourceCropType: string, targetSeedType: string) => {
     setMessage("");
     try {
-      const nextGardenState = await exchangeProduce(sourceCropType, targetSeedType);
-      setGardenState(nextGardenState);
+      await exchangeProduce(sourceCropType, targetSeedType);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
       setMessage(
         i18n.t("message.exchangeSuccess", {
           seed: getSeedDisplayName(targetSeedType, locale)
@@ -226,13 +378,10 @@ export function useAppController() {
   const handleRedeemBackgroundReward = async (rewardId: string) => {
     setMessage("");
     try {
-      const nextGardenState = await redeemBackgroundReward(rewardId);
-      setGardenState(nextGardenState);
-      setMessage(
-        locale === "zh-CN"
-          ? "已兑换猫猫背景，并自动应用。"
-          : "Unlocked the cat collage background and applied it."
-      );
+      await redeemBackgroundReward(rewardId);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.backgroundSynced"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -249,9 +398,10 @@ export function useAppController() {
   const handleStartRestBreak = async () => {
     setMessage("");
     try {
-      const nextGardenState = await startRestBreak();
-      setGardenState(nextGardenState);
+      await startRestBreak();
+      await refreshAll();
       setRestTick(Date.now());
+      syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.restStarted"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
@@ -261,8 +411,9 @@ export function useAppController() {
   const handleCancelRestBreak = async () => {
     setMessage("");
     try {
-      const nextGardenState = await cancelRestBreak();
-      setGardenState(nextGardenState);
+      await cancelRestBreak();
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.restCancelled"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
@@ -271,8 +422,9 @@ export function useAppController() {
 
   const handleCompleteRestBreak = async () => {
     try {
-      const nextGardenState = await completeRestBreak();
-      setGardenState(nextGardenState);
+      await completeRestBreak();
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.restCompleted"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
@@ -419,6 +571,8 @@ export function useAppController() {
   const refreshLeaderboard = async () => {
     if (!settings.activeCircleCode) {
       setLeaderboardEntries([]);
+      setActiveCircleOwnerAccountId(null);
+      setActiveCircleMemberCount(0);
       return;
     }
 
@@ -429,9 +583,162 @@ export function useAppController() {
         dayKey: currentDayKey(),
         metric: leaderboardMetric
       });
+      setActiveCircleOwnerAccountId(result.ownerAccountId);
+      setActiveCircleMemberCount(result.memberCount);
       setLeaderboardEntries(result.leaderboard);
     } finally {
       setLeaderboardLoading(false);
+    }
+  };
+
+  const handleRemoveCircleMember = async (targetAccountId: string, displayName: string) => {
+    if (!settings.deviceId || !settings.activeCircleCode) {
+      return;
+    }
+
+    try {
+      await removeLeaderboardMember({
+        deviceId: settings.deviceId,
+        circleCode: settings.activeCircleCode,
+        targetAccountId
+      });
+      await refreshLeaderboard();
+      await refreshCirclesFromServer(settings.deviceId);
+      setMessage(locale === "zh-CN" ? "成员已移出圈子。" : "Member removed from the circle.");
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleLeaveCurrentCircle = async () => {
+    if (!settings.deviceId || !settings.activeCircleCode) {
+      return;
+    }
+
+    try {
+      await leaveLeaderboardCircle({
+        deviceId: settings.deviceId,
+        circleCode: settings.activeCircleCode
+      });
+      await refreshCirclesFromServer(settings.deviceId);
+      setMessage(locale === "zh-CN" ? "已退出当前圈子。" : "Left the current circle.");
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleDisbandCurrentCircle = async () => {
+    if (!settings.deviceId || !settings.activeCircleCode) {
+      return;
+    }
+
+    try {
+      await disbandLeaderboardCircle({
+        deviceId: settings.deviceId,
+        circleCode: settings.activeCircleCode
+      });
+      await refreshCirclesFromServer(settings.deviceId);
+      setMessage(locale === "zh-CN" ? "当前圈子已解散。" : "The current circle has been disbanded.");
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleCreatePairCode = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      const accountId = await ensureSyncAccount(settings.deviceId);
+      const result = await createPairCode(accountId, settings.deviceId);
+      setPairCode(result.pairCode);
+      setMessage(i18n.t("message.pairCodeCreated", { code: result.pairCode }));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleBindPairCode = async () => {
+    if (!settings.deviceId || !pairCodeInput.trim()) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      const result = await bindPairCode(settings.deviceId, pairCodeInput.trim());
+      const nextMeta = await setSyncAccount(result.accountId);
+      setSyncMeta(nextMeta);
+      await pullRemoteSnapshotsToLocal(result.accountId, settings.deviceId);
+      setPairCodeInput("");
+      setMessage(i18n.t("message.deviceBound"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handlePullSyncNow = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      await bootstrapAndPullSync(settings);
+      setMessage(i18n.t("message.snapshotsPulled"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleUploadCloudBackup = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      const accountId = await ensureSyncAccount(settings.deviceId);
+      const payload = await exportCloudBackupPayload();
+      const result = await uploadCloudBackup(accountId, settings.deviceId, payload);
+      const nextMeta = await markCloudBackupUploaded(result.backup.createdAt);
+      setSyncMeta(nextMeta);
+      setMessage(i18n.t("message.cloudBackupUploaded"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleRestoreCloudBackup = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      const accountId = await ensureSyncAccount(settings.deviceId);
+      const result = await restoreCloudBackup(accountId, settings.deviceId);
+      await importCloudBackupPayload(result.content);
+      await refreshAll();
+      setMessage(i18n.t("message.cloudBackupRestored"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
     }
   };
 
@@ -469,13 +776,15 @@ export function useAppController() {
     setUpdateInfo,
     setYesterdayCatchUpItem,
     setYesterdayCatchUpAmount,
+    setSyncMeta,
     setMessage,
     setLeaderboardEntries,
     setRestTick,
     syncCloudIdentity,
     applyCircleSnapshot,
     refreshLeaderboard,
-    handleCompleteRestBreak
+    handleCompleteRestBreak,
+    bootstrapSnapshotSync: bootstrapAndPullSync
   });
 
   return {
@@ -485,6 +794,10 @@ export function useAppController() {
     status,
     history,
     gardenState,
+    syncMeta,
+    pairCode,
+    pairCodeInput,
+    syncBusy,
     quickAmount,
     loading,
     saving,
@@ -499,6 +812,8 @@ export function useAppController() {
     leaderboardMetric,
     leaderboardEntries,
     leaderboardLoading,
+    activeCircleOwnerAccountId,
+    activeCircleMemberCount,
     updateInfo,
     cloudIdentityState,
     cloudIdentityError,
@@ -516,6 +831,7 @@ export function useAppController() {
     setYesterdayCatchUpAmount,
     setCircleCodeInput,
     setCircleNameInput,
+    setPairCodeInput,
     setLeaderboardMetric,
     handleLog,
     handleUndoLastDrink,
@@ -538,9 +854,16 @@ export function useAppController() {
     handleReconnectLeaderboard,
     handleSaveDisplayName,
     handleSelectCircle,
+    handleRemoveCircleMember,
+    handleLeaveCurrentCircle,
+    handleDisbandCurrentCircle,
+    handleCreatePairCode,
+    handleBindPairCode,
+    handlePullSyncNow,
+    handleUploadCloudBackup,
+    handleRestoreCloudBackup,
     resetNicknameSaveFeedback,
     refreshLeaderboard,
     appWindow
   };
-
 }

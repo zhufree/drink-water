@@ -22,6 +22,7 @@ type AppUiActionDeps = {
     baseSettings: Settings,
     fetchedCircles: CircleSummary[]
   ) => Promise<Settings>;
+  syncDailyDayKeys: (dayKeys: string[]) => Promise<void>;
   setSettings: Dispatch<SetStateAction<Settings>>;
   setDraftSettings: Dispatch<SetStateAction<Settings>>;
   setQuickAmount: Dispatch<SetStateAction<number>>;
@@ -46,6 +47,7 @@ export function createAppUiActions({
   refreshAll,
   syncCloudIdentity,
   applyCircleSnapshot,
+  syncDailyDayKeys,
   setSettings,
   setDraftSettings,
   setQuickAmount,
@@ -150,6 +152,13 @@ export function createAppUiActions({
     await logYesterdayDrink(amount);
     handleDismissYesterdayCatchUp();
     await refreshAll();
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const year = yesterdayDate.getFullYear();
+    const month = String(yesterdayDate.getMonth() + 1).padStart(2, "0");
+    const day = String(yesterdayDate.getDate()).padStart(2, "0");
+    const yesterday = `${year}-${month}-${day}`;
+    await syncDailyDayKeys([yesterday]);
     setMessage(
       i18n.t("message.yesterdayCatchUpSaved", {
         amount: i18n.formatMl(amount)

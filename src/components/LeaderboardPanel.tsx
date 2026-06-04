@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy, RefreshCw, Star } from "lucide-react";
 import { useI18n } from "../i18n";
-import type { CircleSummary, LeaderboardEntry } from "../types";
+import type { CircleSummary, LeaderboardCircleMeta, LeaderboardEntry } from "../types";
+import {
+  CircleActionModal,
+  type CircleActionModalState
+} from "./leaderboardPanel/CircleActionModal";
 
 type LeaderboardPanelProps = {
   displayName: string;
@@ -12,6 +16,8 @@ type LeaderboardPanelProps = {
   cloudIdentityError: string | null;
   activeCircleCode: string;
   activeCircleName: string;
+  viewerAccountId: string | null;
+  circleMeta: LeaderboardCircleMeta;
   circles: CircleSummary[];
   circlesLoadState: "loading" | "ready" | "error";
   circleCodeInput: string;
@@ -28,6 +34,9 @@ type LeaderboardPanelProps = {
   onReconnectIdentity: () => void;
   onSelectCircle: (circle: CircleSummary) => void;
   onMetricChange: (metric: "intake" | "progress") => void;
+  onRemoveMember: (targetAccountId: string, displayName: string) => void;
+  onLeaveCircle: () => void;
+  onDisbandCircle: () => void;
   onRefresh: () => void;
 };
 
@@ -40,6 +49,8 @@ export function LeaderboardPanel({
   cloudIdentityError,
   activeCircleCode,
   activeCircleName,
+  viewerAccountId,
+  circleMeta,
   circles,
   circlesLoadState,
   circleCodeInput,
@@ -56,12 +67,24 @@ export function LeaderboardPanel({
   onReconnectIdentity,
   onSelectCircle,
   onMetricChange,
+  onRemoveMember,
+  onLeaveCircle,
+  onDisbandCircle,
   onRefresh
 }: LeaderboardPanelProps) {
   const { t, formatMl } = useI18n();
   const [copied, setCopied] = useState(false);
+  const [pendingAction, setPendingAction] = useState<CircleActionModalState>(null);
   const copiedTimerRef = useRef<number | null>(null);
   const activeCircle = circles.find((item) => item.circleCode === activeCircleCode);
+  const ownerResolved = Boolean(viewerAccountId && circleMeta.ownerAccountId);
+  const isOwner = Boolean(
+    viewerAccountId &&
+      circleMeta.ownerAccountId &&
+      circleMeta.ownerAccountId === viewerAccountId
+  );
+  const canDisband = ownerResolved && isOwner && circleMeta.memberCount === 1;
+  const canLeave = ownerResolved && Boolean(activeCircleCode) && !isOwner;
   const showResolvedActiveCircle = Boolean(
     activeCircleCode && (activeCircle || circlesLoadState === "error")
   );
@@ -100,7 +123,7 @@ export function LeaderboardPanel({
 
         {showResolvedActiveCircle ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            <span className="rounded-full bg-cyan-300/12 px-3 py-2 text-sm text-cyan-100">
+            <span className="inline-flex items-center rounded-full bg-cyan-300/12 px-3 py-2 text-sm text-cyan-100">
               {t("leaderboard.activeCircle", {
                 name: activeCircleName || activeCircle?.circleName || activeCircleCode
               })}
@@ -159,10 +182,25 @@ export function LeaderboardPanel({
             <div className="mt-3">
               {leaderboard.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  {leaderboard.map((entry) => (
+                  {leaderboard.map((entry) => {
+                    const canManageMember = isOwner && entry.accountId !== viewerAccountId;
+                    return (
                     <article
-                      key={entry.deviceId}
-                      className="flex items-center justify-between gap-3 rounded-[18px] bg-white/5 p-3"
+                      key={entry.accountId}
+                      onClick={() => {
+                        if (canManageMember) {
+                          setPendingAction({
+                            type: "remove-member",
+                            accountId: entry.accountId,
+                            displayName: entry.displayName
+                          });
+                        }
+                      }}
+                      className={`flex items-center justify-between gap-3 rounded-[18px] p-3 transition ${
+                        canManageMember
+                          ? "cursor-pointer bg-white/6 hover:-translate-y-px hover:bg-white/10"
+                          : "bg-white/5"
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         {entry.rank <= 3 ? (
@@ -208,7 +246,7 @@ export function LeaderboardPanel({
                         </span>
                       </div>
                     </article>
-                  ))}
+                  )})}
                 </div>
               ) : (
                 <p className="text-sm text-slate-300/76">{t("leaderboard.noData")}</p>
@@ -332,6 +370,27 @@ export function LeaderboardPanel({
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
+          {activeCircleCode ? (
+            canLeave ? (
+              <button
+                onClick={() => setPendingAction({ type: "leave-circle" })}
+                className="rounded-[14px] border border-amber-200/30 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:-translate-y-px hover:bg-amber-300/16"
+              >
+                {t("leaderboard.leaveCircle")}
+              </button>
+            ) : canDisband ? (
+              <button
+                onClick={() => setPendingAction({ type: "disband-circle" })}
+                className="rounded-[14px] border border-rose-200/30 bg-rose-300/10 px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:-translate-y-px hover:bg-rose-300/16"
+              >
+                {t("leaderboard.disbandCircle")}
+              </button>
+            ) : isOwner ? (
+              <span className="rounded-[14px] border border-white/10 bg-white/6 px-4 py-2.5 text-sm text-slate-300/74">
+                {t("leaderboard.ownerLeaveBlocked")}
+              </span>
+            ) : null
+          ) : null}
           {circlesLoadState === "loading" ? (
             <span className="text-sm text-slate-300/70">{t("leaderboard.circleLoading")}</span>
           ) : circlesLoadState === "error" ? (
@@ -358,6 +417,27 @@ export function LeaderboardPanel({
           )}
         </div>
       </div>
+
+      <CircleActionModal
+        action={pendingAction}
+        onClose={() => setPendingAction(null)}
+        onConfirm={() => {
+          const currentAction = pendingAction;
+          setPendingAction(null);
+          if (!currentAction) {
+            return;
+          }
+          if (currentAction.type === "remove-member") {
+            onRemoveMember(currentAction.accountId, currentAction.displayName);
+            return;
+          }
+          if (currentAction.type === "leave-circle") {
+            onLeaveCircle();
+            return;
+          }
+          onDisbandCircle();
+        }}
+      />
     </section>
   );
 

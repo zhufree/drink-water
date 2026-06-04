@@ -1,4 +1,4 @@
-import potatoCropIcon from "../../assets/garden/potato-crop.png";
+﻿import potatoCropIcon from "../../assets/garden/potato-crop.png";
 import potatoSeedIcon from "../../assets/garden/potato-seed.png";
 import bellPepperCropIcon from "../../assets/garden/bell-pepper-crop.png";
 import bellPepperSeedIcon from "../../assets/garden/bell-pepper-seed.png";
@@ -18,6 +18,9 @@ import eggplantCropIcon from "../../assets/garden/eggplant-crop.png";
 import eggplantSeedIcon from "../../assets/garden/eggplant-seed.png";
 import peaCropIcon from "../../assets/garden/pea-crop.png";
 import peaSeedIcon from "../../assets/garden/pea-seed.png";
+import phase0Icon from "../../assets/garden/phase-0.png";
+import phase1Icon from "../../assets/garden/phase-1.png";
+import phase2Icon from "../../assets/garden/phase-2.png";
 import type { HistoryItem, PlantedCrop, RestState } from "../../types";
 import { formatLocalDayKey } from "../../hooks/appControllerUtils";
 
@@ -113,8 +116,8 @@ export const CROP_DEFINITIONS: CropDefinition[] = [
     cropType: RADISH_CROP_TYPE,
     seedType: RADISH_SEED_TYPE,
     tier: 2,
-    cropLabel: "萝卜",
-    seedLabel: "萝卜",
+    cropLabel: "白萝卜",
+    seedLabel: "白萝卜",
     cropIcon: radishCropIcon,
     seedIcon: radishSeedIcon
   },
@@ -169,11 +172,7 @@ export const EXCHANGE_OPTIONS: ExchangeOption[] = CROP_DEFINITIONS.flatMap((sour
   }))
 );
 
-export function buildHistoryGrid(
-  history: HistoryItem[],
-  days = 56,
-  startOffsetDays = 1
-) {
+export function buildHistoryGrid(history: HistoryItem[], days = 56, startOffsetDays = 1) {
   const map = new Map(history.map((item) => [item.dayKey, item]));
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -186,8 +185,7 @@ export function buildHistoryGrid(
     const entry = map.get(dayKey);
 
     if (entry) {
-      const fillRatio =
-        entry.targetMl > 0 ? Math.min(1, entry.actualIntakeMl / entry.targetMl) : 0;
+      const fillRatio = entry.targetMl > 0 ? Math.min(1, entry.actualIntakeMl / entry.targetMl) : 0;
       cells.push({ ...entry, fillRatio });
       continue;
     }
@@ -248,18 +246,32 @@ export function getRequiredGrowthDays(cell: HistoryCell) {
   return 4;
 }
 
+export function getCropGrowthStage(growthPercent: number) {
+  if (growthPercent >= 75) {
+    return 3;
+  }
+  if (growthPercent >= 50) {
+    return 2;
+  }
+  if (growthPercent >= 25) {
+    return 1;
+  }
+  return 0;
+}
+
 export function getCropGrowth(cell: HistoryCell, crop: PlantedCrop | undefined) {
   if (!crop) {
     return {
       requiredDays: getRequiredGrowthDays(cell),
       growthPercent: 0,
+      stage: 0,
       mature: false
     };
   }
 
   const requiredDays = getRequiredGrowthDays(cell);
   if (requiredDays <= 0) {
-    return { requiredDays, growthPercent: 0, mature: false };
+    return { requiredDays, growthPercent: 0, stage: 0, mature: false };
   }
 
   const plantedTime = new Date(crop.plantedAt).getTime();
@@ -273,8 +285,19 @@ export function getCropGrowth(cell: HistoryCell, crop: PlantedCrop | undefined) 
   return {
     requiredDays,
     growthPercent,
+    stage: getCropGrowthStage(growthPercent),
     mature: growthPercent >= 100
   };
+}
+
+export function getCropStageIcon(stage: number) {
+  if (stage <= 0) {
+    return phase0Icon;
+  }
+  if (stage === 1) {
+    return phase1Icon;
+  }
+  return phase2Icon;
 }
 
 export function sumInventoryByKey<T extends string>(items: Array<{ key: T; count: number }>) {
@@ -285,10 +308,7 @@ export function sumInventoryByKey<T extends string>(items: Array<{ key: T; count
   return totals;
 }
 
-export function getUpcomingBoostHours(
-  restState: RestState,
-  cooldownRemainingSeconds: number
-) {
+export function getUpcomingBoostHours(restState: RestState, cooldownRemainingSeconds: number) {
   if (restState.active) {
     return Math.max(1, Math.round(restState.plannedBoostSeconds / 3600));
   }
@@ -314,13 +334,9 @@ export function getUpcomingBoostHours(
 }
 
 export function getCropDefinitionBySeed(seedType: string) {
-  return (
-    CROP_DEFINITIONS.find((definition) => definition.seedType === seedType) ?? CROP_DEFINITIONS[0]
-  );
+  return CROP_DEFINITIONS.find((definition) => definition.seedType === seedType) ?? CROP_DEFINITIONS[0];
 }
 
 export function getCropDefinitionByCrop(cropType: string) {
-  return (
-    CROP_DEFINITIONS.find((definition) => definition.cropType === cropType) ?? CROP_DEFINITIONS[0]
-  );
+  return CROP_DEFINITIONS.find((definition) => definition.cropType === cropType) ?? CROP_DEFINITIONS[0];
 }

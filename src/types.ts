@@ -73,6 +73,7 @@ export type GardenCollectionItem = {
 
 export type GardenState = {
   initialGrantClaimed: boolean;
+  produceMigrationClaimed: boolean;
   seeds: SeedInventoryItem[];
   produce: ProduceInventoryItem[];
   crops: PlantedCrop[];
@@ -104,9 +105,14 @@ export type CircleSummary = {
   circleName: string | null;
 };
 
+export type LeaderboardCircleMeta = {
+  ownerAccountId: string | null;
+  memberCount: number;
+};
+
 export type LeaderboardEntry = {
   rank: number;
-  deviceId: string;
+  accountId: string;
   displayName: string;
   actualIntakeMl: number;
   targetMl: number;
@@ -120,4 +126,37 @@ export type AppUpdateInfo = {
   releaseUrl: string;
   notes: string | null;
   publishedAt: string;
+};
+
+export type SyncMeta = {
+  accountId: string | null;
+  pairingDeviceId: string;
+  lastStartupCatchUpPromptDay: string | null;
+  lastDailyPullAt: string | null;
+  lastGardenPullAt: string | null;
+  lastBackupAt: string | null;
+  dailySnapshotUpdatedAtByDay: Record<string, string>;
+  dailySnapshotUpdatedByDeviceIdByDay: Record<string, string>;
+  gardenUpdatedAt: string | null;
+  gardenUpdatedByDeviceId: string | null;
+};
+
+export type DailySnapshotRecord = {
+  dayKey: string;
+  snapshot: HistoryItem;
+  updatedAt: string;
+  updatedByDeviceId: string;
+};
+
+export type GardenSnapshotRecord = {
+  snapshot: GardenState;
+  updatedAt: string;
+  updatedByDeviceId: string;
+};
+
+export type CloudBackupMeta = {
+  objectKey: string;
+  createdAt: string;
+  deviceId: string;
+  sizeBytes: number;
 };

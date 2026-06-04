@@ -5,7 +5,7 @@ export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.5.7";
+export const APP_VERSION = "0.6.0";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -29,6 +29,7 @@ export const defaultSettings: Settings = {
 
 export const defaultGardenState: GardenState = {
   initialGrantClaimed: true,
+  produceMigrationClaimed: true,
   seeds: [],
   produce: [],
   crops: [],

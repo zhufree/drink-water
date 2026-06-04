@@ -129,6 +129,11 @@ export default function App() {
                   cloudIdentityError={controller.cloudIdentityError}
                   activeCircleCode={controller.settings.activeCircleCode}
                   activeCircleName={controller.settings.activeCircleName}
+                  viewerAccountId={controller.syncMeta.accountId}
+                  circleMeta={{
+                    ownerAccountId: controller.activeCircleOwnerAccountId,
+                    memberCount: controller.activeCircleMemberCount
+                  }}
                   circles={controller.circles}
                   circlesLoadState={controller.circlesLoadState}
                   circleCodeInput={controller.circleCodeInput}
@@ -153,6 +158,11 @@ export default function App() {
                   }
                   onSelectCircle={(circle) => void controller.handleSelectCircle(circle)}
                   onMetricChange={controller.setLeaderboardMetric}
+                  onRemoveMember={(targetAccountId, displayName) =>
+                    void controller.handleRemoveCircleMember(targetAccountId, displayName)
+                  }
+                  onLeaveCircle={() => void controller.handleLeaveCurrentCircle()}
+                  onDisbandCircle={() => void controller.handleDisbandCurrentCircle()}
                   onRefresh={() => void controller.refreshLeaderboard()}
                 />
               ) : null}
@@ -169,12 +179,23 @@ export default function App() {
                   releaseUrl={RELEASE_URL}
                   saving={controller.saving}
                   notificationState={controller.notificationState}
+                  locale={controller.locale}
+                  syncMeta={controller.syncMeta}
+                  pairCode={controller.pairCode}
+                  pairCodeInput={controller.pairCodeInput}
+                  syncBusy={controller.syncBusy}
                   setDraftSettings={controller.setDraftSettings}
                   onAutostartChange={(enabled) =>
                     void controller.handleAutostartChange(enabled)
                   }
                   onExportData={() => void controller.handleExportData()}
                   onImportData={() => void controller.handleImportData()}
+                  onCreatePairCode={() => void controller.handleCreatePairCode()}
+                  onPairCodeInputChange={controller.setPairCodeInput}
+                  onBindPairCode={() => void controller.handleBindPairCode()}
+                  onPullSyncNow={() => void controller.handlePullSyncNow()}
+                  onUploadCloudBackup={() => void controller.handleUploadCloudBackup()}
+                  onRestoreCloudBackup={() => void controller.handleRestoreCloudBackup()}
                   onPreviewBackgroundChange={controller.handlePreviewBackgroundChange}
                   onSave={() => void controller.handleSaveSettings()}
                 />

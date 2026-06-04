@@ -1,4 +1,4 @@
-﻿#[cfg(test)]
+#[cfg(test)]
 mod tests {
     use super::*;
     use chrono::{LocalResult, TimeZone};
@@ -31,6 +31,7 @@ mod tests {
             settings,
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         let changed = reconcile(&mut state, local_dt(2026, 5, 19, 11, 0));
@@ -72,6 +73,7 @@ mod tests {
             settings: settings.clone(),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         state.today.pending_slot_index = Some(3);
@@ -144,6 +146,7 @@ mod tests {
             today,
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         let saved = state.today.last_log_undo.clone().unwrap();
@@ -174,6 +177,7 @@ mod tests {
                 missed_reminder_slots: 2,
             }],
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 9, 30), 250).unwrap();
@@ -196,6 +200,7 @@ mod tests {
             today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
         let mut value = serde_json::to_value(state).unwrap();
         value.as_object_mut().unwrap().remove("garden");
@@ -253,6 +258,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: vec![history_item("2026-05-19", 250, 2000)],
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         plant_seed_in_state(
@@ -299,6 +305,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: vec![history_item("2026-05-19", 2000, 2000)],
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
@@ -337,7 +344,8 @@ mod tests {
                 today: DailyRecord::new(now, &settings),
                 history: vec![history_item("2026-05-19", 2000, 2000)],
                 garden: GardenState::default(),
-            };
+            sync_meta: SyncMeta::default(),
+        };
 
             plant_seed_in_state(
                 &mut state,
@@ -371,6 +379,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).is_err());
@@ -406,6 +415,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
@@ -440,6 +450,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
@@ -461,6 +472,7 @@ mod tests {
             today: DailyRecord::new(now, &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 6);
@@ -505,6 +517,7 @@ mod tests {
             today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
             history: Vec::new(),
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         state.garden.active_background = CAT_COLLAGE_BACKGROUND_ID.to_string();
@@ -537,6 +550,7 @@ mod tests {
                 history_item("2026-05-18", 1400, 2000),
             ],
             garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
         };
 
         plant_seed_in_state(
@@ -579,3 +593,5 @@ mod tests {
         );
     }
 }
+
+
