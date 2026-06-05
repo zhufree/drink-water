@@ -1,10 +1,12 @@
-import { Minus, Settings, X } from "lucide-react";
+import { Minus, RefreshCw, Settings, X } from "lucide-react";
 import { useI18n } from "../i18n";
 
 type TabKey = "today" | "history" | "leaderboard" | "settings";
 
 type WindowChromeProps = {
   activeTab: TabKey;
+  syncBusy: boolean;
+  onRefreshSnapshots: () => void;
   onOpenSettings: () => void;
   onMinimize: () => void;
   onHide: () => void;
@@ -12,6 +14,8 @@ type WindowChromeProps = {
 
 export function WindowChrome({
   activeTab,
+  syncBusy,
+  onRefreshSnapshots,
   onOpenSettings,
   onMinimize,
   onHide
@@ -38,6 +42,16 @@ export function WindowChrome({
       </div>
 
       <div className="no-drag flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          aria-label={t("leaderboard.refresh")}
+          title={t("leaderboard.refresh")}
+          onClick={onRefreshSnapshots}
+          disabled={syncBusy}
+          className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-white/8 text-slate-200 transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <RefreshCw className={`icon-clarity h-4 w-4 ${syncBusy ? "animate-spin" : ""}`} strokeWidth={1.9} />
+        </button>
         <button
           type="button"
           aria-label={t("window.openSettings")}

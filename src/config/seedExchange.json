@@ -1,0 +1,146 @@
+{
+  "seeds": [
+    {
+      "seedType": "potatoSeed",
+      "cropType": "potato",
+      "tier": 1,
+      "label": {
+        "zh-CN": "土豆",
+        "en-US": "Potato"
+      },
+      "seedAsset": "potatoSeed",
+      "cropAsset": "potatoCrop",
+      "seedAliases": ["bokChoy", "bokChoySeed"],
+      "cropAliases": ["bokChoy"]
+    },
+    {
+      "seedType": "bellPepperSeed",
+      "cropType": "bellPepper",
+      "tier": 1,
+      "label": {
+        "zh-CN": "青椒",
+        "en-US": "Bell pepper"
+      },
+      "seedAsset": "bellPepperSeed",
+      "cropAsset": "bellPepperCrop",
+      "seedAliases": ["cabbageSeed"],
+      "cropAliases": ["cabbage"]
+    },
+    {
+      "seedType": "carrotSeed",
+      "cropType": "carrot",
+      "tier": 1,
+      "label": {
+        "zh-CN": "胡萝卜",
+        "en-US": "Carrot"
+      },
+      "seedAsset": "carrotSeed",
+      "cropAsset": "carrotCrop",
+      "seedAliases": ["peaSeed"],
+      "cropAliases": ["pea"]
+    },
+    {
+      "seedType": "napaCabbageSeed",
+      "cropType": "napaCabbage",
+      "tier": 1,
+      "label": {
+        "zh-CN": "大白菜",
+        "en-US": "Napa cabbage"
+      },
+      "seedAsset": "napaCabbageSeed",
+      "cropAsset": "napaCabbageCrop",
+      "seedAliases": [],
+      "cropAliases": []
+    },
+    {
+      "seedType": "broccoliSeed",
+      "cropType": "broccoli",
+      "tier": 2,
+      "label": {
+        "zh-CN": "西兰花",
+        "en-US": "Broccoli"
+      },
+      "seedAsset": "broccoliSeed",
+      "cropAsset": "broccoliCrop",
+      "seedAliases": ["tomatoSeed"],
+      "cropAliases": ["tomato"]
+    },
+    {
+      "seedType": "radishSeed",
+      "cropType": "radish",
+      "tier": 2,
+      "label": {
+        "zh-CN": "白萝卜",
+        "en-US": "Radish"
+      },
+      "seedAsset": "radishSeed",
+      "cropAsset": "radishCrop",
+      "seedAliases": ["cornSeed"],
+      "cropAliases": ["corn"]
+    },
+    {
+      "seedType": "pumpkinSeed",
+      "cropType": "pumpkin",
+      "tier": 2,
+      "label": {
+        "zh-CN": "南瓜",
+        "en-US": "Pumpkin"
+      },
+      "seedAsset": "pumpkinSeed",
+      "cropAsset": "pumpkinCrop",
+      "seedAliases": [],
+      "cropAliases": []
+    },
+    {
+      "seedType": "onionSeed",
+      "cropType": "onion",
+      "tier": 2,
+      "label": {
+        "zh-CN": "洋葱",
+        "en-US": "Onion"
+      },
+      "seedAsset": "onionSeed",
+      "cropAsset": "onionCrop",
+      "seedAliases": [],
+      "cropAliases": []
+    },
+    {
+      "seedType": "gardenPeaSeed",
+      "cropType": "gardenPea",
+      "tier": 2,
+      "label": {
+        "zh-CN": "豌豆",
+        "en-US": "Pea"
+      },
+      "seedAsset": "peaSeed",
+      "cropAsset": "peaCrop",
+      "seedAliases": [],
+      "cropAliases": []
+    },
+    {
+      "seedType": "eggplantSeed",
+      "cropType": "eggplant",
+      "tier": 3,
+      "label": {
+        "zh-CN": "茄子",
+        "en-US": "Eggplant"
+      },
+      "seedAsset": "eggplantSeed",
+      "cropAsset": "eggplantCrop",
+      "seedAliases": [],
+      "cropAliases": []
+    }
+  ],
+  "exchangeRules": [
+    {
+      "tierGap": 0,
+      "sourceCost": 1,
+      "targetSeedCount": 1
+    },
+    {
+      "tierGap": 1,
+      "sourceCost": 3,
+      "targetSeedCount": 1
+    }
+  ]
+}

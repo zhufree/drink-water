@@ -27,6 +27,10 @@ fn save_settings(
         guard.today.active_start_hour = settings.active_start_hour;
         guard.today.active_end_hour = settings.active_end_hour;
         guard.today.updated_at = Local::now().to_rfc3339();
+        let now = Local::now();
+        let today_day_key = guard.today.day_key.clone();
+        touch_daily_snapshot(&mut guard, &today_day_key, now);
+        touch_settings_snapshot(&mut guard, now);
         guard.normalize_sync_meta();
     }
 
@@ -286,9 +290,11 @@ fn exchange_produce(
     state: State<'_, AppState>,
     source_crop_type: String,
     target_seed_type: String,
+    quantity: Option<u32>,
 ) -> Result<GardenState, String> {
     let target_seed_type = normalize_seed_type(&target_seed_type)?;
     let source_crop_type = source_crop_type.trim().to_string();
+    let quantity = quantity.unwrap_or(1).max(1);
     let now = Local::now();
     {
         let mut guard = state
@@ -296,7 +302,7 @@ fn exchange_produce(
             .lock()
             .map_err(|_| "failed to exchange produce".to_string())?;
         reconcile(&mut guard, now);
-        exchange_produce_in_state(&mut guard, &source_crop_type, &target_seed_type)?;
+        exchange_produce_in_state(&mut guard, &source_crop_type, &target_seed_type, quantity)?;
         touch_garden_snapshot(&mut guard, now);
     }
 
@@ -558,6 +564,40 @@ fn get_garden_snapshot(state: State<'_, AppState>) -> Result<GardenSnapshotRecor
 }
 
 #[tauri::command]
+fn get_settings_snapshot(state: State<'_, AppState>) -> Result<SettingsSnapshotRecord, String> {
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to read settings sync snapshot".to_string())?;
+        guard.normalize_sync_meta();
+        if guard.sync_meta.settings_updated_at.is_none() {
+            touch_settings_snapshot(&mut guard, Local::now());
+        }
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read settings sync snapshot".to_string())?;
+    Ok(SettingsSnapshotRecord {
+        snapshot: build_settings_snapshot(&guard.settings),
+        updated_at: guard
+            .sync_meta
+            .settings_updated_at
+            .clone()
+            .unwrap_or_else(|| Local::now().to_rfc3339()),
+        updated_by_device_id: guard
+            .sync_meta
+            .settings_updated_by_device_id
+            .clone()
+            .unwrap_or_else(|| guard.settings.device_id.clone()),
+    })
+}
+
+#[tauri::command]
 fn apply_remote_snapshots(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -633,6 +673,40 @@ fn apply_remote_snapshots(
             }
         }
 
+        guard.normalize_sync_meta();
+    }
+
+    state.save()?;
+    if changed {
+        emit_state_updated(&app);
+    }
+    Ok(changed)
+}
+
+#[tauri::command]
+fn apply_remote_settings_snapshot(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings_snapshot: Option<SettingsSnapshotRecord>,
+    _pulled_at: String,
+) -> Result<bool, String> {
+    let mut changed = false;
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to apply remote settings snapshot".to_string())?;
+        if let Some(remote_settings) = settings_snapshot {
+            if should_apply_remote_snapshot(
+                guard.sync_meta.settings_updated_at.as_deref(),
+                guard.sync_meta.settings_updated_by_device_id.as_deref(),
+                &remote_settings.updated_at,
+                &remote_settings.updated_by_device_id,
+            ) {
+                apply_settings_snapshot(&mut guard, remote_settings);
+                changed = true;
+            }
+        }
         guard.normalize_sync_meta();
     }
 
@@ -794,6 +868,23 @@ fn touch_garden_snapshot(state: &mut PersistedState, now: DateTime<Local>) {
     state.sync_meta.garden_updated_by_device_id = Some(state.settings.device_id.clone());
 }
 
+fn touch_settings_snapshot(state: &mut PersistedState, now: DateTime<Local>) {
+    state.sync_meta.settings_updated_at = Some(now.to_rfc3339());
+    state.sync_meta.settings_updated_by_device_id = Some(state.settings.device_id.clone());
+}
+
+fn build_settings_snapshot(settings: &Settings) -> SettingsSnapshot {
+    SettingsSnapshot {
+        daily_target_ml: settings.daily_target_ml,
+        cup_size_ml: settings.cup_size_ml,
+        cup_step_ml: settings.cup_step_ml,
+        reminder_interval_minutes: settings.reminder_interval_minutes,
+        active_start_hour: settings.active_start_hour,
+        active_end_hour: settings.active_end_hour,
+        locale: settings.locale.clone(),
+    }
+}
+
 fn build_recent_daily_snapshots(
     state: &PersistedState,
     range_days: usize,
@@ -899,4 +990,36 @@ fn apply_daily_snapshot(state: &mut PersistedState, remote: &DailySnapshotRecord
         state.history.push(remote.snapshot.clone());
         state.history.sort_by(|left, right| right.day_key.cmp(&left.day_key));
     }
+}
+
+fn apply_settings_snapshot(state: &mut PersistedState, remote: SettingsSnapshotRecord) {
+    let next_settings = Settings {
+        daily_target_ml: remote.snapshot.daily_target_ml,
+        cup_size_ml: remote.snapshot.cup_size_ml,
+        cup_step_ml: remote.snapshot.cup_step_ml,
+        panel_opacity_percent: state.settings.panel_opacity_percent,
+        panel_blur_px: state.settings.panel_blur_px,
+        device_id: state.settings.device_id.clone(),
+        display_name: state.settings.display_name.clone(),
+        active_circle_code: state.settings.active_circle_code.clone(),
+        active_circle_name: state.settings.active_circle_name.clone(),
+        reminder_interval_minutes: remote.snapshot.reminder_interval_minutes,
+        active_start_hour: remote.snapshot.active_start_hour,
+        active_end_hour: remote.snapshot.active_end_hour,
+        notifications_enabled: state.settings.notifications_enabled,
+        autostart_enabled: state.settings.autostart_enabled,
+        locale: remote.snapshot.locale,
+    }
+    .sanitize();
+
+    state.settings = next_settings;
+    state.today.target_ml = state.settings.daily_target_ml;
+    state.today.cup_size_ml = state.settings.cup_size_ml;
+    state.today.reminder_interval_minutes = state.settings.reminder_interval_minutes;
+    state.today.active_start_hour = state.settings.active_start_hour;
+    state.today.active_end_hour = state.settings.active_end_hour;
+    state.today.updated_at = remote.updated_at.clone();
+    state.sync_meta.settings_updated_at = Some(remote.updated_at);
+    state.sync_meta.settings_updated_by_device_id = Some(remote.updated_by_device_id);
+    state.normalize_sync_meta();
 }

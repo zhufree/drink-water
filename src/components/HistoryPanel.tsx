@@ -26,7 +26,7 @@ type HistoryPanelProps = {
   restCooldownRemainingSeconds: number;
   onPlantSeed: (dayKey: string, seedType: string) => void;
   onHarvestCrop: (dayKey: string) => void;
-  onExchangeProduce: (sourceCropType: string, targetSeedType: string) => void;
+  onExchangeProduce: (sourceCropType: string, targetSeedType: string, quantity: number) => void;
   onRedeemBackgroundReward: (rewardId: string) => void;
   onStartRest: () => void;
 };
@@ -79,6 +79,7 @@ export function HistoryPanel({
   const [exchangeOpen, setExchangeOpen] = useState(false);
   const [selectedSourceCropType, setSelectedSourceCropType] = useState<string>(BASIC_CROP_TYPE);
   const [selectedTargetSeedType, setSelectedTargetSeedType] = useState<string>(ADVANCED_SEED_TYPE);
+  const [exchangeQuantity, setExchangeQuantity] = useState(1);
 
   useEffect(() => {
     if (selectableSeeds.length === 0) {
@@ -112,6 +113,10 @@ export function HistoryPanel({
 
   const selectedTargetOption =
     targetOptions.find((option) => option.targetSeedType === selectedTargetSeedType) ?? null;
+  const maxExchangeQuantity =
+    selectedSourceEntry && selectedTargetOption
+      ? Math.max(1, Math.floor(selectedSourceEntry.count / selectedTargetOption.cost))
+      : 1;
   const selectedSeedCount = seedCountByType.get(selectedSeedType) ?? 0;
   const totalSeedCount = seedEntries.reduce((total, [, count]) => total + count, 0);
   const totalProduceCount = produceEntries.reduce((total, [, count]) => total + count, 0);
@@ -136,8 +141,13 @@ export function HistoryPanel({
   const canConfirmExchange = Boolean(
     selectedSourceEntry &&
       selectedTargetOption &&
-      selectedSourceEntry.count >= selectedTargetOption.cost
+      exchangeQuantity >= 1 &&
+      selectedSourceEntry.count >= selectedTargetOption.cost * exchangeQuantity
   );
+
+  useEffect(() => {
+    setExchangeQuantity((current) => Math.min(Math.max(1, current), maxExchangeQuantity));
+  }, [maxExchangeQuantity, selectedSourceCropType, selectedTargetSeedType]);
   const upcomingBoostHours = getUpcomingBoostHours(restState, restCooldownRemainingSeconds);
   const harvestCount = gardenState.collection.reduce((total, item) => total + item.harvestCount, 0);
   const plantableCount = gridCells.filter((cell) => cell.actualIntakeMl > 0 && !cropsByDay.has(cell.dayKey)).length;
@@ -146,8 +156,8 @@ export function HistoryPanel({
   return (
     <section className="flex flex-col gap-3">
       <div className="panel-surface panel-surface-flat rounded-[22px] p-4">
-        <h2 className="m-0 text-lg font-semibold text-slate-50">历史花园</h2>
-        <p className="mt-1 text-sm text-slate-300/78">按天种植和收获，把喝水记录慢慢养成一片小花园。</p>
+        <h2 className="m-0 text-lg font-semibold text-slate-50">历史农场</h2>
+        <p className="mt-1 text-sm text-slate-300/78">按天种植和收获，把喝水记录慢慢养成一片小农场。</p>
       </div>
 
       <HistoryHeatmapCard
@@ -188,11 +198,14 @@ export function HistoryPanel({
         selectedSourceEntry={selectedSourceEntry}
         selectedTargetSeedType={selectedTargetSeedType}
         selectedTargetOption={selectedTargetOption}
+        exchangeQuantity={exchangeQuantity}
+        maxExchangeQuantity={maxExchangeQuantity}
         canConfirmExchange={canConfirmExchange}
         backgroundRewards={backgroundRewards}
         onClose={() => setExchangeOpen(false)}
         onSelectSource={setSelectedSourceCropType}
         onSelectTarget={setSelectedTargetSeedType}
+        onQuantityChange={setExchangeQuantity}
         onRedeemBackgroundReward={onRedeemBackgroundReward}
         onConfirmExchange={() => {
           if (!selectedTargetOption) {
@@ -200,7 +213,8 @@ export function HistoryPanel({
           }
           onExchangeProduce(
             selectedSourceEntry?.cropType ?? ADVANCED_CROP_TYPE,
-            selectedTargetOption.targetSeedType
+            selectedTargetOption.targetSeedType,
+            exchangeQuantity
           );
           setExchangeOpen(false);
         }}

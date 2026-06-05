@@ -2,7 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   CloudBackupMeta,
   DailySnapshotRecord,
-  GardenSnapshotRecord
+  GardenSnapshotRecord,
+  SettingsSnapshotRecord
 } from "./types";
 
 type SyncBootstrapResponse = {
@@ -20,6 +21,10 @@ type DailyPullResponse = {
 
 type GardenPullResponse = {
   snapshot: GardenSnapshotRecord | null;
+};
+
+type SettingsPullResponse = {
+  snapshot: SettingsSnapshotRecord | null;
 };
 
 type BackupUploadResponse = {
@@ -116,6 +121,22 @@ export async function pushGardenSnapshot(
 export async function pullGardenSnapshot(accountId: string, deviceId: string) {
   const params = new URLSearchParams({ accountId, deviceId });
   return request<GardenPullResponse>(`/api/sync/garden?${params.toString()}`);
+}
+
+export async function pushSettingsSnapshot(
+  accountId: string,
+  deviceId: string,
+  snapshot: SettingsSnapshotRecord
+) {
+  return request<{ ok: true }>("/api/sync/settings/push", {
+    method: "POST",
+    body: JSON.stringify({ accountId, deviceId, snapshot })
+  });
+}
+
+export async function pullSettingsSnapshot(accountId: string, deviceId: string) {
+  const params = new URLSearchParams({ accountId, deviceId });
+  return request<SettingsPullResponse>(`/api/sync/settings?${params.toString()}`);
 }
 
 export async function uploadCloudBackup(

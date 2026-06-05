@@ -11,6 +11,9 @@ Thumbs.db
 cloudflare/wrangler.jsonc
 cloudflare/.wrangler/
 .env
+.dev.vars
+cloudflare/.dev.vars
 .env.local
 .env.development.local
 .env.production.local
+wechat-*

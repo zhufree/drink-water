@@ -18,6 +18,17 @@ export type Settings = {
   locale: Locale;
 };
 
+export type SettingsSnapshot = Pick<
+  Settings,
+  | "dailyTargetMl"
+  | "cupSizeMl"
+  | "cupStepMl"
+  | "reminderIntervalMinutes"
+  | "activeStartHour"
+  | "activeEndHour"
+  | "locale"
+>;
+
 export type TodayStatus = {
   targetMl: number;
   expectedMl: number;
@@ -150,6 +161,12 @@ export type DailySnapshotRecord = {
 
 export type GardenSnapshotRecord = {
   snapshot: GardenState;
+  updatedAt: string;
+  updatedByDeviceId: string;
+};
+
+export type SettingsSnapshotRecord = {
+  snapshot: SettingsSnapshot;
   updatedAt: string;
   updatedByDeviceId: string;
 };

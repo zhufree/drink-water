@@ -211,6 +211,10 @@ pub struct SyncMeta {
     garden_updated_at: Option<String>,
     #[serde(default)]
     garden_updated_by_device_id: Option<String>,
+    #[serde(default)]
+    settings_updated_at: Option<String>,
+    #[serde(default)]
+    settings_updated_by_device_id: Option<String>,
 }
 
 impl Default for SyncMeta {
@@ -226,6 +230,8 @@ impl Default for SyncMeta {
             daily_snapshot_updated_by_device_id_by_day: BTreeMap::new(),
             garden_updated_at: None,
             garden_updated_by_device_id: None,
+            settings_updated_at: None,
+            settings_updated_by_device_id: None,
         }
     }
 }
@@ -259,7 +265,32 @@ impl SyncMeta {
             .as_ref()
             .map(|value| value.trim().chars().take(128).collect::<String>())
             .filter(|value| !value.is_empty());
+        self.settings_updated_by_device_id = self
+            .settings_updated_by_device_id
+            .as_ref()
+            .map(|value| value.trim().chars().take(128).collect::<String>())
+            .filter(|value| !value.is_empty());
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsSnapshot {
+    daily_target_ml: u32,
+    cup_size_ml: u32,
+    cup_step_ml: u32,
+    reminder_interval_minutes: u32,
+    active_start_hour: u8,
+    active_end_hour: u8,
+    locale: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SettingsSnapshotRecord {
+    snapshot: SettingsSnapshot,
+    updated_at: String,
+    updated_by_device_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

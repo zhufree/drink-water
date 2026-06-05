@@ -1,6 +1,8 @@
 type Env = {
   DB: D1Database;
   SYNC_BACKUPS: R2Bucket;
+  WECHAT_APP_ID?: string;
+  WECHAT_APP_SECRET?: string;
 };
 
 type AppContext = {
@@ -53,11 +55,25 @@ type GardenSnapshotPayload = {
   updatedByDeviceId: string;
 };
 
+type SettingsSnapshotPayload = {
+  snapshot: unknown;
+  updatedAt: string;
+  updatedByDeviceId: string;
+};
+
 type BackupManifestRecord = {
   object_key: string;
   created_at: string;
   device_id: string;
   size_bytes: number;
+};
+
+type WeChatCode2SessionResponse = {
+  openid?: string;
+  session_key?: string;
+  unionid?: string;
+  errcode?: number;
+  errmsg?: string;
 };
 
 const JSON_HEADERS = {
@@ -79,6 +95,10 @@ export default {
     try {
       if (request.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "drink-water-leaderboard" });
+      }
+
+      if (url.pathname === "/api/wechat/session") {
+        return json(await handleWeChatSession(ctx));
       }
 
       if (request.method === "POST" && url.pathname === "/api/bootstrap") {
@@ -153,6 +173,14 @@ export default {
         return json(await handlePullGardenSnapshot(ctx));
       }
 
+      if (request.method === "POST" && url.pathname === "/api/sync/settings/push") {
+        return json(await handlePushSettingsSnapshot(ctx));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/sync/settings") {
+        return json(await handlePullSettingsSnapshot(ctx));
+      }
+
       if (request.method === "POST" && url.pathname === "/api/backup/upload") {
         return json(await handleUploadBackup(ctx));
       }
@@ -187,6 +215,74 @@ class HttpError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+async function handleWeChatSession(ctx: AppContext) {
+  if (ctx.request.method !== "POST") {
+    throw new HttpError(405, "Method not allowed");
+  }
+
+  const body = await readBody<{ code?: string }>(ctx.request);
+  const code = requireWeChatLoginCode(body.code);
+  const appId = String(ctx.env.WECHAT_APP_ID ?? "").trim();
+  const appSecret = String(ctx.env.WECHAT_APP_SECRET ?? "").trim();
+
+  if (!appId || !appSecret) {
+    console.error("[worker] WeChat login is not configured", {
+      hasAppId: Boolean(appId),
+      hasAppSecret: Boolean(appSecret)
+    });
+    throw new HttpError(500, "WeChat login is not configured");
+  }
+
+  const sessionUrl = new URL("https://api.weixin.qq.com/sns/jscode2session");
+  sessionUrl.search = new URLSearchParams({
+    appid: appId,
+    secret: appSecret,
+    js_code: code,
+    grant_type: "authorization_code"
+  }).toString();
+
+  let response: Response;
+  try {
+    response = await fetch(sessionUrl);
+  } catch (error) {
+    console.error("[worker] WeChat jscode2session request failed", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw new HttpError(502, "Failed to exchange WeChat login code");
+  }
+
+  if (!response.ok) {
+    console.error("[worker] WeChat jscode2session HTTP error", {
+      status: response.status
+    });
+    throw new HttpError(502, "Failed to exchange WeChat login code");
+  }
+
+  let payload: WeChatCode2SessionResponse;
+  try {
+    payload = (await response.json()) as WeChatCode2SessionResponse;
+  } catch {
+    console.error("[worker] WeChat jscode2session returned invalid JSON");
+    throw new HttpError(502, "Failed to exchange WeChat login code");
+  }
+
+  if (payload.errcode !== undefined && Number(payload.errcode) !== 0) {
+    console.error("[worker] WeChat jscode2session returned an error", {
+      errcode: payload.errcode,
+      errmsg: sanitizeLogMessage(payload.errmsg)
+    });
+    throw new HttpError(502, "Failed to exchange WeChat login code");
+  }
+
+  const openid = String(payload.openid ?? "").trim();
+  if (!openid) {
+    console.error("[worker] WeChat jscode2session response missed openid");
+    throw new HttpError(502, "Failed to exchange WeChat login code");
+  }
+
+  return { openid };
 }
 
 async function handleBootstrap(ctx: AppContext) {
@@ -556,11 +652,12 @@ async function handleSyncBootstrap(ctx: AppContext) {
   let accountId = normalizeOptionalAccountId(body.accountId);
 
   if (!accountId) {
+    accountId = await getSyncAccountIdByDeviceId(ctx.env.DB, deviceId);
+  }
+
+  if (!accountId) {
     accountId = crypto.randomUUID();
-    await ctx.env.DB
-      .prepare(`INSERT INTO sync_accounts (account_id, created_at) VALUES (?1, ?2)`)
-      .bind(accountId, now)
-      .run();
+    await ensureSyncAccountExists(ctx.env.DB, accountId, now);
   } else {
     await ensureSyncAccountExists(ctx.env.DB, accountId, now);
   }
@@ -752,6 +849,71 @@ async function handlePullGardenSnapshot(ctx: AppContext) {
     .prepare(
       `SELECT snapshot_json, updated_at, updated_by_device_id
        FROM garden_snapshots
+       WHERE account_id = ?1`
+    )
+    .bind(accountId)
+    .first<{
+      snapshot_json: string;
+      updated_at: string;
+      updated_by_device_id: string;
+    }>();
+
+  return {
+    snapshot: row
+      ? {
+          snapshot: JSON.parse(row.snapshot_json),
+          updatedAt: row.updated_at,
+          updatedByDeviceId: row.updated_by_device_id
+        }
+      : null
+  };
+}
+
+async function handlePushSettingsSnapshot(ctx: AppContext) {
+  const body = await readBody<{
+    accountId?: string;
+    deviceId?: string;
+    snapshot?: SettingsSnapshotPayload;
+  }>(ctx.request);
+  const accountId = requireAccountId(body.accountId);
+  const deviceId = requireDeviceId(body.deviceId);
+  const snapshot = body.snapshot;
+  if (!snapshot) {
+    throw new HttpError(400, "snapshot is required");
+  }
+
+  await ensureSyncDeviceBound(ctx.env.DB, accountId, deviceId);
+  const updatedAt = requireIsoDateTime(snapshot.updatedAt, "updatedAt");
+  const updatedByDeviceId = requireDeviceId(snapshot.updatedByDeviceId || deviceId);
+
+  await ctx.env.DB
+    .prepare(
+      `INSERT INTO settings_snapshots (account_id, snapshot_json, updated_at, updated_by_device_id)
+       VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT(account_id)
+       DO UPDATE SET
+         snapshot_json = excluded.snapshot_json,
+         updated_at = excluded.updated_at,
+         updated_by_device_id = excluded.updated_by_device_id
+       WHERE excluded.updated_at > settings_snapshots.updated_at
+          OR (excluded.updated_at = settings_snapshots.updated_at
+              AND excluded.updated_by_device_id > settings_snapshots.updated_by_device_id)`
+    )
+    .bind(accountId, JSON.stringify(snapshot.snapshot ?? null), updatedAt, updatedByDeviceId)
+    .run();
+
+  return { ok: true };
+}
+
+async function handlePullSettingsSnapshot(ctx: AppContext) {
+  const accountId = requireAccountId(ctx.url.searchParams.get("accountId"));
+  const deviceId = requireDeviceId(ctx.url.searchParams.get("deviceId"));
+  await ensureSyncDeviceBound(ctx.env.DB, accountId, deviceId);
+
+  const row = await ctx.env.DB
+    .prepare(
+      `SELECT snapshot_json, updated_at, updated_by_device_id
+       FROM settings_snapshots
        WHERE account_id = ?1`
     )
     .bind(accountId)
@@ -972,6 +1134,306 @@ async function bindDeviceToSyncAccount(
     )
     .bind(deviceId, accountId, now)
     .run();
+
+  await reconcileLegacyDeviceAccount(db, deviceId, accountId, now);
+}
+
+async function reconcileLegacyDeviceAccount(
+  db: D1Database,
+  deviceId: string,
+  accountId: string,
+  now: string
+) {
+  if (deviceId === accountId) {
+    return;
+  }
+
+  await ensureSyncAccountExists(db, accountId, now);
+
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO users (account_id, display_name, created_at, updated_at)
+       SELECT ?2, display_name, created_at, updated_at
+       FROM users
+       WHERE account_id = ?1`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE users
+       SET
+         display_name = COALESCE(
+           display_name,
+           (SELECT old_user.display_name FROM users old_user WHERE old_user.account_id = ?1)
+         ),
+         updated_at = MAX(
+           updated_at,
+           COALESCE(
+             (SELECT old_user.updated_at FROM users old_user WHERE old_user.account_id = ?1),
+             updated_at
+           )
+         )
+       WHERE account_id = ?2`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE circles
+       SET created_by_account_id = ?2
+       WHERE created_by_account_id = ?1`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO circle_members (circle_code, account_id, joined_at)
+       SELECT circle_code, ?2, joined_at
+       FROM circle_members
+       WHERE account_id = ?1`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE circle_members
+       SET joined_at = MIN(
+         joined_at,
+         COALESCE(
+           (
+             SELECT old_member.joined_at
+             FROM circle_members old_member
+             WHERE old_member.circle_code = circle_members.circle_code
+               AND old_member.account_id = ?1
+           ),
+           joined_at
+         )
+       )
+       WHERE account_id = ?2`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `INSERT OR IGNORE INTO daily_stats (
+         circle_code,
+         account_id,
+         day_key,
+         actual_intake_ml,
+         target_ml,
+         updated_at
+       )
+       SELECT
+         circle_code,
+         ?2,
+         day_key,
+         actual_intake_ml,
+         target_ml,
+         updated_at
+       FROM daily_stats
+       WHERE account_id = ?1`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db
+    .prepare(
+      `UPDATE daily_stats
+       SET
+         actual_intake_ml = (
+           SELECT old_stats.actual_intake_ml
+           FROM daily_stats old_stats
+           WHERE old_stats.account_id = ?1
+             AND old_stats.circle_code = daily_stats.circle_code
+             AND old_stats.day_key = daily_stats.day_key
+             AND old_stats.updated_at > daily_stats.updated_at
+           ORDER BY old_stats.updated_at DESC
+           LIMIT 1
+         ),
+         target_ml = (
+           SELECT old_stats.target_ml
+           FROM daily_stats old_stats
+           WHERE old_stats.account_id = ?1
+             AND old_stats.circle_code = daily_stats.circle_code
+             AND old_stats.day_key = daily_stats.day_key
+             AND old_stats.updated_at > daily_stats.updated_at
+           ORDER BY old_stats.updated_at DESC
+           LIMIT 1
+         ),
+         updated_at = (
+           SELECT old_stats.updated_at
+           FROM daily_stats old_stats
+           WHERE old_stats.account_id = ?1
+             AND old_stats.circle_code = daily_stats.circle_code
+             AND old_stats.day_key = daily_stats.day_key
+             AND old_stats.updated_at > daily_stats.updated_at
+           ORDER BY old_stats.updated_at DESC
+           LIMIT 1
+         )
+       WHERE account_id = ?2
+         AND EXISTS (
+           SELECT 1
+           FROM daily_stats old_stats
+           WHERE old_stats.account_id = ?1
+             AND old_stats.circle_code = daily_stats.circle_code
+             AND old_stats.day_key = daily_stats.day_key
+             AND old_stats.updated_at > daily_stats.updated_at
+         )`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await migrateAccountScopedSnapshot(
+    db,
+    "daily_snapshots",
+    "account_id",
+    deviceId,
+    accountId
+  );
+  await migrateAccountScopedSnapshot(
+    db,
+    "garden_snapshots",
+    "account_id",
+    deviceId,
+    accountId
+  );
+  await migrateAccountScopedSnapshot(
+    db,
+    "settings_snapshots",
+    "account_id",
+    deviceId,
+    accountId
+  );
+
+  await db
+    .prepare(
+      `UPDATE backup_manifests
+       SET account_id = ?2
+       WHERE account_id = ?1`
+    )
+    .bind(deviceId, accountId)
+    .run();
+
+  await db.prepare(`DELETE FROM daily_stats WHERE account_id = ?1`).bind(deviceId).run();
+  await db.prepare(`DELETE FROM circle_members WHERE account_id = ?1`).bind(deviceId).run();
+  await db.prepare(`DELETE FROM users WHERE account_id = ?1`).bind(deviceId).run();
+  await db
+    .prepare(
+      `DELETE FROM sync_accounts
+       WHERE account_id = ?1
+         AND NOT EXISTS (SELECT 1 FROM sync_devices WHERE account_id = ?1)
+         AND NOT EXISTS (SELECT 1 FROM users WHERE account_id = ?1)
+         AND NOT EXISTS (SELECT 1 FROM circles WHERE created_by_account_id = ?1)
+         AND NOT EXISTS (SELECT 1 FROM circle_members WHERE account_id = ?1)`
+    )
+    .bind(deviceId)
+    .run();
+}
+
+async function migrateAccountScopedSnapshot(
+  db: D1Database,
+  tableName: "daily_snapshots" | "garden_snapshots" | "settings_snapshots",
+  _accountColumn: "account_id",
+  deviceId: string,
+  accountId: string
+) {
+  if (tableName === "daily_snapshots") {
+    await db
+      .prepare(
+        `INSERT INTO daily_snapshots (
+           account_id,
+           day_key,
+           snapshot_json,
+           updated_at,
+           updated_by_device_id
+         )
+         SELECT
+           ?2,
+           day_key,
+           snapshot_json,
+           updated_at,
+           updated_by_device_id
+         FROM daily_snapshots
+         WHERE account_id = ?1
+         ON CONFLICT(account_id, day_key)
+         DO UPDATE SET
+           snapshot_json = excluded.snapshot_json,
+           updated_at = excluded.updated_at,
+           updated_by_device_id = excluded.updated_by_device_id
+         WHERE excluded.updated_at > daily_snapshots.updated_at
+            OR (excluded.updated_at = daily_snapshots.updated_at
+                AND excluded.updated_by_device_id > daily_snapshots.updated_by_device_id)`
+      )
+      .bind(deviceId, accountId)
+      .run();
+    await db.prepare(`DELETE FROM daily_snapshots WHERE account_id = ?1`).bind(deviceId).run();
+    return;
+  }
+
+  if (tableName === "garden_snapshots") {
+    await db
+      .prepare(
+        `INSERT INTO garden_snapshots (
+           account_id,
+           snapshot_json,
+           updated_at,
+           updated_by_device_id
+         )
+         SELECT
+           ?2,
+           snapshot_json,
+           updated_at,
+           updated_by_device_id
+         FROM garden_snapshots
+         WHERE account_id = ?1
+         ON CONFLICT(account_id)
+         DO UPDATE SET
+           snapshot_json = excluded.snapshot_json,
+           updated_at = excluded.updated_at,
+           updated_by_device_id = excluded.updated_by_device_id
+         WHERE excluded.updated_at > garden_snapshots.updated_at
+            OR (excluded.updated_at = garden_snapshots.updated_at
+                AND excluded.updated_by_device_id > garden_snapshots.updated_by_device_id)`
+      )
+      .bind(deviceId, accountId)
+      .run();
+    await db.prepare(`DELETE FROM garden_snapshots WHERE account_id = ?1`).bind(deviceId).run();
+    return;
+  }
+
+  await db
+    .prepare(
+      `INSERT INTO settings_snapshots (
+         account_id,
+         snapshot_json,
+         updated_at,
+         updated_by_device_id
+       )
+       SELECT
+         ?2,
+         snapshot_json,
+         updated_at,
+         updated_by_device_id
+       FROM settings_snapshots
+       WHERE account_id = ?1
+       ON CONFLICT(account_id)
+       DO UPDATE SET
+         snapshot_json = excluded.snapshot_json,
+         updated_at = excluded.updated_at,
+         updated_by_device_id = excluded.updated_by_device_id
+       WHERE excluded.updated_at > settings_snapshots.updated_at
+          OR (excluded.updated_at = settings_snapshots.updated_at
+              AND excluded.updated_by_device_id > settings_snapshots.updated_by_device_id)`
+    )
+    .bind(deviceId, accountId)
+    .run();
+  await db.prepare(`DELETE FROM settings_snapshots WHERE account_id = ?1`).bind(deviceId).run();
 }
 
 async function getSyncAccountIdByDeviceId(db: D1Database, deviceId: string) {
@@ -1034,7 +1496,18 @@ function requireDeviceId(value: unknown) {
   if (deviceId.length > 128) {
     throw new HttpError(400, "deviceId is too long");
   }
+  if (!/^[A-Za-z0-9_-]+$/.test(deviceId)) {
+    throw new HttpError(400, "deviceId contains invalid characters");
+  }
   return deviceId;
+}
+
+function requireWeChatLoginCode(value: unknown) {
+  const code = String(value ?? "").trim();
+  if (!code) {
+    throw new HttpError(400, "code is required");
+  }
+  return code;
 }
 
 function requireDisplayName(value: unknown) {
@@ -1178,6 +1651,12 @@ function compareSemver(left: string, right: string) {
   }
 
   return 0;
+}
+
+function sanitizeLogMessage(value: unknown) {
+  return String(value ?? "")
+    .replace(/[\r\n\t]+/g, " ")
+    .slice(0, 160);
 }
 
 function serializeUser(user: UserRecord) {

@@ -66,6 +66,8 @@ export default function App() {
             <div className="shrink-0">
               <WindowChrome
                 activeTab={controller.activeTab}
+                syncBusy={controller.syncBusy}
+                onRefreshSnapshots={() => void controller.handleRefreshSnapshotsNow()}
                 onOpenSettings={() => controller.setActiveTab("settings")}
                 onMinimize={() =>
                   void controller.handleWindowAction("minimize", () =>
@@ -85,7 +87,7 @@ export default function App() {
             <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               <PrimaryTabs
                 activeTab={controller.activeTab}
-                onChange={controller.setActiveTab}
+                onChange={controller.handleTabChange}
               />
 
               {controller.activeTab === "today" ? (
@@ -109,8 +111,8 @@ export default function App() {
                     void controller.handlePlantSeed(dayKey, seedType)
                   }
                   onHarvestCrop={(dayKey) => void controller.handleHarvestCrop(dayKey)}
-                  onExchangeProduce={(sourceCropType, targetSeedType) =>
-                    void controller.handleExchangeProduce(sourceCropType, targetSeedType)
+                  onExchangeProduce={(sourceCropType, targetSeedType, quantity) =>
+                    void controller.handleExchangeProduce(sourceCropType, targetSeedType, quantity)
                   }
                   onRedeemBackgroundReward={(rewardId) =>
                     void controller.handleRedeemBackgroundReward(rewardId)
@@ -193,7 +195,7 @@ export default function App() {
                   onCreatePairCode={() => void controller.handleCreatePairCode()}
                   onPairCodeInputChange={controller.setPairCodeInput}
                   onBindPairCode={() => void controller.handleBindPairCode()}
-                  onPullSyncNow={() => void controller.handlePullSyncNow()}
+                  onPullSettingsNow={() => void controller.handlePullSettingsNow()}
                   onUploadCloudBackup={() => void controller.handleUploadCloudBackup()}
                   onRestoreCloudBackup={() => void controller.handleRestoreCloudBackup()}
                   onPreviewBackgroundChange={controller.handlePreviewBackgroundChange}

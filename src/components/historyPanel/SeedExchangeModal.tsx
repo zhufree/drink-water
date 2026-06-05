@@ -1,9 +1,9 @@
-﻿import { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { useI18n } from "../../i18n";
 import type { BackgroundReward } from "../../config/backgroundRewards";
 import { PixelIcon } from "./PixelIcon";
-import { getCropDefinitionByCrop, getCropDefinitionBySeed } from "./historyPanelData";
+import { CROP_DEFINITIONS, getCropDefinitionByCrop, getCropDefinitionBySeed } from "./historyPanelData";
 
 type SourceEntry = {
   cropType: string;
@@ -16,6 +16,7 @@ type SourceEntry = {
     sourceCropType: string;
     targetSeedType: string;
     cost: number;
+    targetSeedCount: number;
   }>;
 };
 
@@ -39,13 +40,17 @@ type SeedExchangeModalProps = {
         sourceCropType: string;
         targetSeedType: string;
         cost: number;
+        targetSeedCount: number;
       }
     | null;
+  exchangeQuantity: number;
+  maxExchangeQuantity: number;
   canConfirmExchange: boolean;
   backgroundRewards: RewardState[];
   onClose: () => void;
   onSelectSource: (cropType: string) => void;
   onSelectTarget: (seedType: string) => void;
+  onQuantityChange: (quantity: number) => void;
   onRedeemBackgroundReward: (rewardId: string) => void;
   onConfirmExchange: () => void;
 };
@@ -58,34 +63,56 @@ export function SeedExchangeModal({
   selectedSourceEntry,
   selectedTargetSeedType,
   selectedTargetOption,
+  exchangeQuantity,
+  maxExchangeQuantity,
   canConfirmExchange,
   backgroundRewards,
   onClose,
   onSelectSource,
   onSelectTarget,
+  onQuantityChange,
   onRedeemBackgroundReward,
   onConfirmExchange
 }: SeedExchangeModalProps) {
   const { locale } = useI18n();
   const [view, setView] = useState<ExchangeView>("seed");
   const [previewImage, setPreviewImage] = useState<RewardState | null>(null);
+  const [activeBackgroundIndex, setActiveBackgroundIndex] = useState(0);
 
   const isZh = locale === "zh-CN";
   const targetOptions = selectedSourceEntry?.options ?? [];
+  const clampedQuantity = Math.min(Math.max(1, exchangeQuantity), maxExchangeQuantity);
+  const activeBackground = backgroundRewards[activeBackgroundIndex] ?? backgroundRewards[0] ?? null;
+
+  useEffect(() => {
+    if (activeBackgroundIndex > Math.max(0, backgroundRewards.length - 1)) {
+      setActiveBackgroundIndex(Math.max(0, backgroundRewards.length - 1));
+    }
+  }, [activeBackgroundIndex, backgroundRewards.length]);
+
+  const showPreviousBackground = () => {
+    setActiveBackgroundIndex((current) =>
+      backgroundRewards.length > 0 ? (current - 1 + backgroundRewards.length) % backgroundRewards.length : 0
+    );
+  };
+
+  const showNextBackground = () => {
+    setActiveBackgroundIndex((current) =>
+      backgroundRewards.length > 0 ? (current + 1) % backgroundRewards.length : 0
+    );
+  };
 
   const footerHint = useMemo(() => {
-    if (view === "background") {
-      return isZh
-        ? "点击图片可以放大预览，是否可兑换和所需资源都来自当前背景配置。"
-        : "Click an image to preview it larger. Availability and costs come from the background config.";
-    }
-
     if (selectedSourceEntry && selectedTargetOption) {
       return null;
     }
 
     return isZh ? "请先选择上面的作物和下面的种子。" : "Select a produce source and a seed target first.";
-  }, [isZh, selectedSourceEntry, selectedTargetOption, view]);
+  }, [
+    isZh,
+    selectedSourceEntry,
+    selectedTargetOption
+  ]);
 
   if (!open) {
     return null;
@@ -189,34 +216,55 @@ export function SeedExchangeModal({
                 <div className="rounded-[18px] bg-white/5 p-2.5">
                   <div className="mb-3">
                     <strong className="text-sm font-semibold text-slate-50">
-                      {isZh ? "可兑换种子" : "Seed targets"}
+                      {isZh ? "全部种子" : "All seeds"}
                     </strong>
                     <p className="mt-1 text-xs text-slate-400">
                       {isZh
-                        ? "会根据当前作物的等级，列出可兑换的目标种子。"
-                        : "Targets are filtered by the selected produce tier."}
+                        ? "共 10 种。当前作物无法兑换的目标会置灰。"
+                        : "10 total. Targets unavailable for the selected produce are disabled."}
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    {targetOptions.map((option) => {
-                      const definition = getCropDefinitionBySeed(option.targetSeedType);
-                      const selected = option.targetSeedType === selectedTargetSeedType;
+                    {CROP_DEFINITIONS.map((definition) => {
+                      const option =
+                        targetOptions.find((item) => item.targetSeedType === definition.seedType) ?? null;
+                      const selected = Boolean(option && option.targetSeedType === selectedTargetSeedType);
+                      const disabled = !option;
                       return (
                         <button
-                          key={option.targetSeedType}
+                          key={definition.seedType}
                           type="button"
                           title={definition.seedLabel}
-                          aria-label={`${definition.seedLabel} cost ${option.cost}`}
-                          onClick={() => onSelectTarget(option.targetSeedType)}
+                          aria-label={
+                            option
+                              ? `${definition.seedLabel} cost ${option.cost}`
+                              : isZh
+                                ? `${definition.seedLabel} 当前不可兑换`
+                                : `${definition.seedLabel} unavailable`
+                          }
+                          disabled={disabled}
+                          onClick={() => {
+                            if (option) {
+                              onSelectTarget(option.targetSeedType);
+                            }
+                          }}
                           className={`rounded-full border px-3 py-2 text-left transition ${
                             selected
                               ? "border-amber-200/70 bg-amber-200/12 text-amber-50"
-                              : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/8"
+                              : disabled
+                                ? "cursor-not-allowed border-white/6 bg-white/[0.03] text-slate-500 opacity-55"
+                                : "border-white/10 bg-white/5 text-slate-200 hover:bg-white/8"
                           }`}
                         >
                           <span className="flex min-h-[40px] items-center justify-between gap-2">
                             <PixelIcon src={definition.seedIcon} size={30} />
-                            <span className="text-xs tabular-nums text-slate-300/78">{`x1 / ${option.cost}`}</span>
+                            <span
+                              className={`text-xs tabular-nums ${
+                                disabled ? "text-slate-500" : "text-slate-300/78"
+                              }`}
+                            >
+                              {option ? `x${option.targetSeedCount} / ${option.cost}` : "--"}
+                            </span>
                           </span>
                         </button>
                       );
@@ -231,113 +279,170 @@ export function SeedExchangeModal({
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                {backgroundRewards.map((reward) => {
-                  const title = reward.title[locale] ?? reward.title["en-US"];
-                  const description = reward.description[locale] ?? reward.description["en-US"];
+            ) : activeBackground ? (
+              <div className="flex flex-col gap-3">
+                <div className="relative overflow-hidden rounded-[20px] border border-white/10 bg-black/20 p-2">
+                  <button
+                    type="button"
+                    onClick={showPreviousBackground}
+                    aria-label={isZh ? "上一张背景" : "Previous background"}
+                    className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/62 text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-slate-900/82"
+                  >
+                    <ChevronLeft className="h-5 w-5" strokeWidth={2.3} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={showNextBackground}
+                    aria-label={isZh ? "下一张背景" : "Next background"}
+                    className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/62 text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-slate-900/82"
+                  >
+                    <ChevronRight className="h-5 w-5" strokeWidth={2.3} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImage(activeBackground)}
+                    className="block w-full overflow-hidden rounded-[16px] bg-slate-900/70"
+                  >
+                    <img
+                      src={activeBackground.preview}
+                      alt={activeBackground.title[locale] ?? activeBackground.title["en-US"]}
+                      className="mx-auto h-[min(48vh,470px)] w-full object-contain"
+                    />
+                  </button>
+                </div>
 
-                  return (
-                    <article
-                      key={reward.id}
-                      className="rounded-[20px] border border-white/10 bg-white/5 p-3"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setPreviewImage(reward)}
-                        className="block w-full rounded-[16px] border border-white/10 bg-black/20 p-2 text-left transition hover:border-white/20 hover:bg-white/6"
-                      >
-                        <div className="aspect-[520/935] overflow-hidden rounded-[12px] bg-slate-900/60">
-                          <img
-                            src={reward.preview}
-                            alt={title}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                          <strong className="text-sm font-semibold text-slate-50">{title}</strong>
-                          <span className="rounded-full bg-white/8 px-2.5 py-1 text-xs text-slate-200/80">
-                            {isZh ? "查看大图" : "Preview"}
-                          </span>
-                        </div>
-                      </button>
+                <section className="rounded-[18px] bg-white/5 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <strong className="text-base font-semibold text-slate-50">
+                        {activeBackground.title[locale] ?? activeBackground.title["en-US"]}
+                      </strong>
+                      <p className="mt-1 text-xs leading-5 text-slate-300/80">
+                        {activeBackground.description[locale] ?? activeBackground.description["en-US"]}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {backgroundRewards.map((reward, index) => (
+                        <button
+                          key={reward.id}
+                          type="button"
+                          onClick={() => setActiveBackgroundIndex(index)}
+                          aria-label={
+                            isZh ? `查看第 ${index + 1} 张背景` : `View background ${index + 1}`
+                          }
+                          className={`h-2 rounded-full transition ${
+                            index === activeBackgroundIndex
+                              ? "w-6 bg-sky-300"
+                              : "w-2 bg-white/20 hover:bg-white/35"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
 
-                      <div className="mt-3">
-                        <p className="m-0 text-xs leading-5 text-slate-300/80">{description}</p>
-                        {reward.redeemable ? (
-                          <>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {reward.requirementProgress.map((requirement) => {
-                                const definition = getCropDefinitionByCrop(requirement.cropType);
-                                return (
-                                  <span
-                                    key={`${reward.id}-${requirement.cropType}`}
-                                    className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
-                                  >
-                                    <PixelIcon src={definition.cropIcon} size={26} />
-                                    <span className="tabular-nums text-slate-300/85">
-                                      {requirement.current} / {requirement.count}
-                                    </span>
-                                  </span>
-                                );
-                              })}
-                            </div>
-                            <div className="mt-3">
-                              <button
-                                type="button"
-                                onClick={() => onRedeemBackgroundReward(reward.id)}
-                                disabled={!reward.ready || reward.unlocked}
-                                className={`rounded-[14px] px-3 py-2 text-sm font-semibold transition ${
-                                  reward.unlocked
-                                    ? "cursor-default bg-emerald-200/18 text-emerald-100"
-                                    : reward.ready
-                                      ? "bg-sky-300 text-slate-950 hover:-translate-y-px hover:bg-sky-200"
-                                      : "cursor-not-allowed bg-white/10 text-slate-400"
-                                }`}
-                              >
-                                {reward.unlocked
-                                  ? isZh
-                                    ? "已解锁"
-                                    : "Unlocked"
-                                  : isZh
-                                    ? "兑换背景"
-                                    : "Redeem background"}
-                              </button>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="mt-3">
-                            <span className="inline-flex rounded-[14px] bg-white/10 px-3 py-2 text-sm font-semibold text-slate-400">
-                              {isZh ? "暂不支持兑换" : "Not supported yet"}
+                  {activeBackground.redeemable ? (
+                    <>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {activeBackground.requirementProgress.map((requirement) => {
+                          const definition = getCropDefinitionByCrop(requirement.cropType);
+                          return (
+                            <span
+                              key={`${activeBackground.id}-${requirement.cropType}`}
+                              className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+                            >
+                              <PixelIcon src={definition.cropIcon} size={26} />
+                              <span className="tabular-nums text-slate-300/85">
+                                {requirement.current} / {requirement.count}
+                              </span>
                             </span>
-                          </div>
-                        )}
+                          );
+                        })}
                       </div>
-                    </article>
-                  );
-                })}
+                      <div className="mt-3 flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() => onRedeemBackgroundReward(activeBackground.id)}
+                          disabled={!activeBackground.ready || activeBackground.unlocked}
+                          className={`rounded-[14px] px-4 py-2 text-sm font-semibold transition ${
+                            activeBackground.unlocked
+                              ? "cursor-default bg-emerald-200/18 text-emerald-100"
+                              : activeBackground.ready
+                                ? "bg-sky-300 text-slate-950 hover:-translate-y-px hover:bg-sky-200"
+                                : "cursor-not-allowed bg-white/10 text-slate-400"
+                          }`}
+                        >
+                          {activeBackground.unlocked
+                            ? isZh
+                              ? "已解锁"
+                              : "Unlocked"
+                            : isZh
+                              ? "兑换背景"
+                              : "Redeem background"}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="mt-3 flex justify-end">
+                      <span className="inline-flex rounded-[14px] bg-white/10 px-3 py-2 text-sm font-semibold text-slate-400">
+                        {isZh ? "暂不支持兑换" : "Not supported yet"}
+                      </span>
+                    </div>
+                  )}
+                </section>
+              </div>
+            ) : (
+              <div className="rounded-[18px] border border-dashed border-white/10 bg-white/4 px-3 py-8 text-center text-sm text-slate-400">
+                {isZh ? "暂时没有背景配置。" : "No background rewards configured."}
               </div>
             )}
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-[16px] bg-white/5 px-3 py-2.5">
+          {view === "seed" ? (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[16px] bg-white/5 px-3 py-2.5">
             <div className="text-sm text-slate-300/82">
               {selectedSourceEntry && selectedTargetOption && view === "seed" ? (
                 <span className="inline-flex items-center gap-2">
                   <PixelIcon src={selectedSourceEntry.definition.cropIcon} size={24} />
-                  <span className="tabular-nums">x {selectedTargetOption.cost}</span>
+                  <span className="tabular-nums">x {selectedTargetOption.cost * clampedQuantity}</span>
                   <span>→</span>
                   <PixelIcon
                     src={getCropDefinitionBySeed(selectedTargetOption.targetSeedType).seedIcon}
                     size={24}
                   />
-                  <span className="tabular-nums">x 1</span>
+                  <span className="tabular-nums">
+                    x {selectedTargetOption.targetSeedCount * clampedQuantity}
+                  </span>
                 </span>
               ) : (
                 <span>{footerHint}</span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {view === "seed" && selectedSourceEntry && selectedTargetOption ? (
+                <div className="flex h-9 items-center rounded-[14px] border border-white/10 bg-white/5">
+                  <button
+                    type="button"
+                    onClick={() => onQuantityChange(Math.max(1, clampedQuantity - 1))}
+                    disabled={clampedQuantity <= 1}
+                    aria-label={isZh ? "减少兑换数量" : "Decrease exchange quantity"}
+                    className="flex h-9 w-9 items-center justify-center rounded-l-[14px] text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
+                  >
+                    <Minus className="h-4 w-4" strokeWidth={2.2} />
+                  </button>
+                  <span className="min-w-9 px-2 text-center text-sm tabular-nums text-slate-50">
+                    {clampedQuantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onQuantityChange(Math.min(maxExchangeQuantity, clampedQuantity + 1))}
+                    disabled={clampedQuantity >= maxExchangeQuantity}
+                    aria-label={isZh ? "增加兑换数量" : "Increase exchange quantity"}
+                    className="flex h-9 w-9 items-center justify-center rounded-r-[14px] text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2.2} />
+                  </button>
+                </div>
+              ) : null}
               <button
                 type="button"
                 onClick={onClose}
@@ -361,6 +466,7 @@ export function SeedExchangeModal({
               ) : null}
             </div>
           </div>
+          ) : null}
         </div>
       </div>
 

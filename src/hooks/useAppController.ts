@@ -2,6 +2,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   applyRemoteSnapshots,
+  applyRemoteSettingsSnapshot,
   cancelRestBreak,
   completeRestBreak,
   exchangeProduce,
@@ -12,6 +13,7 @@ import {
   getHistory,
   getRecentDailySnapshots,
   getSettings,
+  getSettingsSnapshot,
   getSyncMeta,
   getTodayStatus,
   harvestCrop,
@@ -43,8 +45,10 @@ import {
   createPairCode,
   pullDailySnapshots,
   pullGardenSnapshot,
+  pullSettingsSnapshot,
   pushDailySnapshots,
   pushGardenSnapshot,
+  pushSettingsSnapshot,
   restoreCloudBackup,
   uploadCloudBackup
 } from "../syncApi";
@@ -56,6 +60,7 @@ import type {
   Locale,
   NotificationPermissionState,
   Settings,
+  SettingsSnapshotRecord,
   SyncMeta,
   TodayStatus
 } from "../types";
@@ -138,6 +143,7 @@ export function useAppController() {
 
   const startupPromptCheckedRef = useRef(false);
   const lastSyncedStatsKeyRef = useRef("");
+  const autoPullingSnapshotsRef = useRef(false);
 
   const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
   const i18n = useMemo(() => createI18n(locale), [locale]);
@@ -217,6 +223,19 @@ export function useAppController() {
     return refreshAll();
   };
 
+  const shouldApplyRemoteSettingsSnapshot = (
+    local: SettingsSnapshotRecord,
+    remote: SettingsSnapshotRecord
+  ) => {
+    if (remote.updatedAt > local.updatedAt) {
+      return true;
+    }
+    if (remote.updatedAt < local.updatedAt) {
+      return false;
+    }
+    return remote.updatedByDeviceId > local.updatedByDeviceId;
+  };
+
   const ensureSyncAccount = async (deviceId: string) => {
     const localMeta = await getSyncMeta();
     setSyncMeta(localMeta);
@@ -248,6 +267,24 @@ export function useAppController() {
     maybeWarnSyncGap(meta);
     const accountId = await ensureSyncAccount(targetSettings.deviceId);
     await pullRemoteSnapshotsToLocal(accountId, targetSettings.deviceId);
+  };
+
+  const pullSnapshotsForDevice = async (targetSettings: Settings) => {
+    if (!targetSettings.deviceId) {
+      return;
+    }
+    const accountId = await ensureSyncAccount(targetSettings.deviceId);
+    await pullRemoteSnapshotsToLocal(accountId, targetSettings.deviceId);
+  };
+
+  const syncSettingsSnapshot = async (targetSettings: Settings) => {
+    if (!targetSettings.deviceId) {
+      return;
+    }
+    const accountId = await ensureSyncAccount(targetSettings.deviceId);
+    const snapshot = await getSettingsSnapshot();
+    await pushSettingsSnapshot(accountId, targetSettings.deviceId, snapshot);
+    setSyncMeta(await getSyncMeta());
   };
 
   const prepareSyncBeforeWrite = async () => {
@@ -299,6 +336,7 @@ export function useAppController() {
     syncDailyDayKeys: async (dayKeys) => {
       await syncRecentSnapshots({ dayKeys });
     },
+    syncSettingsSnapshot,
     setSettings,
     setDraftSettings,
     setQuickAmount,
@@ -359,14 +397,15 @@ export function useAppController() {
     }
   };
 
-  const handleExchangeProduce = async (sourceCropType: string, targetSeedType: string) => {
+  const handleExchangeProduce = async (sourceCropType: string, targetSeedType: string, quantity = 1) => {
     setMessage("");
     try {
-      await exchangeProduce(sourceCropType, targetSeedType);
+      await exchangeProduce(sourceCropType, targetSeedType, quantity);
       await refreshAll();
       syncAfterLocalWrite({ garden: true });
       setMessage(
         i18n.t("message.exchangeSuccess", {
+          count: quantity,
           seed: getSeedDisplayName(targetSeedType, locale)
         })
       );
@@ -692,13 +731,82 @@ export function useAppController() {
     setSyncBusy(true);
     setMessage("");
     try {
-      await bootstrapAndPullSync(settings);
+      await pullSnapshotsForDevice(settings);
       setMessage(i18n.t("message.snapshotsPulled"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     } finally {
       setSyncBusy(false);
     }
+  };
+
+  const handlePullSettingsNow = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      const accountId = await ensureSyncAccount(settings.deviceId);
+      const localSnapshot = await getSettingsSnapshot();
+      const remoteResult = await pullSettingsSnapshot(accountId, settings.deviceId);
+
+      if (
+        remoteResult.snapshot &&
+        shouldApplyRemoteSettingsSnapshot(localSnapshot, remoteResult.snapshot)
+      ) {
+        await applyRemoteSettingsSnapshot(remoteResult.snapshot, new Date().toISOString());
+        await refreshAll();
+      } else {
+        await pushSettingsSnapshot(accountId, settings.deviceId, localSnapshot);
+        setSyncMeta(await getSyncMeta());
+      }
+
+      setMessage(locale === "zh-CN" ? "设置已同步。" : "Settings synced.");
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleRefreshSnapshotsNow = async () => {
+    if (!settings.deviceId) {
+      return;
+    }
+
+    setSyncBusy(true);
+    setMessage("");
+    try {
+      await pullSnapshotsForDevice(settings);
+      setMessage(i18n.t("message.snapshotsPulled"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  const handleTabChange = (tab: TabKey) => {
+    setActiveTab(tab);
+    if ((tab !== "today" && tab !== "history") || tab === activeTab) {
+      return;
+    }
+
+    void (async () => {
+      if (autoPullingSnapshotsRef.current) {
+        return;
+      }
+      autoPullingSnapshotsRef.current = true;
+      try {
+        await pullSnapshotsForDevice(settings);
+      } catch (error) {
+        console.error("auto snapshot pull failed", error);
+      } finally {
+        autoPullingSnapshotsRef.current = false;
+      }
+    })();
   };
 
   const handleUploadCloudBackup = async () => {
@@ -826,6 +934,7 @@ export function useAppController() {
     restRemainingSeconds,
     restCooldownRemainingSeconds,
     setActiveTab,
+    handleTabChange,
     setDraftSettings,
     setQuickAmount,
     setYesterdayCatchUpAmount,
@@ -860,6 +969,8 @@ export function useAppController() {
     handleCreatePairCode,
     handleBindPairCode,
     handlePullSyncNow,
+    handlePullSettingsNow,
+    handleRefreshSnapshotsNow,
     handleUploadCloudBackup,
     handleRestoreCloudBackup,
     resetNicknameSaveFeedback,

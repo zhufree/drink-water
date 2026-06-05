@@ -1,97 +1,132 @@
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SeedExchangeConfig {
+    seeds: Vec<SeedExchangeSeedConfig>,
+    exchange_rules: Vec<SeedExchangeRuleConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SeedExchangeSeedConfig {
+    seed_type: String,
+    crop_type: String,
+    tier: u8,
+    #[serde(default)]
+    seed_aliases: Vec<String>,
+    #[serde(default)]
+    crop_aliases: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SeedExchangeRuleConfig {
+    tier_gap: i16,
+    source_cost: u32,
+    target_seed_count: u32,
+}
+
+fn seed_exchange_config() -> SeedExchangeConfig {
+    let _known_stable_ids = [
+        BELL_PEPPER_SEED_TYPE,
+        CARROT_SEED_TYPE,
+        NAPA_CABBAGE_SEED_TYPE,
+        BROCCOLI_SEED_TYPE,
+        RADISH_SEED_TYPE,
+        PUMPKIN_SEED_TYPE,
+        ONION_SEED_TYPE,
+        EGGPLANT_SEED_TYPE,
+        PEA_SEED_TYPE,
+        BELL_PEPPER_CROP_TYPE,
+        CARROT_CROP_TYPE,
+        NAPA_CABBAGE_CROP_TYPE,
+        BROCCOLI_CROP_TYPE,
+        PUMPKIN_CROP_TYPE,
+        ONION_CROP_TYPE,
+        EGGPLANT_CROP_TYPE,
+        PEA_CROP_TYPE,
+        LEGACY_BASIC_SEED_TYPE,
+        LEGACY_BASIC_SEED_TYPE_V2,
+        LEGACY_ADVANCED_SEED_TYPE,
+        LEGACY_CARROT_SEED_TYPE,
+        LEGACY_BROCCOLI_SEED_TYPE,
+        LEGACY_RADISH_SEED_TYPE,
+        LEGACY_BASIC_CROP_TYPE,
+        LEGACY_ADVANCED_CROP_TYPE,
+        LEGACY_CARROT_CROP_TYPE,
+        LEGACY_BROCCOLI_CROP_TYPE,
+        LEGACY_RADISH_CROP_TYPE,
+    ];
+
+    serde_json::from_str(include_str!("../../src/config/seedExchange.json"))
+        .expect("seed exchange config must be valid JSON")
+}
+
 fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
     canonical_seed_type(seed_type)
-        .map(|value| value.to_string())
         .ok_or_else(|| "unknown seed type".to_string())
 }
 
-fn crop_type_for_seed(seed_type: &str) -> &'static str {
-    match seed_type {
-        BELL_PEPPER_SEED_TYPE => BELL_PEPPER_CROP_TYPE,
-        CARROT_SEED_TYPE => CARROT_CROP_TYPE,
-        NAPA_CABBAGE_SEED_TYPE => NAPA_CABBAGE_CROP_TYPE,
-        BROCCOLI_SEED_TYPE => BROCCOLI_CROP_TYPE,
-        RADISH_SEED_TYPE => RADISH_CROP_TYPE,
-        ONION_SEED_TYPE => ONION_CROP_TYPE,
-        EGGPLANT_SEED_TYPE => EGGPLANT_CROP_TYPE,
-        PEA_SEED_TYPE => PEA_CROP_TYPE,
-        PUMPKIN_SEED_TYPE => PUMPKIN_CROP_TYPE,
-        _ => POTATO_CROP_TYPE,
-    }
+fn crop_type_for_seed(seed_type: &str) -> String {
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| seed.seed_type == seed_type)
+        .map(|seed| seed.crop_type)
+        .unwrap_or_else(|| POTATO_CROP_TYPE.to_string())
 }
 
-fn seed_type_for_crop(crop_type: &str) -> &'static str {
-    match crop_type {
-        BELL_PEPPER_CROP_TYPE => BELL_PEPPER_SEED_TYPE,
-        CARROT_CROP_TYPE => CARROT_SEED_TYPE,
-        NAPA_CABBAGE_CROP_TYPE => NAPA_CABBAGE_SEED_TYPE,
-        BROCCOLI_CROP_TYPE => BROCCOLI_SEED_TYPE,
-        RADISH_CROP_TYPE => RADISH_SEED_TYPE,
-        ONION_CROP_TYPE => ONION_SEED_TYPE,
-        EGGPLANT_CROP_TYPE => EGGPLANT_SEED_TYPE,
-        PEA_CROP_TYPE => PEA_SEED_TYPE,
-        PUMPKIN_CROP_TYPE => PUMPKIN_SEED_TYPE,
-        _ => POTATO_SEED_TYPE,
-    }
+fn seed_type_for_crop(crop_type: &str) -> String {
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| seed.crop_type == crop_type)
+        .map(|seed| seed.seed_type)
+        .unwrap_or_else(|| POTATO_SEED_TYPE.to_string())
 }
 
 fn crop_tier(crop_type: &str) -> Option<u8> {
-    match crop_type {
-        POTATO_CROP_TYPE
-        | BELL_PEPPER_CROP_TYPE
-        | CARROT_CROP_TYPE
-        | NAPA_CABBAGE_CROP_TYPE
-        | PEA_CROP_TYPE => Some(1),
-        BROCCOLI_CROP_TYPE | RADISH_CROP_TYPE | ONION_CROP_TYPE | PUMPKIN_CROP_TYPE => Some(2),
-        EGGPLANT_CROP_TYPE => Some(3),
-        _ => None,
-    }
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| seed.crop_type == crop_type)
+        .map(|seed| seed.tier)
 }
 
 fn seed_tier(seed_type: &str) -> Option<u8> {
-    match seed_type {
-        POTATO_SEED_TYPE
-        | BELL_PEPPER_SEED_TYPE
-        | CARROT_SEED_TYPE
-        | NAPA_CABBAGE_SEED_TYPE
-        | PEA_SEED_TYPE => Some(1),
-        BROCCOLI_SEED_TYPE | RADISH_SEED_TYPE | ONION_SEED_TYPE | PUMPKIN_SEED_TYPE => Some(2),
-        EGGPLANT_SEED_TYPE => Some(3),
-        _ => None,
-    }
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| seed.seed_type == seed_type)
+        .map(|seed| seed.tier)
 }
 
-fn canonical_seed_type(seed_type: &str) -> Option<&'static str> {
-    match seed_type.trim() {
-        POTATO_SEED_TYPE | LEGACY_BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE_V2 => {
-            Some(POTATO_SEED_TYPE)
-        }
-        BELL_PEPPER_SEED_TYPE | LEGACY_ADVANCED_SEED_TYPE => Some(BELL_PEPPER_SEED_TYPE),
-        CARROT_SEED_TYPE | LEGACY_CARROT_SEED_TYPE => Some(CARROT_SEED_TYPE),
-        NAPA_CABBAGE_SEED_TYPE => Some(NAPA_CABBAGE_SEED_TYPE),
-        BROCCOLI_SEED_TYPE | LEGACY_BROCCOLI_SEED_TYPE => Some(BROCCOLI_SEED_TYPE),
-        RADISH_SEED_TYPE | LEGACY_RADISH_SEED_TYPE => Some(RADISH_SEED_TYPE),
-        PUMPKIN_SEED_TYPE => Some(PUMPKIN_SEED_TYPE),
-        ONION_SEED_TYPE => Some(ONION_SEED_TYPE),
-        EGGPLANT_SEED_TYPE => Some(EGGPLANT_SEED_TYPE),
-        PEA_SEED_TYPE => Some(PEA_SEED_TYPE),
-        _ => None,
-    }
+fn canonical_seed_type(seed_type: &str) -> Option<String> {
+    let candidate = seed_type.trim();
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| {
+            seed.seed_type == candidate || seed.seed_aliases.iter().any(|alias| alias == candidate)
+        })
+        .map(|seed| seed.seed_type)
 }
 
-fn canonical_crop_type(crop_type: &str) -> Option<&'static str> {
-    match crop_type.trim() {
-        POTATO_CROP_TYPE | LEGACY_BASIC_CROP_TYPE => Some(POTATO_CROP_TYPE),
-        BELL_PEPPER_CROP_TYPE | LEGACY_ADVANCED_CROP_TYPE => Some(BELL_PEPPER_CROP_TYPE),
-        CARROT_CROP_TYPE | LEGACY_CARROT_CROP_TYPE => Some(CARROT_CROP_TYPE),
-        NAPA_CABBAGE_CROP_TYPE => Some(NAPA_CABBAGE_CROP_TYPE),
-        BROCCOLI_CROP_TYPE | LEGACY_BROCCOLI_CROP_TYPE => Some(BROCCOLI_CROP_TYPE),
-        RADISH_CROP_TYPE | LEGACY_RADISH_CROP_TYPE => Some(RADISH_CROP_TYPE),
-        PUMPKIN_CROP_TYPE => Some(PUMPKIN_CROP_TYPE),
-        ONION_CROP_TYPE => Some(ONION_CROP_TYPE),
-        EGGPLANT_CROP_TYPE => Some(EGGPLANT_CROP_TYPE),
-        PEA_CROP_TYPE => Some(PEA_CROP_TYPE),
-        _ => None,
-    }
+fn canonical_crop_type(crop_type: &str) -> Option<String> {
+    let candidate = crop_type.trim();
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .find(|seed| {
+            seed.crop_type == candidate || seed.crop_aliases.iter().any(|alias| alias == candidate)
+        })
+        .map(|seed| seed.crop_type)
+}
+
+fn exchange_rule_for_tier_gap(tier_gap: i16) -> Option<SeedExchangeRuleConfig> {
+    seed_exchange_config()
+        .exchange_rules
+        .into_iter()
+        .find(|rule| rule.tier_gap == tier_gap)
 }
 
 fn rest_break_policy(now: DateTime<Local>, last_cooldown_end: Option<DateTime<Local>>) -> (u32, u32) {
@@ -340,7 +375,7 @@ fn harvest_crop_in_state(
         return Err("this crop is not mature yet".to_string());
     }
 
-    let crop_type = crop_type_for_seed(&state.garden.crops[crop_index].seed_type).to_string();
+    let crop_type = crop_type_for_seed(&state.garden.crops[crop_index].seed_type);
     let harvested_at = now.to_rfc3339();
     state.garden.crops.remove(crop_index);
     add_produce(&mut state.garden, &crop_type, 1);
@@ -367,7 +402,7 @@ fn harvest_crop_in_state(
     }
 
     let rewarded_seed_type = seed_type_for_crop(&crop_type);
-    add_seed(&mut state.garden, rewarded_seed_type, rewarded_seeds);
+    add_seed(&mut state.garden, &rewarded_seed_type, rewarded_seeds);
     Ok(())
 }
 
@@ -375,25 +410,31 @@ fn exchange_produce_in_state(
     state: &mut PersistedState,
     source_crop_type: &str,
     target_seed_type: &str,
+    quantity: u32,
 ) -> Result<(), String> {
     let source_tier = crop_tier(source_crop_type).ok_or_else(|| "unknown exchange source".to_string())?;
     let target_tier = seed_tier(target_seed_type).ok_or_else(|| "unknown exchange target".to_string())?;
     let target_crop_type = crop_type_for_seed(target_seed_type);
+    let quantity = quantity.max(1);
 
-    if source_crop_type == target_crop_type {
+    if source_crop_type == target_crop_type.as_str() {
         return Err("cannot exchange into the same crop".to_string());
     }
 
-    let cost = if target_tier == source_tier {
-        1
-    } else if target_tier == source_tier + 1 {
-        3
-    } else {
-        return Err("unknown exchange target".to_string());
-    };
+    let tier_gap = i16::from(target_tier) - i16::from(source_tier);
+    let rule = exchange_rule_for_tier_gap(tier_gap)
+        .ok_or_else(|| "unknown exchange target".to_string())?;
+    let total_cost = rule
+        .source_cost
+        .checked_mul(quantity)
+        .ok_or_else(|| "exchange quantity is too large".to_string())?;
+    let total_seed_count = rule
+        .target_seed_count
+        .checked_mul(quantity)
+        .ok_or_else(|| "exchange quantity is too large".to_string())?;
 
-    spend_produce(&mut state.garden, source_crop_type, cost)?;
-    add_seed(&mut state.garden, target_seed_type, 1);
+    spend_produce(&mut state.garden, source_crop_type, total_cost)?;
+    add_seed(&mut state.garden, target_seed_type, total_seed_count);
     Ok(())
 }
 

@@ -23,6 +23,7 @@ type AppUiActionDeps = {
     fetchedCircles: CircleSummary[]
   ) => Promise<Settings>;
   syncDailyDayKeys: (dayKeys: string[]) => Promise<void>;
+  syncSettingsSnapshot: (settings: Settings) => Promise<void>;
   setSettings: Dispatch<SetStateAction<Settings>>;
   setDraftSettings: Dispatch<SetStateAction<Settings>>;
   setQuickAmount: Dispatch<SetStateAction<number>>;
@@ -48,6 +49,7 @@ export function createAppUiActions({
   syncCloudIdentity,
   applyCircleSnapshot,
   syncDailyDayKeys,
+  syncSettingsSnapshot,
   setSettings,
   setDraftSettings,
   setQuickAmount,
@@ -93,6 +95,7 @@ export function createAppUiActions({
       setDraftSettings(saved);
       setQuickAmount(saved.cupSizeMl);
       setStatus(await getTodayStatus());
+      await syncSettingsSnapshot(saved);
       setCloudIdentityState("loading");
       setCloudIdentityError(null);
       try {

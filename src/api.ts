@@ -4,6 +4,7 @@ import type {
   GardenSnapshotRecord,
   GardenState,
   Settings,
+  SettingsSnapshotRecord,
   SyncMeta,
   TodayStatus,
   HistoryItem
@@ -35,8 +36,8 @@ export const plantSeed = (dayKey: string, seedType: string) =>
 export const harvestCrop = (dayKey: string) =>
   invoke<GardenState>("harvest_crop", { dayKey });
 
-export const exchangeProduce = (sourceCropType: string, targetSeedType: string) =>
-  invoke<GardenState>("exchange_produce", { sourceCropType, targetSeedType });
+export const exchangeProduce = (sourceCropType: string, targetSeedType: string, quantity = 1) =>
+  invoke<GardenState>("exchange_produce", { sourceCropType, targetSeedType, quantity });
 
 export const redeemBackgroundReward = (rewardId: string) =>
   invoke<GardenState>("redeem_background_reward", { rewardId });
@@ -65,6 +66,9 @@ export const getRecentDailySnapshots = (rangeDays = 7) =>
 export const getGardenSnapshot = () =>
   invoke<GardenSnapshotRecord>("get_garden_snapshot");
 
+export const getSettingsSnapshot = () =>
+  invoke<SettingsSnapshotRecord>("get_settings_snapshot");
+
 export const applyRemoteSnapshots = (
   accountId: string,
   dailySnapshots: DailySnapshotRecord[],
@@ -75,6 +79,15 @@ export const applyRemoteSnapshots = (
     accountId,
     dailySnapshots,
     gardenSnapshot,
+    pulledAt
+  });
+
+export const applyRemoteSettingsSnapshot = (
+  settingsSnapshot: SettingsSnapshotRecord | null,
+  pulledAt: string
+) =>
+  invoke<boolean>("apply_remote_settings_snapshot", {
+    settingsSnapshot,
     pulledAt
   });
 

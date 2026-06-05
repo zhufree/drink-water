@@ -66,6 +66,76 @@ mod tests {
     }
 
     #[test]
+    fn remote_settings_snapshot_updates_account_settings_only() {
+        let local_settings = Settings {
+            daily_target_ml: 2000,
+            cup_size_ml: 250,
+            cup_step_ml: 50,
+            panel_opacity_percent: 82,
+            panel_blur_px: 8,
+            device_id: "desktop-device".to_string(),
+            display_name: "Desktop".to_string(),
+            active_circle_code: "ABC123".to_string(),
+            active_circle_name: "Desktop Circle".to_string(),
+            reminder_interval_minutes: 97,
+            active_start_hour: 9,
+            active_end_hour: 22,
+            notifications_enabled: true,
+            autostart_enabled: true,
+            locale: "zh-CN".to_string(),
+        }
+        .sanitize();
+        let mut state = PersistedState {
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &local_settings),
+            settings: local_settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+        };
+        let remote = SettingsSnapshotRecord {
+            snapshot: SettingsSnapshot {
+                daily_target_ml: 2600,
+                cup_size_ml: 400,
+                cup_step_ml: 100,
+                reminder_interval_minutes: 120,
+                active_start_hour: 8,
+                active_end_hour: 21,
+                locale: "en-US".to_string(),
+            },
+            updated_at: "2026-05-20T10:00:00+08:00".to_string(),
+            updated_by_device_id: "mini-program-openid".to_string(),
+        };
+
+        apply_settings_snapshot(&mut state, remote);
+
+        assert_eq!(state.settings.daily_target_ml, 2600);
+        assert_eq!(state.settings.cup_size_ml, 400);
+        assert_eq!(state.settings.cup_step_ml, 100);
+        assert_eq!(state.settings.active_start_hour, 8);
+        assert_eq!(state.settings.active_end_hour, 21);
+        assert_eq!(state.settings.locale, "en-US");
+        assert_eq!(state.today.target_ml, 2600);
+        assert_eq!(state.today.cup_size_ml, 400);
+        assert_eq!(state.today.active_start_hour, 8);
+        assert_eq!(state.today.active_end_hour, 21);
+        assert_eq!(state.settings.device_id, "desktop-device");
+        assert_eq!(state.settings.display_name, "Desktop");
+        assert_eq!(state.settings.active_circle_code, "ABC123");
+        assert_eq!(state.settings.notifications_enabled, true);
+        assert_eq!(state.settings.autostart_enabled, true);
+        assert_eq!(state.settings.panel_opacity_percent, 82);
+        assert_eq!(state.settings.panel_blur_px, 8);
+        assert_eq!(
+            state.sync_meta.settings_updated_at.as_deref(),
+            Some("2026-05-20T10:00:00+08:00")
+        );
+        assert_eq!(
+            state.sync_meta.settings_updated_by_device_id.as_deref(),
+            Some("mini-program-openid")
+        );
+    }
+
+    #[test]
     fn rollover_archives_previous_day_and_resets_debt() {
         let settings = Settings::default();
         let mut state = PersistedState {
@@ -382,10 +452,10 @@ mod tests {
             sync_meta: SyncMeta::default(),
         };
 
-        assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).is_err());
+        assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).is_err());
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 1);
-        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).unwrap();
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).unwrap();
 
         let basic_produce_count = state
             .garden
@@ -418,9 +488,9 @@ mod tests {
             sync_meta: SyncMeta::default(),
         };
 
-        add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
-        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE).unwrap();
-        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, PEA_SEED_TYPE).unwrap();
+        add_produce(&mut state.garden, POTATO_CROP_TYPE, 4);
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).unwrap();
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, PEA_SEED_TYPE, 1).unwrap();
 
         let pea_seed_count = state
             .garden
@@ -454,13 +524,51 @@ mod tests {
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE).is_ok());
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE, 1).is_err());
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 1);
-        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE).is_err());
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE, 1).is_ok());
+
+        add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 1);
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE, 1).is_err());
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE).is_ok());
+        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE, 1).is_ok());
+    }
+
+    #[test]
+    fn exchange_can_convert_multiple_seeds_in_one_operation() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 5, 20, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+        };
+
+        add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 6);
+        exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE, 2)
+            .unwrap();
+
+        let bell_pepper_count = state
+            .garden
+            .produce
+            .iter()
+            .find(|item| item.crop_type == BELL_PEPPER_CROP_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+        let broccoli_seed_count = state
+            .garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == BROCCOLI_SEED_TYPE)
+            .map(|item| item.count)
+            .unwrap_or(0);
+
+        assert_eq!(bell_pepper_count, 0);
+        assert_eq!(broccoli_seed_count, 2);
     }
 
     #[test]

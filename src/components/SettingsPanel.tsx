@@ -1,4 +1,6 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
+import { useState } from "react";
+import { HelpCircle, X } from "lucide-react";
 import { useI18n } from "../i18n";
 import type { AppUpdateInfo, Locale, NotificationPermissionState, Settings, SyncMeta } from "../types";
 
@@ -25,7 +27,7 @@ type SettingsPanelProps = {
   onCreatePairCode: () => void;
   onPairCodeInputChange: (value: string) => void;
   onBindPairCode: () => void;
-  onPullSyncNow: () => void;
+  onPullSettingsNow: () => void;
   onUploadCloudBackup: () => void;
   onRestoreCloudBackup: () => void;
   onPreviewBackgroundChange: (backgroundId: string) => void;
@@ -55,12 +57,13 @@ export function SettingsPanel({
   onCreatePairCode,
   onPairCodeInputChange,
   onBindPairCode,
-  onPullSyncNow,
+  onPullSettingsNow,
   onUploadCloudBackup,
   onRestoreCloudBackup,
   onPreviewBackgroundChange,
   onSave
 }: SettingsPanelProps) {
+  const [syncHelpOpen, setSyncHelpOpen] = useState(false);
   const { t } = useI18n();
   const permissionLabel =
     notificationState === "granted"
@@ -70,23 +73,75 @@ export function SettingsPanel({
         : notificationState === "unsupported"
           ? t("settings.permissionUnsupported")
           : t("settings.permissionPrompt");
-  const handleConfirmPullSync = () => {
-    const confirmed = window.confirm(
-      locale === "zh-CN"
-        ? "立即拉取会用云端较新的快照覆盖本地最近 7 天的同步数据。确认继续吗？"
-        : "Pulling now will overwrite this device's recent 7-day sync data with newer cloud snapshots. Continue?"
-    );
-
-    if (confirmed) {
-      onPullSyncNow();
-    }
-  };
+  const maskedAccountId = syncMeta.accountId
+    ? `${syncMeta.accountId.slice(0, 8)}${"*".repeat(24)}`
+    : t("settings.cloudSyncAccountMissing");
 
   return (
     <section className="flex flex-col gap-3">
+      {syncHelpOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 px-4 backdrop-blur-sm">
+          <div className="panel-surface max-w-[520px] rounded-[22px] p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="m-0 text-lg font-semibold text-slate-50">
+                  {locale === "zh-CN" ? "同步系统说明" : "How sync works"}
+                </h3>
+                <p className="mt-2 text-sm text-slate-300/78">
+                  {locale === "zh-CN"
+                    ? "目前系统有两套同步方式，分别负责不同类型的数据。"
+                    : "The app uses two sync paths for different kinds of data."}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label={locale === "zh-CN" ? "关闭说明" : "Close help"}
+                onClick={() => setSyncHelpOpen(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white/8 text-slate-200 transition hover:bg-white/14"
+              >
+                <X className="h-4 w-4" strokeWidth={2} />
+              </button>
+            </div>
+            <div className="mt-5 grid gap-3">
+              <div className="rounded-[18px] bg-white/6 p-4">
+                <strong className="text-sm font-semibold text-cyan-100">
+                  {locale === "zh-CN" ? "云存档" : "Cloud archive"}
+                </strong>
+                <p className="mt-2 text-sm text-slate-300/78">
+                  {locale === "zh-CN"
+                    ? "用于管理完整历史数据。上传云备份会保存整份本地状态；从云端恢复会把历史记录、农场、设置和同步元数据一起恢复，适合在新设备登录后的历史数据同步。"
+                    : "Manages full historical data. Uploading stores the full local state; restoring brings back history, garden, settings, and sync metadata. Use it for migration or full recovery."}
+                </p>
+              </div>
+              <div className="rounded-[18px] bg-white/6 p-4">
+                <strong className="text-sm font-semibold text-emerald-100">
+                  {locale === "zh-CN" ? "切片快照" : "Slice snapshots"}
+                </strong>
+                <p className="mt-2 text-sm text-slate-300/78">
+                  {locale === "zh-CN"
+                    ? "用于管理即时同步。顶部刷新按钮和页面切换会拉取最近 7 天饮水快照和农场快照，适合手机和桌面端快速同步当天或近期变化。"
+                    : "Manages fast day-to-day sync. The top refresh button and tab switching pull recent hydration and garden snapshots for quick desktop/mobile updates."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="panel-surface rounded-[22px] p-4">
-        <h2 className="m-0 text-lg font-semibold text-slate-50">{t("settings.title")}</h2>
-        <p className="mt-1 text-sm text-slate-300/78">{t("settings.description")}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="m-0 text-lg font-semibold text-slate-50">{t("settings.title")}</h2>
+            <p className="mt-1 text-sm text-slate-300/78">{t("settings.description")}</p>
+          </div>
+          <button
+            onClick={onPullSettingsNow}
+            disabled={syncBusy}
+            className="shrink-0 rounded-[14px] border border-cyan-200/20 bg-cyan-300/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16 disabled:opacity-60"
+          >
+            {locale === "zh-CN" ? "同步设置" : "Sync settings"}
+          </button>
+        </div>
       </div>
 
       <div className="panel-surface rounded-[22px] p-4">
@@ -343,18 +398,11 @@ export function SettingsPanel({
             <strong className="text-sm font-semibold text-slate-50">{t("settings.cloudSyncTitle")}</strong>
             <p className="mt-2 text-sm text-slate-300/78">{t("settings.cloudSyncDescription")}</p>
           </div>
-          <button
-            onClick={handleConfirmPullSync}
-            disabled={syncBusy}
-            className="rounded-[14px] border border-sky-200/30 bg-sky-300/10 px-4 py-3 text-sm font-semibold text-sky-100 transition hover:-translate-y-px hover:bg-sky-300/16 disabled:opacity-60"
-          >
-            {t("settings.cloudSyncPullNow")}
-          </button>
         </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="rounded-[18px] bg-white/5 p-3 text-sm text-slate-300/78">
             <p className="m-0 text-slate-50">{t("settings.cloudSyncAccount")}</p>
-            <p className="mt-2 break-all">{syncMeta.accountId ?? t("settings.cloudSyncAccountMissing")}</p>
+            <p className="mt-2 break-all">{maskedAccountId}</p>
             {syncMeta.lastDailyPullAt ? (
               <p className="mt-2 text-xs text-slate-400">
                 {t("settings.cloudSyncLastPull")}: {new Date(syncMeta.lastDailyPullAt).toLocaleString()}
@@ -395,8 +443,20 @@ export function SettingsPanel({
       </div>
 
       <div className="panel-surface rounded-[22px] p-4">
-        <strong className="text-sm font-semibold text-slate-50">{t("settings.dataTitle")}</strong>
-        <p className="mt-2 text-sm text-slate-300/78">{t("settings.dataDescription")}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <strong className="text-sm font-semibold text-slate-50">{t("settings.dataTitle")}</strong>
+            <p className="mt-2 text-sm text-slate-300/78">{t("settings.dataDescription")}</p>
+          </div>
+          <button
+            type="button"
+            aria-label={locale === "zh-CN" ? "查看同步说明" : "View sync help"}
+            onClick={() => setSyncHelpOpen(true)}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-white/8 text-slate-200 transition hover:bg-white/14"
+          >
+            <HelpCircle className="h-4 w-4" strokeWidth={1.9} />
+          </button>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-2.5">
           <button
             onClick={onExportData}
