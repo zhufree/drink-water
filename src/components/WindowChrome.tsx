@@ -23,7 +23,10 @@ export function WindowChrome({
   const { t } = useI18n();
 
   return (
-    <header className="mb-3 flex items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-white/5 px-3 py-2 backdrop-blur-md select-none">
+    <header
+      className="mb-3 flex items-center justify-between gap-3 rounded-[18px] border border-white/8 bg-white/5 px-3 py-2 backdrop-blur-md select-none"
+      data-tauri-drag-region
+    >
       <div className="min-w-0 flex-1" data-tauri-drag-region>
         <div className="flex items-center gap-3" data-tauri-drag-region>
           <span
@@ -41,7 +44,7 @@ export function WindowChrome({
         </div>
       </div>
 
-      <div className="no-drag flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           aria-label={t("leaderboard.refresh")}
