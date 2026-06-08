@@ -27,6 +27,7 @@ type SettingsPanelProps = {
   onCreatePairCode: () => void;
   onPairCodeInputChange: (value: string) => void;
   onBindPairCode: () => void;
+  onPullSyncNow: () => void;
   onPullSettingsNow: () => void;
   onUploadCloudBackup: () => void;
   onRestoreCloudBackup: () => void;
@@ -57,6 +58,7 @@ export function SettingsPanel({
   onCreatePairCode,
   onPairCodeInputChange,
   onBindPairCode,
+  onPullSyncNow,
   onPullSettingsNow,
   onUploadCloudBackup,
   onRestoreCloudBackup,
@@ -85,12 +87,12 @@ export function SettingsPanel({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="m-0 text-lg font-semibold text-slate-50">
-                  {locale === "zh-CN" ? "同步系统说明" : "How sync works"}
+                  {locale === "zh-CN" ? "什么时候需要手动同步" : "When to sync manually"}
                 </h3>
                 <p className="mt-2 text-sm text-slate-300/78">
                   {locale === "zh-CN"
-                    ? "目前系统有两套同步方式，分别负责不同类型的数据。"
-                    : "The app uses two sync paths for different kinds of data."}
+                    ? "大多数时候应用会自动同步。下面两种情况需要你确认一下。"
+                    : "Most sync happens automatically. These two cases are worth checking yourself."}
                 </p>
               </div>
               <button
@@ -105,22 +107,32 @@ export function SettingsPanel({
             <div className="mt-5 grid gap-3">
               <div className="rounded-[18px] bg-white/6 p-4">
                 <strong className="text-sm font-semibold text-cyan-100">
-                  {locale === "zh-CN" ? "云存档" : "Cloud archive"}
+                  {locale === "zh-CN" ? "刚在另一台设备记录过" : "You just used another device"}
                 </strong>
                 <p className="mt-2 text-sm text-slate-300/78">
                   {locale === "zh-CN"
-                    ? "用于管理完整历史数据。上传云备份会保存整份本地状态；从云端恢复会把历史记录、农场、设置和同步元数据一起恢复，适合在新设备登录后的历史数据同步。"
-                    : "Manages full historical data. Uploading stores the full local state; restoring brings back history, garden, settings, and sync metadata. Use it for migration or full recovery."}
+                    ? "打开应用、切到今日或历史页时会自动拉取最近 7 天、农场和设置。想立刻确认最新状态时，点“同步近期状态”。"
+                    : "The app auto-pulls the last 7 days, garden, and settings on launch and when you visit Today or History. Use Sync recent state when you want to check immediately."}
                 </p>
               </div>
               <div className="rounded-[18px] bg-white/6 p-4">
                 <strong className="text-sm font-semibold text-emerald-100">
-                  {locale === "zh-CN" ? "切片快照" : "Slice snapshots"}
+                  {locale === "zh-CN" ? "新设备或超过 7 天没同步" : "New device or more than 7 days"}
                 </strong>
                 <p className="mt-2 text-sm text-slate-300/78">
                   {locale === "zh-CN"
-                    ? "用于管理即时同步。顶部刷新按钮和页面切换会拉取最近 7 天饮水快照和农场快照，适合手机和桌面端快速同步当天或近期变化。"
-                    : "Manages fast day-to-day sync. The top refresh button and tab switching pull recent hydration and garden snapshots for quick desktop/mobile updates."}
+                    ? "近期同步只保留最近 7 天。换新设备或很久没打开时，先在旧设备上传云备份，再在新设备从云端恢复。"
+                    : "Recent sync only covers the last 7 days. For migration or a long gap, upload a cloud backup on the old device, then restore it on the new one."}
+                </p>
+              </div>
+              <div className="rounded-[18px] bg-white/6 p-4">
+                <strong className="text-sm font-semibold text-amber-100">
+                  {locale === "zh-CN" ? "设置偏好" : "Settings preferences"}
+                </strong>
+                <p className="mt-2 text-sm text-slate-300/78">
+                  {locale === "zh-CN"
+                    ? "每日目标、杯量、提醒时间和语言会随近期同步一起拉取。桌面窗口效果、开机启动和通知权限仍然按设备单独保存。"
+                    : "Daily target, cup size, reminder hours, and language pull with recent sync. Window appearance, launch at startup, and notification permission stay device-specific."}
                 </p>
               </div>
             </div>
@@ -398,6 +410,13 @@ export function SettingsPanel({
             <strong className="text-sm font-semibold text-slate-50">{t("settings.cloudSyncTitle")}</strong>
             <p className="mt-2 text-sm text-slate-300/78">{t("settings.cloudSyncDescription")}</p>
           </div>
+          <button
+            onClick={onPullSyncNow}
+            disabled={syncBusy}
+            className="shrink-0 rounded-[14px] border border-cyan-200/20 bg-cyan-300/10 px-4 py-2.5 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16 disabled:opacity-60"
+          >
+            {t("settings.cloudSyncPullNow")}
+          </button>
         </div>
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="rounded-[18px] bg-white/5 p-3 text-sm text-slate-300/78">

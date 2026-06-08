@@ -17,3 +17,4 @@ cloudflare/.dev.vars
 .env.development.local
 .env.production.local
 wechat-*
+*.test.mjs

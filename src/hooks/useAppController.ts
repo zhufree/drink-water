@@ -1,6 +1,10 @@
 ﻿import { useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
+  isPermissionGranted,
+  requestPermission
+} from "@tauri-apps/plugin-notification";
+import {
   applyRemoteSnapshots,
   applyRemoteSettingsSnapshot,
   cancelRestBreak,
@@ -22,6 +26,7 @@ import {
   logDrink,
   logYesterdayDrink,
   markCloudBackupUploaded,
+  markOnboardingSeen,
   plantSeed,
   redeemBackgroundReward,
   saveSettings,
@@ -43,12 +48,8 @@ import {
   bindPairCode,
   bootstrapSnapshotSync,
   createPairCode,
-  pullDailySnapshots,
-  pullGardenSnapshot,
-  pullSettingsSnapshot,
-  pushDailySnapshots,
-  pushGardenSnapshot,
-  pushSettingsSnapshot,
+  pullSnapshotBundle,
+  pushSnapshotBundle,
   restoreCloudBackup,
   uploadCloudBackup
 } from "../syncApi";
@@ -60,6 +61,8 @@ import type {
   Locale,
   NotificationPermissionState,
   Settings,
+  DailySnapshotRecord,
+  GardenSnapshotRecord,
   SettingsSnapshotRecord,
   SyncMeta,
   TodayStatus
@@ -92,6 +95,7 @@ const SYNC_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 const defaultSyncMeta: SyncMeta = {
   accountId: null,
   pairingDeviceId: "",
+  onboardingSeenAt: null,
   lastStartupCatchUpPromptDay: null,
   lastDailyPullAt: null,
   lastGardenPullAt: null,
@@ -99,7 +103,9 @@ const defaultSyncMeta: SyncMeta = {
   dailySnapshotUpdatedAtByDay: {},
   dailySnapshotUpdatedByDeviceIdByDay: {},
   gardenUpdatedAt: null,
-  gardenUpdatedByDeviceId: null
+  gardenUpdatedByDeviceId: null,
+  settingsUpdatedAt: null,
+  settingsUpdatedByDeviceId: null
 };
 
 export { APP_VERSION, COPYRIGHT, RELEASE_URL };
@@ -190,35 +196,43 @@ export function useAppController() {
       return;
     }
 
+    const dailySnapshots: DailySnapshotRecord[] = [];
+    let gardenSnapshot: GardenSnapshotRecord | null = null;
+
     if (input.dayKeys && input.dayKeys.length > 0) {
       const snapshots = await getRecentDailySnapshots(7);
       const wanted = new Set(input.dayKeys);
       const filtered = snapshots.filter((item) => wanted.has(item.dayKey));
       if (filtered.length > 0) {
-        await pushDailySnapshots(meta.accountId, settings.deviceId, filtered);
+        dailySnapshots.push(...filtered);
       }
     }
 
     if (input.garden) {
-      const snapshot = await getGardenSnapshot();
-      await pushGardenSnapshot(meta.accountId, settings.deviceId, snapshot);
+      gardenSnapshot = await getGardenSnapshot();
+    }
+
+    if (dailySnapshots.length > 0 || gardenSnapshot) {
+      await pushSnapshotBundle(meta.accountId, settings.deviceId, {
+        dailySnapshots,
+        gardenSnapshot
+      });
     }
 
     setSyncMeta(await getSyncMeta());
   };
 
   const pullRemoteSnapshotsToLocal = async (accountId: string, deviceId: string) => {
-    const [dailyResult, gardenResult] = await Promise.all([
-      pullDailySnapshots(accountId, deviceId),
-      pullGardenSnapshot(accountId, deviceId)
-    ]);
+    const result = await pullSnapshotBundle(accountId, deviceId);
 
     await applyRemoteSnapshots(
       accountId,
-      dailyResult.snapshots,
-      gardenResult.snapshot,
+      result.dailySnapshots,
+      result.gardenSnapshot,
       new Date().toISOString()
     );
+
+    await applyRemoteSettingsSnapshot(result.settingsSnapshot, new Date().toISOString());
 
     return refreshAll();
   };
@@ -283,7 +297,9 @@ export function useAppController() {
     }
     const accountId = await ensureSyncAccount(targetSettings.deviceId);
     const snapshot = await getSettingsSnapshot();
-    await pushSettingsSnapshot(accountId, targetSettings.deviceId, snapshot);
+    await pushSnapshotBundle(accountId, targetSettings.deviceId, {
+      settingsSnapshot: snapshot
+    });
     setSyncMeta(await getSyncMeta());
   };
 
@@ -311,6 +327,7 @@ export function useAppController() {
         await syncRecentSnapshots(input);
       } catch (error) {
         console.error("background snapshot sync failed", error);
+        setMessage(i18n.t("message.syncDeferred"));
       }
     })();
   };
@@ -467,6 +484,21 @@ export function useAppController() {
       setMessage(i18n.t("message.restCompleted"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleDismissOnboarding = async () => {
+    const nextMeta = await markOnboardingSeen();
+    setSyncMeta(nextMeta);
+    try {
+      const granted = await isPermissionGranted();
+      if (granted) {
+        setNotificationState("granted");
+      } else {
+        setNotificationState(await requestPermission());
+      }
+    } catch {
+      setNotificationState("unsupported");
     }
   };
 
@@ -750,17 +782,17 @@ export function useAppController() {
     try {
       const accountId = await ensureSyncAccount(settings.deviceId);
       const localSnapshot = await getSettingsSnapshot();
-      const remoteResult = await pullSettingsSnapshot(accountId, settings.deviceId);
+      const remoteResult = await pullSnapshotBundle(accountId, settings.deviceId);
 
       if (
-        remoteResult.snapshot &&
-        shouldApplyRemoteSettingsSnapshot(localSnapshot, remoteResult.snapshot)
+        remoteResult.settingsSnapshot &&
+        shouldApplyRemoteSettingsSnapshot(localSnapshot, remoteResult.settingsSnapshot)
       ) {
-        await applyRemoteSettingsSnapshot(remoteResult.snapshot, new Date().toISOString());
+        await applyRemoteSettingsSnapshot(remoteResult.settingsSnapshot, new Date().toISOString());
         await refreshAll();
       }
 
-      setMessage(locale === "zh-CN" ? "设置已同步。" : "Settings synced.");
+      setMessage(i18n.t("message.settingsSynced"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     } finally {
@@ -970,6 +1002,7 @@ export function useAppController() {
     handleRefreshSnapshotsNow,
     handleUploadCloudBackup,
     handleRestoreCloudBackup,
+    handleDismissOnboarding,
     resetNicknameSaveFeedback,
     refreshLeaderboard,
     appWindow

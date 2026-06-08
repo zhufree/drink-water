@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import { HistoryPanel } from "./components/HistoryPanel";
+import { FirstRunOnboardingModal } from "./components/FirstRunOnboardingModal";
 import { LeaderboardPanel } from "./components/LeaderboardPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { RestOverlay } from "./components/RestOverlay";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { StartupCatchUpModal } from "./components/StartupCatchUpModal";
-import { Toast } from "./components/Toast";
+import { Toast, type ToastTone } from "./components/Toast";
 import { TodayPanel } from "./components/TodayPanel";
 import { WindowChrome } from "./components/WindowChrome";
 import { I18nProvider } from "./i18n";
@@ -16,6 +17,18 @@ import {
   useAppController
 } from "./hooks/useAppController";
 
+const TEMPLATE_VALUE = "__toast_value__";
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function matchesToastTemplate(template: string, message: string) {
+  const parts = template.split(TEMPLATE_VALUE).map(escapeRegex);
+  const pattern = `^${parts.join(".+")}$`;
+  return new RegExp(pattern).test(message);
+}
+
 export default function App() {
   const controller = useAppController();
   const panelOpacity = controller.draftSettings.panelOpacityPercent / 100;
@@ -24,6 +37,50 @@ export default function App() {
     "--panel-blur": `${controller.draftSettings.panelBlurPx}px`
   } as CSSProperties;
   const activeBackground = controller.gardenState.activeBackground || "default";
+  const showOnboarding = !controller.syncMeta.onboardingSeenAt;
+  const infoMessages = new Set([
+    controller.i18n.t("message.syncDeferred"),
+    controller.i18n.t("message.syncGapWarning")
+  ]);
+  const successMessages = new Set([
+    controller.i18n.t("message.settingsSaved"),
+    controller.i18n.t("message.exportSuccess"),
+    controller.i18n.t("message.importSuccess"),
+    controller.i18n.t("message.restStarted"),
+    controller.i18n.t("message.restCancelled"),
+    controller.i18n.t("message.restCompleted"),
+    controller.i18n.t("message.backgroundSynced"),
+    controller.i18n.t("leaderboard.identityReconnectSuccess"),
+    controller.i18n.t("message.snapshotsPulled"),
+    controller.i18n.t("message.settingsSynced"),
+    controller.i18n.t("message.cloudBackupUploaded"),
+    controller.i18n.t("message.cloudBackupRestored"),
+    controller.i18n.t("message.deviceBound")
+  ]);
+  const successMessageTemplates = [
+    controller.i18n.t("message.logged", { amount: TEMPLATE_VALUE }),
+    controller.i18n.t("message.undo", { amount: TEMPLATE_VALUE }),
+    controller.i18n.t("message.yesterdayCatchUpSaved", { amount: TEMPLATE_VALUE }),
+    controller.i18n.t("message.seedPlanted", { day: TEMPLATE_VALUE }),
+    controller.i18n.t("message.cropHarvested", { day: TEMPLATE_VALUE }),
+    controller.i18n.t("message.exchangeSuccess", {
+      count: TEMPLATE_VALUE,
+      seed: TEMPLATE_VALUE
+    }),
+    controller.i18n.t("message.circleCreated", { code: TEMPLATE_VALUE }),
+    controller.i18n.t("message.circleJoined", { code: TEMPLATE_VALUE }),
+    controller.i18n.t("message.circleSelected", { code: TEMPLATE_VALUE }),
+    controller.i18n.t("message.pairCodeCreated", { code: TEMPLATE_VALUE })
+  ];
+  const toastTone: ToastTone =
+    infoMessages.has(controller.message)
+      ? "info"
+      : successMessages.has(controller.message) ||
+          successMessageTemplates.some((template) =>
+            matchesToastTemplate(template, controller.message)
+          )
+        ? "success"
+        : "info";
 
   return (
     <I18nProvider locale={controller.locale}>
@@ -53,7 +110,13 @@ export default function App() {
               />
             ) : null}
 
-            {controller.yesterdayCatchUpItem ? (
+            {showOnboarding ? (
+              <FirstRunOnboardingModal
+                onDone={() => void controller.handleDismissOnboarding()}
+              />
+            ) : null}
+
+            {!showOnboarding && controller.yesterdayCatchUpItem ? (
               <StartupCatchUpModal
                 historyItem={controller.yesterdayCatchUpItem}
                 amountMl={controller.yesterdayCatchUpAmount}
@@ -82,7 +145,9 @@ export default function App() {
               />
             </div>
 
-            {controller.message ? <Toast message={controller.message} /> : null}
+            {controller.message ? (
+              <Toast message={controller.message} tone={toastTone} />
+            ) : null}
 
             <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
               <PrimaryTabs
@@ -195,6 +260,7 @@ export default function App() {
                   onCreatePairCode={() => void controller.handleCreatePairCode()}
                   onPairCodeInputChange={controller.setPairCodeInput}
                   onBindPairCode={() => void controller.handleBindPairCode()}
+                  onPullSyncNow={() => void controller.handlePullSyncNow()}
                   onPullSettingsNow={() => void controller.handlePullSettingsNow()}
                   onUploadCloudBackup={() => void controller.handleUploadCloudBackup()}
                   onRestoreCloudBackup={() => void controller.handleRestoreCloudBackup()}

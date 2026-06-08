@@ -102,3 +102,6 @@ export const markCloudBackupUploaded = (uploadedAt: string) =>
 
 export const markStartupCatchUpPromptShown = () =>
   invoke<SyncMeta>("mark_startup_catch_up_prompt_shown");
+
+export const markOnboardingSeen = () =>
+  invoke<SyncMeta>("mark_onboarding_seen");

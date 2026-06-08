@@ -93,25 +93,31 @@ export function useAppControllerEffects({
   handleCompleteRestBreak,
   bootstrapSnapshotSync
 }: UseAppControllerEffectsParams) {
+  const ensureNotificationPermission = async () => {
+    try {
+      const granted = await isPermissionGranted();
+      if (granted) {
+        setNotificationState("granted");
+      } else {
+        const result = await requestPermission();
+        setNotificationState(result);
+      }
+    } catch {
+      setNotificationState("unsupported");
+    }
+  };
+
   useEffect(() => {
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
     const bootstrap = async () => {
       try {
-        const granted = await isPermissionGranted();
-        if (granted) {
-          setNotificationState("granted");
-        } else {
-          const result = await requestPermission();
-          setNotificationState(result);
-        }
-      } catch {
-        setNotificationState("unsupported");
-      }
-
-      try {
         let { nextSettings, nextHistory, nextSyncMeta } = await refreshAll();
+
+        if (nextSyncMeta.onboardingSeenAt) {
+          await ensureNotificationPermission();
+        }
 
         if (!nextSettings.deviceId) {
           const saved = await saveSettings({

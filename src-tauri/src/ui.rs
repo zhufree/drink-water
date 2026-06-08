@@ -219,6 +219,7 @@ pub fn run() {
             import_cloud_backup_payload,
             mark_cloud_backup_uploaded,
             mark_startup_catch_up_prompt_shown,
+            mark_onboarding_seen,
             toggle_autostart,
             dismiss_or_snooze_reminder,
             get_history

@@ -66,6 +66,22 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_starts_unseen_and_is_backward_compatible() {
+        assert_eq!(SyncMeta::default().onboarding_seen_at, None);
+
+        let value = serde_json::json!({
+            "settings": Settings::default(),
+            "today": DailyRecord::new(local_dt(2026, 6, 8, 9, 0), &Settings::default()),
+            "history": [],
+            "garden": GardenState::default(),
+            "syncMeta": {}
+        });
+
+        let parsed = serde_json::from_value::<PersistedState>(value).unwrap();
+        assert_eq!(parsed.sync_meta.onboarding_seen_at, None);
+    }
+
+    #[test]
     fn remote_settings_snapshot_updates_account_settings_only() {
         let local_settings = Settings {
             daily_target_ml: 2000,

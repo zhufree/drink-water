@@ -142,6 +142,7 @@ export type AppUpdateInfo = {
 export type SyncMeta = {
   accountId: string | null;
   pairingDeviceId: string;
+  onboardingSeenAt: string | null;
   lastStartupCatchUpPromptDay: string | null;
   lastDailyPullAt: string | null;
   lastGardenPullAt: string | null;
@@ -150,6 +151,8 @@ export type SyncMeta = {
   dailySnapshotUpdatedByDeviceIdByDay: Record<string, string>;
   gardenUpdatedAt: string | null;
   gardenUpdatedByDeviceId: string | null;
+  settingsUpdatedAt: string | null;
+  settingsUpdatedByDeviceId: string | null;
 };
 
 export type DailySnapshotRecord = {

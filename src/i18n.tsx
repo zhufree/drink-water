@@ -109,6 +109,8 @@ type TranslationKey =
   | "message.pairCodeCreated"
   | "message.deviceBound"
   | "message.snapshotsPulled"
+  | "message.syncDeferred"
+  | "message.settingsSynced"
   | "message.cloudBackupUploaded"
   | "message.cloudBackupRestored"
   | "leaderboard.title"
@@ -188,6 +190,16 @@ type TranslationKey =
   | "garden.exchangeTitle"
   | "garden.exchangeRule"
   | "garden.exchangeAction"
+  | "onboarding.badge"
+  | "onboarding.title"
+  | "onboarding.description"
+  | "onboarding.recentSync"
+  | "onboarding.backupSync"
+  | "onboarding.syncDetailsTitle"
+  | "onboarding.syncDetails"
+  | "onboarding.learnSync"
+  | "onboarding.hideSyncDetails"
+  | "onboarding.start"
   | "notification.drinkNowTitle"
   | "notification.drinkNowBody"
   | "notification.snoozeTitle"
@@ -289,8 +301,8 @@ const enUs: TranslationTable = {
   "settings.exportData": "Export data",
   "settings.importData": "Import data",
   "settings.cloudSyncTitle": "Cloud sync",
-  "settings.cloudSyncDescription": "Bind desktop and mobile into the same private sync account with a pair code. The app syncs recent hydration snapshots and garden state.",
-  "settings.cloudSyncPullNow": "Pull now",
+  "settings.cloudSyncDescription": "Use this for everyday switching between devices. It keeps the last 7 days, garden, and account-level preferences fresh automatically.",
+  "settings.cloudSyncPullNow": "Sync recent state",
   "settings.cloudSyncAccount": "Sync account",
   "settings.cloudSyncAccountMissing": "Not created yet",
   "settings.cloudSyncLastPull": "Last pull",
@@ -299,8 +311,8 @@ const enUs: TranslationTable = {
   "settings.cloudSyncCreatePairCode": "Create pair code",
   "settings.cloudSyncPairCodePlaceholder": "Enter a pair code from another device",
   "settings.cloudSyncBindDevice": "Bind device",
-  "settings.cloudBackupUpload": "Upload cloud backup",
-  "settings.cloudBackupRestore": "Restore from cloud",
+  "settings.cloudBackupUpload": "Upload full backup",
+  "settings.cloudBackupRestore": "Restore full backup",
   "settings.cloudBackupLast": "Last cloud backup",
   "settings.save": "Save settings",
   "settings.saving": "Saving...",
@@ -310,11 +322,13 @@ const enUs: TranslationTable = {
   "settings.updateAvailable": "Version {version} is available here if you want to update.",
   "settings.downloadUpdate": "Download this update",
   "settings.downloadLatest": "Download new version",
-  "message.syncGapWarning": "Recent cloud snapshots may not fully catch this device up. Consider restoring from cloud backup.",
+  "message.syncGapWarning": "This device has been away for more than 7 days. Recent sync may miss older history; restore a full cloud backup if this is a new or stale device.",
   "message.backgroundSynced": "Unlocked the cat collage background and synced it to the cloud.",
   "message.pairCodeCreated": "Pair code created: {code}",
   "message.deviceBound": "Device paired successfully.",
-  "message.snapshotsPulled": "Pulled the latest cloud snapshots.",
+  "message.snapshotsPulled": "Recent state is up to date.",
+  "message.syncDeferred": "Saved locally. Cloud sync did not finish; try Sync recent state again when the connection is steadier.",
+  "message.settingsSynced": "Settings are synced.",
   "message.cloudBackupUploaded": "Cloud backup uploaded.",
   "message.cloudBackupRestored": "Restored data from cloud backup.",
   "leaderboard.title": "Hydration leaderboard",
@@ -394,6 +408,16 @@ const enUs: TranslationTable = {
   "garden.exchangeTitle": "Seed exchange",
   "garden.exchangeRule": "Use your produce to exchange for other seeds.",
   "garden.exchangeAction": "Exchange",
+  "onboarding.badge": "Welcome",
+  "onboarding.title": "A quiet water reminder and tracker",
+  "onboarding.description": "The desktop app handles reminders, quick logging, and history. A mobile mini program is in development and will work with the desktop app.",
+  "onboarding.recentSync": "For everyday switching, the app automatically syncs the last 7 days, garden, and common settings.",
+  "onboarding.backupSync": "For a new device or a long gap, restoring a full cloud backup is safer.",
+  "onboarding.syncDetailsTitle": "Which sync should I use?",
+  "onboarding.syncDetails": "For short gaps, open the app or use Sync recent state. For more than 7 days, migration, or missing history, upload a full backup on the old device and restore it on the new one.",
+  "onboarding.learnSync": "Learn sync",
+  "onboarding.hideSyncDetails": "Hide sync details",
+  "onboarding.start": "Start using",
   "notification.drinkNowTitle": "Time to drink water",
   "notification.drinkNowBody": "A new reminder window has started. Try to drink a cup now.",
   "notification.snoozeTitle": "Reminder again",
@@ -413,7 +437,7 @@ const enUs: TranslationTable = {
 
 const zhCn: TranslationTable = {
   ...enUs,
-  "app.loading": "正在加载喝水助手...",
+  "app.loading": "正在加载谁是吨吨大王...",
   "message.logged": "已记录 {amount}。",
   "message.undo": "已撤销上次记录 {amount}。",
   "message.windowActionFailed": "窗口操作失败：{action}，{detail}",
@@ -431,7 +455,7 @@ const zhCn: TranslationTable = {
   "message.circleJoined": "已加入圈子 {code}。",
   "message.circleSelected": "已切换到圈子 {code}。",
   "leaderboard.identityReconnectSuccess": "已重新连接排行榜服务。",
-  "window.subtitle": "桌面喝水助手",
+  "window.subtitle": "吨吨大王",
   "window.openSettings": "打开设置",
   "window.minimize": "最小化",
   "window.hideToTray": "隐藏到托盘",
@@ -489,8 +513,8 @@ const zhCn: TranslationTable = {
   "settings.exportData": "导出数据",
   "settings.importData": "导入数据",
   "settings.cloudSyncTitle": "云端同步",
-  "settings.cloudSyncDescription": "用配对码把桌面端和移动端绑定到同一个同步账户，系统会同步最近 7 天的喝水快照和农场状态。",
-  "settings.cloudSyncPullNow": "立即拉取",
+  "settings.cloudSyncDescription": "用于日常在多台设备之间切换。应用会自动同步最近 7 天、农场和账户级偏好。",
+  "settings.cloudSyncPullNow": "同步近期状态",
   "settings.cloudSyncAccount": "同步账户",
   "settings.cloudSyncAccountMissing": "尚未创建",
   "settings.cloudSyncLastPull": "最近拉取",
@@ -499,8 +523,8 @@ const zhCn: TranslationTable = {
   "settings.cloudSyncCreatePairCode": "生成配对码",
   "settings.cloudSyncPairCodePlaceholder": "输入另一台设备上的配对码",
   "settings.cloudSyncBindDevice": "绑定设备",
-  "settings.cloudBackupUpload": "上传云备份",
-  "settings.cloudBackupRestore": "从云端恢复",
+  "settings.cloudBackupUpload": "上传完整备份",
+  "settings.cloudBackupRestore": "恢复完整备份",
   "settings.cloudBackupLast": "最近云备份",
   "settings.save": "保存设置",
   "settings.saving": "正在保存...",
@@ -510,11 +534,13 @@ const zhCn: TranslationTable = {
   "settings.updateAvailable": "发现新版本 {version}",
   "settings.downloadUpdate": "下载这个更新",
   "settings.downloadLatest": "下载新版本",
-  "message.syncGapWarning": "近期云端快照可能已不足以补齐当前设备，请考虑从云备份恢复。",
+  "message.syncGapWarning": "这台设备已超过 7 天没有同步。近期同步可能补不齐更早历史；如果是新设备或久未打开的设备，请恢复完整云备份。",
   "message.backgroundSynced": "已兑换猫猫背景，并已同步到云端。",
   "message.pairCodeCreated": "配对码已生成：{code}",
   "message.deviceBound": "设备配对成功。",
-  "message.snapshotsPulled": "已拉取最新云端快照。",
+  "message.snapshotsPulled": "近期状态已同步。",
+  "message.syncDeferred": "已保存到本地。云端同步暂时没有完成，网络稳定后可再点“同步近期状态”。",
+  "message.settingsSynced": "设置已同步。",
   "message.cloudBackupUploaded": "云备份已上传。",
   "message.cloudBackupRestored": "已从云备份恢复数据。",
   "leaderboard.title": "饮水排行榜",
@@ -610,6 +636,19 @@ const zhCn: TranslationTable = {
   "startupCatchUp.confirm": "补记 {amount}",
   "common.notScheduled": "未安排"
 };
+
+Object.assign(zhCn, {
+  "onboarding.badge": "欢迎使用谁是吨吨大王",
+  "onboarding.title": "轻量的喝水提醒和记录工具",
+  "onboarding.description": "桌面端目前功能包括常驻提醒、快速记录、查看历史等。移动端小程序正在开发中，外出也可以记录。",
+  "onboarding.recentSync": "日常在手机和电脑之间切换时，应用会在数据变动时自动同步最近 7 天喝水、农场数据和常用设置。",
+  "onboarding.backupSync": "换新设备或超过7天没打开旧设备时，用完整云备份恢复更稳。",
+  "onboarding.syncDetailsTitle": "如何在设备间同步数据？",
+  "onboarding.syncDetails": "新用户在任意设备启动时，都会生成设备ID及账号ID，可以通过配对码将多个设备绑定到同一个云端账号进行数据同步（注意，需要旧设备生成配对码，新设备输入配对码完成绑定，不可反向操作）。设备绑定完成后，所有设备内操作将会自动同步到同一个云端账号，但该同步仅包含7天内数据。超过 7 天没启动某一设备的客户端、或迁移到新设备时，先在旧设备上传完整备份，再在新设备恢复。",
+  "onboarding.learnSync": "了解同步",
+  "onboarding.hideSyncDetails": "收起同步说明",
+  "onboarding.start": "开始使用"
+} satisfies Partial<TranslationTable>);
 
 const translations: Record<Locale, TranslationTable> = {
   "zh-CN": zhCn,

@@ -783,6 +783,21 @@ fn mark_startup_catch_up_prompt_shown(state: State<'_, AppState>) -> Result<Sync
 }
 
 #[tauri::command]
+fn mark_onboarding_seen(state: State<'_, AppState>) -> Result<SyncMeta, String> {
+    let meta = {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to update onboarding metadata".to_string())?;
+        guard.sync_meta.onboarding_seen_at = Some(Local::now().to_rfc3339());
+        guard.normalize_sync_meta();
+        guard.sync_meta.clone()
+    };
+    state.save()?;
+    Ok(meta)
+}
+
+#[tauri::command]
 async fn leaderboard_request(
     method: String,
     path: String,

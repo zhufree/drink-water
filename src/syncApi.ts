@@ -5,6 +5,7 @@ import type {
   GardenSnapshotRecord,
   SettingsSnapshotRecord
 } from "./types";
+import { getSyncRetryDelayMs, SYNC_REQUEST_MAX_ATTEMPTS } from "./syncRetry";
 
 type SyncBootstrapResponse = {
   accountId: string;
@@ -27,6 +28,12 @@ type SettingsPullResponse = {
   snapshot: SettingsSnapshotRecord | null;
 };
 
+type SnapshotBundlePullResponse = {
+  dailySnapshots: DailySnapshotRecord[];
+  gardenSnapshot: GardenSnapshotRecord | null;
+  settingsSnapshot: SettingsSnapshotRecord | null;
+};
+
 type BackupUploadResponse = {
   backup: CloudBackupMeta;
 };
@@ -37,7 +44,6 @@ type BackupRestoreResponse = {
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const retries = init?.method === "GET" || !init?.method ? 2 : 1;
   let lastError: Error | null = null;
   const method = init?.method ?? "GET";
   const [pathname, rawQuery] = path.split("?");
@@ -46,7 +52,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     : undefined;
   const body = init?.body ? JSON.parse(String(init.body)) : null;
 
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
+  for (let attempt = 0; attempt < SYNC_REQUEST_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await invoke<T>("leaderboard_request", {
         method,
@@ -57,10 +63,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch (error) {
       lastError =
         error instanceof Error ? error : new Error(typeof error === "string" ? error : "Request failed");
-      if (attempt >= retries) {
+      const delayMs = getSyncRetryDelayMs(attempt);
+      if (!delayMs) {
         break;
       }
-      await new Promise((resolve) => window.setTimeout(resolve, 350 * (attempt + 1)));
+      await new Promise((resolve) => window.setTimeout(resolve, delayMs));
     }
   }
 
@@ -137,6 +144,32 @@ export async function pushSettingsSnapshot(
 export async function pullSettingsSnapshot(accountId: string, deviceId: string) {
   const params = new URLSearchParams({ accountId, deviceId });
   return request<SettingsPullResponse>(`/api/sync/settings?${params.toString()}`);
+}
+
+export async function pushSnapshotBundle(
+  accountId: string,
+  deviceId: string,
+  input: {
+    dailySnapshots?: DailySnapshotRecord[];
+    gardenSnapshot?: GardenSnapshotRecord | null;
+    settingsSnapshot?: SettingsSnapshotRecord | null;
+  }
+) {
+  return request<{ ok: true }>("/api/sync/snapshots/push", {
+    method: "POST",
+    body: JSON.stringify({
+      accountId,
+      deviceId,
+      dailySnapshots: input.dailySnapshots ?? [],
+      gardenSnapshot: input.gardenSnapshot ?? undefined,
+      settingsSnapshot: input.settingsSnapshot ?? undefined
+    })
+  });
+}
+
+export async function pullSnapshotBundle(accountId: string, deviceId: string) {
+  const params = new URLSearchParams({ accountId, deviceId });
+  return request<SnapshotBundlePullResponse>(`/api/sync/snapshots?${params.toString()}`);
 }
 
 export async function uploadCloudBackup(

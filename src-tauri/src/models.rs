@@ -196,6 +196,8 @@ pub struct SyncMeta {
     #[serde(default)]
     pairing_device_id: String,
     #[serde(default)]
+    onboarding_seen_at: Option<String>,
+    #[serde(default)]
     last_startup_catch_up_prompt_day: Option<String>,
     #[serde(default)]
     last_daily_pull_at: Option<String>,
@@ -222,6 +224,7 @@ impl Default for SyncMeta {
         Self {
             account_id: None,
             pairing_device_id: String::new(),
+            onboarding_seen_at: None,
             last_startup_catch_up_prompt_day: None,
             last_daily_pull_at: None,
             last_garden_pull_at: None,
@@ -254,6 +257,11 @@ impl SyncMeta {
             .last_startup_catch_up_prompt_day
             .as_ref()
             .map(|value| value.trim().chars().take(32).collect::<String>())
+            .filter(|value| !value.is_empty());
+        self.onboarding_seen_at = self
+            .onboarding_seen_at
+            .as_ref()
+            .map(|value| value.trim().chars().take(64).collect::<String>())
             .filter(|value| !value.is_empty());
         self.pairing_device_id = device_id.trim().chars().take(128).collect();
         self.daily_snapshot_updated_at_by_day
