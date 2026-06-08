@@ -46,6 +46,7 @@ const REST_SHORT_BOOST_SECONDS: u32 = 60 * 60;
 const REST_MEDIUM_BOOST_SECONDS: u32 = 2 * 60 * 60;
 const REST_LONG_BOOST_SECONDS: u32 = 3 * 60 * 60;
 const DEFAULT_BACKGROUND_ID: &str = "default";
+#[cfg(test)]
 const CAT_COLLAGE_BACKGROUND_ID: &str = "catCollage";
 
 fn default_locale() -> String {

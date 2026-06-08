@@ -393,9 +393,13 @@ impl PersistedState {
 
         merge_seed_inventory(&mut self.garden);
         merge_produce_inventory(&mut self.garden);
+        let configured_background_ids: Vec<String> = background_reward_config()
+            .into_iter()
+            .map(|reward| reward.id)
+            .collect();
         self.garden
             .unlocked_backgrounds
-            .retain(|background| background == CAT_COLLAGE_BACKGROUND_ID);
+            .retain(|background| configured_background_ids.contains(background));
         if self.garden.active_background != DEFAULT_BACKGROUND_ID
             && !self
                 .garden

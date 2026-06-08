@@ -572,7 +572,7 @@ mod tests {
     }
 
     #[test]
-    fn background_reward_requires_six_potatoes_and_six_radishes() {
+    fn background_reward_uses_configured_requirements() {
         let settings = Settings::default();
         let now = local_dt(2026, 5, 20, 9, 0);
         let mut state = PersistedState {
@@ -584,10 +584,10 @@ mod tests {
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 6);
-        add_produce(&mut state.garden, RADISH_CROP_TYPE, 5);
+        add_produce(&mut state.garden, CARROT_CROP_TYPE, 5);
         assert!(redeem_background_reward_in_state(&mut state, CAT_COLLAGE_BACKGROUND_ID).is_err());
 
-        add_produce(&mut state.garden, RADISH_CROP_TYPE, 1);
+        add_produce(&mut state.garden, CARROT_CROP_TYPE, 1);
         redeem_background_reward_in_state(&mut state, CAT_COLLAGE_BACKGROUND_ID).unwrap();
 
         assert_eq!(state.garden.active_background, CAT_COLLAGE_BACKGROUND_ID);
@@ -609,7 +609,7 @@ mod tests {
             state.garden
                 .produce
                 .iter()
-                .find(|item| item.crop_type == RADISH_CROP_TYPE)
+                .find(|item| item.crop_type == CARROT_CROP_TYPE)
                 .map(|item| item.count)
                 .unwrap_or(0),
             0

@@ -19,18 +19,24 @@ fn save_settings(
             .data
             .lock()
             .map_err(|_| "failed to save settings".to_string())?;
+        let settings_snapshot_changed = account_settings_snapshot_changed(&guard.settings, &settings);
+        let daily_snapshot_changed = daily_settings_changed(&guard.settings, &settings);
         guard.settings = settings.clone();
         guard.sync_meta.pairing_device_id = settings.device_id.clone();
-        guard.today.target_ml = settings.daily_target_ml;
-        guard.today.cup_size_ml = settings.cup_size_ml;
-        guard.today.reminder_interval_minutes = settings.reminder_interval_minutes;
-        guard.today.active_start_hour = settings.active_start_hour;
-        guard.today.active_end_hour = settings.active_end_hour;
-        guard.today.updated_at = Local::now().to_rfc3339();
         let now = Local::now();
-        let today_day_key = guard.today.day_key.clone();
-        touch_daily_snapshot(&mut guard, &today_day_key, now);
-        touch_settings_snapshot(&mut guard, now);
+        if daily_snapshot_changed {
+            guard.today.target_ml = settings.daily_target_ml;
+            guard.today.cup_size_ml = settings.cup_size_ml;
+            guard.today.reminder_interval_minutes = settings.reminder_interval_minutes;
+            guard.today.active_start_hour = settings.active_start_hour;
+            guard.today.active_end_hour = settings.active_end_hour;
+            guard.today.updated_at = now.to_rfc3339();
+            let today_day_key = guard.today.day_key.clone();
+            touch_daily_snapshot(&mut guard, &today_day_key, now);
+        }
+        if settings_snapshot_changed {
+            touch_settings_snapshot(&mut guard, now);
+        }
         guard.normalize_sync_meta();
     }
 
@@ -871,6 +877,24 @@ fn touch_garden_snapshot(state: &mut PersistedState, now: DateTime<Local>) {
 fn touch_settings_snapshot(state: &mut PersistedState, now: DateTime<Local>) {
     state.sync_meta.settings_updated_at = Some(now.to_rfc3339());
     state.sync_meta.settings_updated_by_device_id = Some(state.settings.device_id.clone());
+}
+
+fn account_settings_snapshot_changed(left: &Settings, right: &Settings) -> bool {
+    left.daily_target_ml != right.daily_target_ml
+        || left.cup_size_ml != right.cup_size_ml
+        || left.cup_step_ml != right.cup_step_ml
+        || left.reminder_interval_minutes != right.reminder_interval_minutes
+        || left.active_start_hour != right.active_start_hour
+        || left.active_end_hour != right.active_end_hour
+        || left.locale != right.locale
+}
+
+fn daily_settings_changed(left: &Settings, right: &Settings) -> bool {
+    left.daily_target_ml != right.daily_target_ml
+        || left.cup_size_ml != right.cup_size_ml
+        || left.reminder_interval_minutes != right.reminder_interval_minutes
+        || left.active_start_hour != right.active_start_hour
+        || left.active_end_hour != right.active_end_hour
 }
 
 fn build_settings_snapshot(settings: &Settings) -> SettingsSnapshot {

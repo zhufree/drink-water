@@ -1100,7 +1100,6 @@ async function ensureLeaderboardAccountForDevice(
 ) {
   const existing = await getSyncAccountIdByDeviceId(db, deviceId);
   if (existing) {
-    await bindDeviceToSyncAccount(db, existing, deviceId, now);
     return existing;
   }
 

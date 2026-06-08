@@ -25,6 +25,22 @@ struct SeedExchangeRuleConfig {
     target_seed_count: u32,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BackgroundRewardConfig {
+    id: String,
+    redeemable: bool,
+    #[serde(default)]
+    requirements: Vec<BackgroundRewardRequirementConfig>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BackgroundRewardRequirementConfig {
+    crop_type: String,
+    count: u32,
+}
+
 fn seed_exchange_config() -> SeedExchangeConfig {
     let _known_stable_ids = [
         BELL_PEPPER_SEED_TYPE,
@@ -40,6 +56,7 @@ fn seed_exchange_config() -> SeedExchangeConfig {
         CARROT_CROP_TYPE,
         NAPA_CABBAGE_CROP_TYPE,
         BROCCOLI_CROP_TYPE,
+        RADISH_CROP_TYPE,
         PUMPKIN_CROP_TYPE,
         ONION_CROP_TYPE,
         EGGPLANT_CROP_TYPE,
@@ -57,8 +74,13 @@ fn seed_exchange_config() -> SeedExchangeConfig {
         LEGACY_RADISH_CROP_TYPE,
     ];
 
-    serde_json::from_str(include_str!("../../src/config/seedExchange.json"))
+    serde_json::from_str(include_str!("../../src/config/seedExchange.json").trim_start_matches('\u{feff}'))
         .expect("seed exchange config must be valid JSON")
+}
+
+fn background_reward_config() -> Vec<BackgroundRewardConfig> {
+    serde_json::from_str(include_str!("../../src/config/backgroundRewards.json").trim_start_matches('\u{feff}'))
+        .expect("background reward config must be valid JSON")
 }
 
 fn normalize_seed_type(seed_type: &str) -> Result<String, String> {
@@ -442,32 +464,41 @@ fn redeem_background_reward_in_state(
     state: &mut PersistedState,
     reward_id: &str,
 ) -> Result<(), String> {
-    if reward_id != CAT_COLLAGE_BACKGROUND_ID {
-        return Err("unknown background reward".to_string());
+    let reward_id = reward_id.trim();
+    let reward = background_reward_config()
+        .into_iter()
+        .find(|reward| reward.id == reward_id)
+        .ok_or_else(|| "unknown background reward".to_string())?;
+
+    if !reward.redeemable {
+        return Err("background reward is not redeemable".to_string());
     }
 
     if state
         .garden
         .unlocked_backgrounds
         .iter()
-        .any(|background| background == CAT_COLLAGE_BACKGROUND_ID)
+        .any(|background| background == &reward.id)
     {
         return Err("background reward already unlocked".to_string());
     }
 
-    if total_produce(&state.garden, POTATO_CROP_TYPE) < 6
-        || total_produce(&state.garden, RADISH_CROP_TYPE) < 6
-    {
-        return Err("not enough produce to exchange".to_string());
+    for requirement in &reward.requirements {
+        if total_produce(&state.garden, &requirement.crop_type) < requirement.count {
+            return Err("not enough produce to exchange".to_string());
+        }
     }
 
-    spend_produce(&mut state.garden, POTATO_CROP_TYPE, 6)?;
-    spend_produce(&mut state.garden, RADISH_CROP_TYPE, 6)?;
-    state
-        .garden
-        .unlocked_backgrounds
-        .push(CAT_COLLAGE_BACKGROUND_ID.to_string());
-    state.garden.active_background = CAT_COLLAGE_BACKGROUND_ID.to_string();
+    for requirement in &reward.requirements {
+        spend_produce(
+            &mut state.garden,
+            &requirement.crop_type,
+            requirement.count,
+        )?;
+    }
+
+    state.garden.unlocked_backgrounds.push(reward.id.clone());
+    state.garden.active_background = reward.id;
     Ok(())
 }
 

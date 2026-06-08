@@ -758,9 +758,6 @@ export function useAppController() {
       ) {
         await applyRemoteSettingsSnapshot(remoteResult.snapshot, new Date().toISOString());
         await refreshAll();
-      } else {
-        await pushSettingsSnapshot(accountId, settings.deviceId, localSnapshot);
-        setSyncMeta(await getSyncMeta());
       }
 
       setMessage(locale === "zh-CN" ? "设置已同步。" : "Settings synced.");

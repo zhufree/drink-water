@@ -62,5 +62,9 @@ export function extractErrorMessage(error: unknown) {
     return error.message;
   }
 
-  return "Failed to sync circles.";
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Request failed.";
 }
