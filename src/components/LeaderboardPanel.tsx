@@ -256,40 +256,6 @@ export function LeaderboardPanel({
         ) : null}
       </div>
 
-      <div className="rounded-[18px] border border-white/6 bg-white/[0.035] px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="m-0 text-xs font-medium uppercase tracking-[0.18em] text-slate-400/70">
-              {t("leaderboard.identityStatusTitle")}
-            </p>
-            <p
-              className={`mt-1 text-xs leading-5 ${
-                cloudIdentityState === "ready"
-                  ? "text-emerald-200/78"
-                  : cloudIdentityState === "error"
-                    ? "text-amber-200/82"
-                    : "text-slate-300/68"
-              }`}
-            >
-              {cloudIdentityState === "ready"
-                ? t("leaderboard.identityReady")
-                : cloudIdentityState === "error"
-                  ? t("leaderboard.identityError")
-                  : t("leaderboard.identityLoading")}
-            </p>
-            {cloudIdentityState === "error" && cloudIdentityError ? (
-              <p className="mt-1 text-[11px] text-slate-400/78">{cloudIdentityError}</p>
-            ) : null}
-          </div>
-          <button
-            onClick={onReconnectIdentity}
-            className="rounded-[12px] bg-white/7 px-3 py-2 text-xs text-slate-100 transition hover:-translate-y-px hover:bg-white/12"
-          >
-            {t("leaderboard.identityRetry")}
-          </button>
-        </div>
-      </div>
-
       <div className="panel-surface rounded-[22px] p-4">
         <label className="flex flex-col gap-2">
           <span className="text-sm text-slate-300/70">{t("leaderboard.displayName")}</span>

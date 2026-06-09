@@ -18,8 +18,7 @@ export function CircleActionModal({
   onClose,
   onConfirm
 }: CircleActionModalProps) {
-  const { locale } = useI18n();
-  const isZh = locale === "zh-CN";
+  const { t } = useI18n();
 
   if (!action) {
     return null;
@@ -27,29 +26,17 @@ export function CircleActionModal({
 
   const title =
     action.type === "remove-member"
-      ? isZh
-        ? "移出成员"
-        : "Remove member"
+      ? t("leaderboard.actionRemoveMemberTitle")
       : action.type === "leave-circle"
-        ? isZh
-          ? "退出圈子"
-          : "Leave circle"
-        : isZh
-          ? "解散圈子"
-          : "Disband circle";
+        ? t("leaderboard.actionLeaveCircleTitle")
+        : t("leaderboard.actionDisbandCircleTitle");
 
   const description =
     action.type === "remove-member"
-      ? isZh
-        ? `确认将成员“${action.displayName}”移出当前圈子吗？`
-        : `Remove "${action.displayName}" from this circle?`
+      ? t("leaderboard.actionRemoveMemberDescription", { name: action.displayName })
       : action.type === "leave-circle"
-        ? isZh
-          ? "确认退出当前圈子吗？退出后将不再参与这个圈子的排行榜。"
-          : "Leave the current circle? You will no longer appear on this circle leaderboard."
-        : isZh
-          ? "确认解散当前圈子吗？解散后该圈子的成员关系和排行榜记录都会被删除。"
-          : "Disband this circle? Membership and leaderboard records for this circle will be deleted.";
+        ? t("leaderboard.actionLeaveCircleDescription")
+        : t("leaderboard.actionDisbandCircleDescription");
 
   return (
     <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/72 p-4 backdrop-blur-sm">
@@ -62,7 +49,7 @@ export function CircleActionModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label={isZh ? "关闭" : "Close"}
+            aria-label={t("leaderboard.actionClose")}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
           >
             <X className="h-4 w-4" strokeWidth={2.1} />
@@ -75,14 +62,14 @@ export function CircleActionModal({
             onClick={onClose}
             className="rounded-[14px] border border-white/12 bg-white/6 px-4 py-2.5 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
           >
-            {isZh ? "取消" : "Cancel"}
+            {t("leaderboard.actionCancel")}
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="rounded-[14px] border border-rose-200/30 bg-rose-300/10 px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:-translate-y-px hover:bg-rose-300/16"
           >
-            {isZh ? "确认" : "Confirm"}
+            {t("leaderboard.actionConfirm")}
           </button>
         </div>
       </div>

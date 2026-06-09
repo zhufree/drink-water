@@ -71,12 +71,25 @@
       "tier": 2,
       "label": {
         "zh-CN": "白萝卜",
-        "en-US": "Radish"
+        "en-US": "White radish"
       },
       "seedAsset": "radishSeed",
       "cropAsset": "radishCrop",
       "seedAliases": ["cornSeed"],
       "cropAliases": ["corn"]
+    },
+    {
+      "seedType": "redRadishSeed",
+      "cropType": "redRadish",
+      "tier": 2,
+      "label": {
+        "zh-CN": "红萝卜",
+        "en-US": "Red radish"
+      },
+      "seedAsset": "redRadishSeed",
+      "cropAsset": "redRadishCrop",
+      "seedAliases": [],
+      "cropAliases": []
     },
     {
       "seedType": "pumpkinSeed",

@@ -13,9 +13,6 @@ export function FirstRunOnboardingModal({ onDone }: FirstRunOnboardingModalProps
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/76 px-4 backdrop-blur-md">
       <section className="panel-surface w-full max-w-[540px] rounded-[22px] p-5 text-slate-50 shadow-2xl">
-        <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-cyan-300/12 text-cyan-100">
-          <MonitorSmartphone className="h-5 w-5" strokeWidth={1.9} />
-        </div>
 
         <div className="mt-4">
           <p className="m-0 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100/85">

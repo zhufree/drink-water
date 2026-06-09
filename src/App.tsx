@@ -50,6 +50,9 @@ export default function App() {
     controller.i18n.t("message.restCancelled"),
     controller.i18n.t("message.restCompleted"),
     controller.i18n.t("message.backgroundSynced"),
+    controller.i18n.t("message.circleMemberRemoved"),
+    controller.i18n.t("message.circleLeft"),
+    controller.i18n.t("message.circleDisbanded"),
     controller.i18n.t("leaderboard.identityReconnectSuccess"),
     controller.i18n.t("message.snapshotsPulled"),
     controller.i18n.t("message.settingsSynced"),
@@ -246,7 +249,6 @@ export default function App() {
                   releaseUrl={RELEASE_URL}
                   saving={controller.saving}
                   notificationState={controller.notificationState}
-                  locale={controller.locale}
                   syncMeta={controller.syncMeta}
                   pairCode={controller.pairCode}
                   pairCodeInput={controller.pairCodeInput}

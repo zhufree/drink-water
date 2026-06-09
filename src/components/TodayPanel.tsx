@@ -27,7 +27,7 @@ export function TodayPanel({
   onLog,
   onUndo
 }: TodayPanelProps) {
-  const { t, formatMl, formatDateTime } = useI18n();
+  const { t, formatMl } = useI18n();
   const cupStep = Math.max(10, settings.cupStepMl);
   const expectedWidth = widthPercent(status.expectedMl, status.targetMl);
   const actualWidth = widthPercent(status.actualIntakeMl, status.targetMl);
@@ -41,26 +41,33 @@ export function TodayPanel({
   return (
     <section className="flex flex-col gap-3">
       <article className="panel-surface rounded-[22px] p-4">
-        <div className="mb-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="m-0 text-[28px] font-bold leading-none text-slate-50">
+        <div className="mb-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <h2 className="m-0 text-base font-semibold leading-none text-slate-300/82">
                 {t("today.title")}
               </h2>
-              <div className="rounded-2xl py-2">
-                <span className="mr-2 text-xs text-slate-300/70">
-                  {t("today.nextReminder")}
-                </span>
-                <strong className="mt-1 text-base font-semibold text-slate-50">
-                  {formatDateTime(status.nextReminderAt)}
-                </strong>
+              <div className="mt-3 whitespace-nowrap text-clarity text-[36px] font-bold leading-none text-slate-50 sm:text-[46px]">
+                {formatMl(status.actualIntakeMl)}
               </div>
             </div>
-            <div className="min-w-[88px] rounded-2xl border border-white/8 bg-white/4 px-3 py-2 text-center">
-              <span className="text-clarity block text-xs text-slate-300/70">{t("today.progress")}</span>
-              <strong className="text-clarity mt-1 block text-3xl font-bold text-slate-50">
-                {progressPercent}%
-              </strong>
+            <div
+              className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-sky-100/25 bg-slate-950/28 shadow-[inset_0_0_18px_rgba(255,255,255,0.16),0_12px_28px_rgba(15,23,42,0.28)]"
+              aria-label={`${t("today.progress")} ${progressPercent}%`}
+            >
+              <div
+                className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-sky-500 via-cyan-300 to-sky-200 transition-[height] duration-500 ease-out"
+                style={{ height: `${progressPercent}%` }}
+              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_32%_22%,rgba(255,255,255,0.48),transparent_24%),radial-gradient(circle_at_65%_78%,rgba(12,74,110,0.26),transparent_35%)]" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-clarity text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-100/78">
+                  {t("today.progress")}
+                </span>
+                <strong className="text-clarity mt-1 text-[28px] font-bold leading-none text-white drop-shadow-[0_2px_5px_rgba(8,47,73,0.48)]">
+                  {progressPercent}%
+                </strong>
+              </div>
             </div>
           </div>
         </div>

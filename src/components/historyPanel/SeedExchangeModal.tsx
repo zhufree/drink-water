@@ -74,12 +74,11 @@ export function SeedExchangeModal({
   onRedeemBackgroundReward,
   onConfirmExchange
 }: SeedExchangeModalProps) {
-  const { locale } = useI18n();
+  const { t, locale } = useI18n();
   const [view, setView] = useState<ExchangeView>("seed");
   const [previewImage, setPreviewImage] = useState<RewardState | null>(null);
   const [activeBackgroundIndex, setActiveBackgroundIndex] = useState(0);
 
-  const isZh = locale === "zh-CN";
   const targetOptions = selectedSourceEntry?.options ?? [];
   const clampedQuantity = Math.min(Math.max(1, exchangeQuantity), maxExchangeQuantity);
   const activeBackground = backgroundRewards[activeBackgroundIndex] ?? backgroundRewards[0] ?? null;
@@ -107,9 +106,9 @@ export function SeedExchangeModal({
       return null;
     }
 
-    return isZh ? "请先选择上面的作物和下面的种子。" : "Select a produce source and a seed target first.";
+    return t("exchange.footerHint");
   }, [
-    isZh,
+    t,
     selectedSourceEntry,
     selectedTargetOption
   ]);
@@ -125,18 +124,16 @@ export function SeedExchangeModal({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h3 className="m-0 text-xl font-semibold text-slate-50">
-                {isZh ? "兑换中心" : "Exchange hub"}
+                {t("garden.exchangeHub")}
               </h3>
               <p className="mt-1 text-sm text-slate-300/78">
-                {isZh
-                  ? "这里同时包含种子兑换和背景兑换。背景的标题、描述和资源需求都由配置驱动。"
-                  : "This modal contains both seed exchanges and background rewards. Background titles, descriptions, and costs are config-driven."}
+                {t("exchange.description")}
               </p>
             </div>
             <button
               type="button"
               onClick={onClose}
-              aria-label={isZh ? "关闭" : "Close"}
+              aria-label={t("exchange.close")}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
             >
               <X className="h-4 w-4" strokeWidth={2.1} />
@@ -153,7 +150,7 @@ export function SeedExchangeModal({
                   : "bg-white/6 text-slate-200 hover:bg-white/10"
               }`}
             >
-              {isZh ? "种子兑换" : "Seed exchange"}
+              {t("exchange.seedTab")}
             </button>
             <button
               type="button"
@@ -164,7 +161,7 @@ export function SeedExchangeModal({
                   : "bg-white/6 text-slate-200 hover:bg-white/10"
               }`}
             >
-              {isZh ? "背景兑换" : "Background rewards"}
+              {t("exchange.backgroundTab")}
             </button>
           </div>
 
@@ -174,12 +171,10 @@ export function SeedExchangeModal({
                 <div className="rounded-[18px] bg-white/5 p-2.5">
                   <div className="mb-3">
                     <strong className="text-sm font-semibold text-slate-50">
-                      {isZh ? "可用作物" : "Available produce"}
+                      {t("exchange.availableProduce")}
                     </strong>
                     <p className="mt-1 text-xs text-slate-400">
-                      {isZh
-                        ? "这里显示当前背包里确实拥有的果实库存。"
-                        : "Only produce that you currently own appears here."}
+                      {t("exchange.availableProduceHelp")}
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
@@ -205,9 +200,7 @@ export function SeedExchangeModal({
                     })}
                     {availableExchangeSources.length === 0 ? (
                       <div className="col-span-3 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
-                        {isZh
-                          ? "暂时还没有可用于种子兑换的作物。"
-                          : "You do not have produce available for seed exchanges yet."}
+                        {t("exchange.noAvailableProduce")}
                       </div>
                     ) : null}
                   </div>
@@ -216,12 +209,10 @@ export function SeedExchangeModal({
                 <div className="rounded-[18px] bg-white/5 p-2.5">
                   <div className="mb-3">
                     <strong className="text-sm font-semibold text-slate-50">
-                      {isZh ? "全部种子" : "All seeds"}
+                      {t("exchange.allSeeds")}
                     </strong>
                     <p className="mt-1 text-xs text-slate-400">
-                      {isZh
-                        ? "共 10 种。当前作物无法兑换的目标会置灰。"
-                        : "10 total. Targets unavailable for the selected produce are disabled."}
+                      {t("exchange.allSeedsHelp")}
                     </p>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
@@ -238,9 +229,7 @@ export function SeedExchangeModal({
                           aria-label={
                             option
                               ? `${definition.seedLabel} cost ${option.cost}`
-                              : isZh
-                                ? `${definition.seedLabel} 当前不可兑换`
-                                : `${definition.seedLabel} unavailable`
+                              : t("exchange.seedUnavailable", { seed: definition.seedLabel })
                           }
                           disabled={disabled}
                           onClick={() => {
@@ -271,9 +260,7 @@ export function SeedExchangeModal({
                     })}
                     {targetOptions.length === 0 ? (
                       <div className="col-span-3 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
-                        {isZh
-                          ? "这个作物暂时没有可兑换的目标种子。"
-                          : "This produce does not have exchangeable seed targets right now."}
+                        {t("exchange.noTargetSeeds")}
                       </div>
                     ) : null}
                   </div>
@@ -285,7 +272,7 @@ export function SeedExchangeModal({
                   <button
                     type="button"
                     onClick={showPreviousBackground}
-                    aria-label={isZh ? "上一张背景" : "Previous background"}
+                    aria-label={t("exchange.previousBackground")}
                     className="absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/62 text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-slate-900/82"
                   >
                     <ChevronLeft className="h-5 w-5" strokeWidth={2.3} />
@@ -293,7 +280,7 @@ export function SeedExchangeModal({
                   <button
                     type="button"
                     onClick={showNextBackground}
-                    aria-label={isZh ? "下一张背景" : "Next background"}
+                    aria-label={t("exchange.nextBackground")}
                     className="absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-slate-950/62 text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.35)] backdrop-blur-md transition hover:bg-slate-900/82"
                   >
                     <ChevronRight className="h-5 w-5" strokeWidth={2.3} />
@@ -328,7 +315,7 @@ export function SeedExchangeModal({
                           type="button"
                           onClick={() => setActiveBackgroundIndex(index)}
                           aria-label={
-                            isZh ? `查看第 ${index + 1} 张背景` : `View background ${index + 1}`
+                            t("exchange.viewBackground", { index: index + 1 })
                           }
                           className={`h-2 rounded-full transition ${
                             index === activeBackgroundIndex
@@ -371,20 +358,14 @@ export function SeedExchangeModal({
                                 : "cursor-not-allowed bg-white/10 text-slate-400"
                           }`}
                         >
-                          {activeBackground.unlocked
-                            ? isZh
-                              ? "已解锁"
-                              : "Unlocked"
-                            : isZh
-                              ? "兑换背景"
-                              : "Redeem background"}
+                          {activeBackground.unlocked ? t("exchange.unlocked") : t("exchange.redeemBackground")}
                         </button>
                       </div>
                     </>
                   ) : (
                     <div className="mt-3 flex justify-end">
                       <span className="inline-flex rounded-[14px] bg-white/10 px-3 py-2 text-sm font-semibold text-slate-400">
-                        {isZh ? "暂不支持兑换" : "Not supported yet"}
+                        {t("exchange.notSupported")}
                       </span>
                     </div>
                   )}
@@ -392,7 +373,7 @@ export function SeedExchangeModal({
               </div>
             ) : (
               <div className="rounded-[18px] border border-dashed border-white/10 bg-white/4 px-3 py-8 text-center text-sm text-slate-400">
-                {isZh ? "暂时没有背景配置。" : "No background rewards configured."}
+                {t("exchange.noBackgroundRewards")}
               </div>
             )}
           </div>
@@ -424,7 +405,7 @@ export function SeedExchangeModal({
                     type="button"
                     onClick={() => onQuantityChange(Math.max(1, clampedQuantity - 1))}
                     disabled={clampedQuantity <= 1}
-                    aria-label={isZh ? "减少兑换数量" : "Decrease exchange quantity"}
+                    aria-label={t("exchange.decreaseQuantity")}
                     className="flex h-9 w-9 items-center justify-center rounded-l-[14px] text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
                   >
                     <Minus className="h-4 w-4" strokeWidth={2.2} />
@@ -436,7 +417,7 @@ export function SeedExchangeModal({
                     type="button"
                     onClick={() => onQuantityChange(Math.min(maxExchangeQuantity, clampedQuantity + 1))}
                     disabled={clampedQuantity >= maxExchangeQuantity}
-                    aria-label={isZh ? "增加兑换数量" : "Increase exchange quantity"}
+                    aria-label={t("exchange.increaseQuantity")}
                     className="flex h-9 w-9 items-center justify-center rounded-r-[14px] text-slate-200 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:text-slate-500"
                   >
                     <Plus className="h-4 w-4" strokeWidth={2.2} />
@@ -448,7 +429,7 @@ export function SeedExchangeModal({
                 onClick={onClose}
                 className="rounded-[14px] border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
               >
-                {isZh ? "返回" : "Back"}
+                {t("exchange.back")}
               </button>
               {view === "seed" ? (
                 <button
@@ -461,7 +442,7 @@ export function SeedExchangeModal({
                       : "cursor-not-allowed bg-white/10 text-slate-400"
                   }`}
                 >
-                  {isZh ? "立即兑换" : "Exchange"}
+                  {t("garden.exchangeAction")}
                 </button>
               ) : null}
             </div>
@@ -486,7 +467,7 @@ export function SeedExchangeModal({
               <button
                 type="button"
                 onClick={() => setPreviewImage(null)}
-                aria-label={isZh ? "关闭" : "Close"}
+                aria-label={t("exchange.close")}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition hover:bg-white/10"
               >
                 <X className="h-4 w-4" strokeWidth={2.1} />

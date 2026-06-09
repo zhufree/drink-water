@@ -8,6 +8,8 @@ import carrotCropIcon from "../assets/garden/carrot-crop.png";
 import carrotSeedIcon from "../assets/garden/carrot-seed.png";
 import radishCropIcon from "../assets/garden/radish-crop.png";
 import radishSeedIcon from "../assets/garden/radish-seed.png";
+import redRadishCropIcon from "../assets/garden/red-radish-crop.png";
+import redRadishSeedIcon from "../assets/garden/red-radish-seed.png";
 import pumpkinCropIcon from "../assets/garden/pumpkin-crop.png";
 import pumpkinSeedIcon from "../assets/garden/pumpkin-seed.png";
 import napaCabbageCropIcon from "../assets/garden/napa-cabbage-crop.png";
@@ -66,6 +68,7 @@ const seedAssetMap: Record<string, string> = {
   broccoliSeed: broccoliSeedIcon,
   carrotSeed: carrotSeedIcon,
   radishSeed: radishSeedIcon,
+  redRadishSeed: redRadishSeedIcon,
   pumpkinSeed: pumpkinSeedIcon,
   napaCabbageSeed: napaCabbageSeedIcon,
   onionSeed: onionSeedIcon,
@@ -79,6 +82,7 @@ const cropAssetMap: Record<string, string> = {
   broccoliCrop: broccoliCropIcon,
   carrotCrop: carrotCropIcon,
   radishCrop: radishCropIcon,
+  redRadishCrop: redRadishCropIcon,
   pumpkinCrop: pumpkinCropIcon,
   napaCabbageCrop: napaCabbageCropIcon,
   onionCrop: onionCropIcon,
@@ -121,4 +125,3 @@ export const EXCHANGE_OPTIONS: ExchangeOption[] = CROP_DEFINITIONS.flatMap((sour
     ];
   })
 );
-

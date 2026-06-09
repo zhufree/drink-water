@@ -17,8 +17,7 @@ export function GardenInventoryCard({
   totalProduceCount,
   onOpenExchange
 }: GardenInventoryCardProps) {
-  const { t, locale } = useI18n();
-  const isZh = locale === "zh-CN";
+  const { t } = useI18n();
 
   return (
     <article className="panel-surface rounded-[22px] p-4">
@@ -32,7 +31,7 @@ export function GardenInventoryCard({
           onClick={onOpenExchange}
           className="no-text-clarity rounded-[14px] bg-amber-200 px-3 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-100"
         >
-          {isZh ? "兑换中心" : "Exchange hub"}
+          {t("garden.exchangeHub")}
         </button>
       </div>
 

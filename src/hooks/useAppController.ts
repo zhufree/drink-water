@@ -675,7 +675,7 @@ export function useAppController() {
       });
       await refreshLeaderboard();
       await refreshCirclesFromServer(settings.deviceId);
-      setMessage(locale === "zh-CN" ? "成员已移出圈子。" : "Member removed from the circle.");
+      setMessage(i18n.t("message.circleMemberRemoved"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -692,7 +692,7 @@ export function useAppController() {
         circleCode: settings.activeCircleCode
       });
       await refreshCirclesFromServer(settings.deviceId);
-      setMessage(locale === "zh-CN" ? "已退出当前圈子。" : "Left the current circle.");
+      setMessage(i18n.t("message.circleLeft"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -709,7 +709,7 @@ export function useAppController() {
         circleCode: settings.activeCircleCode
       });
       await refreshCirclesFromServer(settings.deviceId);
-      setMessage(locale === "zh-CN" ? "当前圈子已解散。" : "The current circle has been disbanded.");
+      setMessage(i18n.t("message.circleDisbanded"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }

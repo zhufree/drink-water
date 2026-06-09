@@ -19,6 +19,9 @@ type TranslationKey =
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
+  | "message.circleMemberRemoved"
+  | "message.circleLeft"
+  | "message.circleDisbanded"
   | "leaderboard.identityReconnectSuccess"
   | "window.subtitle"
   | "window.openSettings"
@@ -96,6 +99,17 @@ type TranslationKey =
   | "settings.cloudBackupUpload"
   | "settings.cloudBackupRestore"
   | "settings.cloudBackupLast"
+  | "settings.syncHelpTitle"
+  | "settings.syncHelpDescription"
+  | "settings.syncHelpClose"
+  | "settings.syncHelpView"
+  | "settings.syncHelpRecentTitle"
+  | "settings.syncHelpRecentDescription"
+  | "settings.syncHelpBackupTitle"
+  | "settings.syncHelpBackupDescription"
+  | "settings.syncHelpPreferencesTitle"
+  | "settings.syncHelpPreferencesDescription"
+  | "settings.syncSettings"
   | "settings.save"
   | "settings.saving"
   | "settings.languageZhCn"
@@ -190,6 +204,38 @@ type TranslationKey =
   | "garden.exchangeTitle"
   | "garden.exchangeRule"
   | "garden.exchangeAction"
+  | "garden.exchangeHub"
+  | "exchange.footerHint"
+  | "exchange.description"
+  | "exchange.seedTab"
+  | "exchange.backgroundTab"
+  | "exchange.availableProduce"
+  | "exchange.availableProduceHelp"
+  | "exchange.noAvailableProduce"
+  | "exchange.allSeeds"
+  | "exchange.allSeedsHelp"
+  | "exchange.seedUnavailable"
+  | "exchange.noTargetSeeds"
+  | "exchange.previousBackground"
+  | "exchange.nextBackground"
+  | "exchange.viewBackground"
+  | "exchange.unlocked"
+  | "exchange.redeemBackground"
+  | "exchange.notSupported"
+  | "exchange.noBackgroundRewards"
+  | "exchange.decreaseQuantity"
+  | "exchange.increaseQuantity"
+  | "exchange.back"
+  | "exchange.close"
+  | "leaderboard.actionRemoveMemberTitle"
+  | "leaderboard.actionLeaveCircleTitle"
+  | "leaderboard.actionDisbandCircleTitle"
+  | "leaderboard.actionRemoveMemberDescription"
+  | "leaderboard.actionLeaveCircleDescription"
+  | "leaderboard.actionDisbandCircleDescription"
+  | "leaderboard.actionClose"
+  | "leaderboard.actionCancel"
+  | "leaderboard.actionConfirm"
   | "onboarding.badge"
   | "onboarding.title"
   | "onboarding.description"
@@ -237,6 +283,9 @@ const enUs: TranslationTable = {
   "message.circleCreated": "Created circle {code}.",
   "message.circleJoined": "Joined circle {code}.",
   "message.circleSelected": "Switched to circle {code}.",
+  "message.circleMemberRemoved": "Member removed from the circle.",
+  "message.circleLeft": "Left the current circle.",
+  "message.circleDisbanded": "The current circle has been disbanded.",
   "leaderboard.identityReconnectSuccess": "Reconnected to the leaderboard service.",
   "window.subtitle": "Desktop hydration assistant",
   "window.openSettings": "Open settings",
@@ -314,6 +363,17 @@ const enUs: TranslationTable = {
   "settings.cloudBackupUpload": "Upload full backup",
   "settings.cloudBackupRestore": "Restore full backup",
   "settings.cloudBackupLast": "Last cloud backup",
+  "settings.syncHelpTitle": "When to sync manually",
+  "settings.syncHelpDescription": "Most sync happens automatically. These two cases are worth checking yourself.",
+  "settings.syncHelpClose": "Close help",
+  "settings.syncHelpView": "View sync help",
+  "settings.syncHelpRecentTitle": "You just used another device",
+  "settings.syncHelpRecentDescription": "The app auto-pulls the last 7 days, garden, and settings on launch and when you visit Today or History. Use Sync recent state when you want to check immediately.",
+  "settings.syncHelpBackupTitle": "New device or more than 7 days",
+  "settings.syncHelpBackupDescription": "Recent sync only covers the last 7 days. For migration or a long gap, upload a cloud backup on the old device, then restore it on the new one.",
+  "settings.syncHelpPreferencesTitle": "Settings preferences",
+  "settings.syncHelpPreferencesDescription": "Daily target, cup size, reminder hours, and language pull with recent sync. Window appearance, launch at startup, and notification permission stay device-specific.",
+  "settings.syncSettings": "Sync settings",
   "settings.save": "Save settings",
   "settings.saving": "Saving...",
   "settings.languageZhCn": "Simplified Chinese",
@@ -408,6 +468,38 @@ const enUs: TranslationTable = {
   "garden.exchangeTitle": "Seed exchange",
   "garden.exchangeRule": "Use your produce to exchange for other seeds.",
   "garden.exchangeAction": "Exchange",
+  "garden.exchangeHub": "Exchange hub",
+  "exchange.footerHint": "Select a produce source and a seed target first.",
+  "exchange.description": "This modal contains both seed exchanges and background rewards. Background titles, descriptions, and costs are config-driven.",
+  "exchange.seedTab": "Seed exchange",
+  "exchange.backgroundTab": "Background rewards",
+  "exchange.availableProduce": "Available produce",
+  "exchange.availableProduceHelp": "Only produce that you currently own appears here.",
+  "exchange.noAvailableProduce": "You do not have produce available for seed exchanges yet.",
+  "exchange.allSeeds": "All seeds",
+  "exchange.allSeedsHelp": "10 total. Targets unavailable for the selected produce are disabled.",
+  "exchange.seedUnavailable": "{seed} unavailable",
+  "exchange.noTargetSeeds": "This produce does not have exchangeable seed targets right now.",
+  "exchange.previousBackground": "Previous background",
+  "exchange.nextBackground": "Next background",
+  "exchange.viewBackground": "View background {index}",
+  "exchange.unlocked": "Unlocked",
+  "exchange.redeemBackground": "Redeem background",
+  "exchange.notSupported": "Not supported yet",
+  "exchange.noBackgroundRewards": "No background rewards configured.",
+  "exchange.decreaseQuantity": "Decrease exchange quantity",
+  "exchange.increaseQuantity": "Increase exchange quantity",
+  "exchange.back": "Back",
+  "exchange.close": "Close",
+  "leaderboard.actionRemoveMemberTitle": "Remove member",
+  "leaderboard.actionLeaveCircleTitle": "Leave circle",
+  "leaderboard.actionDisbandCircleTitle": "Disband circle",
+  "leaderboard.actionRemoveMemberDescription": "Remove \"{name}\" from this circle?",
+  "leaderboard.actionLeaveCircleDescription": "Leave the current circle? You will no longer appear on this circle leaderboard.",
+  "leaderboard.actionDisbandCircleDescription": "Disband this circle? Membership and leaderboard records for this circle will be deleted.",
+  "leaderboard.actionClose": "Close",
+  "leaderboard.actionCancel": "Cancel",
+  "leaderboard.actionConfirm": "Confirm",
   "onboarding.badge": "Welcome",
   "onboarding.title": "A quiet water reminder and tracker",
   "onboarding.description": "The desktop app handles reminders, quick logging, and history. A mobile mini program is in development and will work with the desktop app.",
@@ -514,7 +606,7 @@ const zhCn: TranslationTable = {
   "settings.importData": "导入数据",
   "settings.cloudSyncTitle": "云端同步",
   "settings.cloudSyncDescription": "用于日常在多台设备之间切换。应用会自动同步最近 7 天、农场和账户级偏好。",
-  "settings.cloudSyncPullNow": "同步近期状态",
+  "settings.cloudSyncPullNow": "同步近7天数据状态",
   "settings.cloudSyncAccount": "同步账户",
   "settings.cloudSyncAccountMissing": "尚未创建",
   "settings.cloudSyncLastPull": "最近拉取",
@@ -526,6 +618,17 @@ const zhCn: TranslationTable = {
   "settings.cloudBackupUpload": "上传完整备份",
   "settings.cloudBackupRestore": "恢复完整备份",
   "settings.cloudBackupLast": "最近云备份",
+  "settings.syncHelpTitle": "什么时候需要手动同步",
+  "settings.syncHelpDescription": "大多数时候应用会自动同步。下面两种情况需要你确认一下。",
+  "settings.syncHelpClose": "关闭说明",
+  "settings.syncHelpView": "查看同步说明",
+  "settings.syncHelpRecentTitle": "刚在另一台设备记录过",
+  "settings.syncHelpRecentDescription": "打开应用、切到今日或历史页时会自动拉取最近 7 天、农场和设置。想立刻确认最新状态时，点击顶部的同步按钮即可。",
+  "settings.syncHelpBackupTitle": "新设备或超过 7 天没同步",
+  "settings.syncHelpBackupDescription": "近期同步只保留最近 7 天。换新设备或很久没打开时，先在旧设备上传云备份，再在新设备从云端恢复。",
+  "settings.syncHelpPreferencesTitle": "设置偏好",
+  "settings.syncHelpPreferencesDescription": "每日目标、杯量、提醒时间和语言会随近期同步一起拉取。桌面窗口效果、开机启动和通知权限仍然按设备单独保存。",
+  "settings.syncSettings": "同步设置",
   "settings.save": "保存设置",
   "settings.saving": "正在保存...",
   "settings.languageZhCn": "简体中文",
@@ -535,7 +638,7 @@ const zhCn: TranslationTable = {
   "settings.downloadUpdate": "下载这个更新",
   "settings.downloadLatest": "下载新版本",
   "message.syncGapWarning": "这台设备已超过 7 天没有同步。近期同步可能补不齐更早历史；如果是新设备或久未打开的设备，请恢复完整云备份。",
-  "message.backgroundSynced": "已兑换猫猫背景，并已同步到云端。",
+  "message.backgroundSynced": "已兑换背景。",
   "message.pairCodeCreated": "配对码已生成：{code}",
   "message.deviceBound": "设备配对成功。",
   "message.snapshotsPulled": "近期状态已同步。",
@@ -638,8 +741,43 @@ const zhCn: TranslationTable = {
 };
 
 Object.assign(zhCn, {
-  "onboarding.badge": "欢迎使用谁是吨吨大王",
-  "onboarding.title": "轻量的喝水提醒和记录工具",
+  "garden.exchangeHub": "兑换中心",
+  "exchange.footerHint": "请先选择上面的作物和下面的种子。",
+  "exchange.description": "这里同时包含种子兑换和背景兑换。背景的标题、描述和资源需求都由配置驱动。",
+  "exchange.seedTab": "种子兑换",
+  "exchange.backgroundTab": "背景兑换",
+  "exchange.availableProduce": "可用作物",
+  "exchange.availableProduceHelp": "这里只显示当前背包里确实拥有的果实库存。",
+  "exchange.noAvailableProduce": "暂时还没有可用于种子兑换的作物。",
+  "exchange.allSeeds": "全部种子",
+  "exchange.allSeedsHelp": "共 10 种。当前作物无法兑换的目标会置灰。",
+  "exchange.seedUnavailable": "{seed} 当前不可兑换",
+  "exchange.noTargetSeeds": "这个作物暂时没有可兑换的目标种子。",
+  "exchange.previousBackground": "上一张背景",
+  "exchange.nextBackground": "下一张背景",
+  "exchange.viewBackground": "查看第 {index} 张背景",
+  "exchange.unlocked": "已解锁",
+  "exchange.redeemBackground": "兑换背景",
+  "exchange.notSupported": "暂不支持兑换",
+  "exchange.noBackgroundRewards": "暂时没有背景配置。",
+  "exchange.decreaseQuantity": "减少兑换数量",
+  "exchange.increaseQuantity": "增加兑换数量",
+  "exchange.back": "返回",
+  "exchange.close": "关闭",
+  "leaderboard.actionRemoveMemberTitle": "移出成员",
+  "leaderboard.actionLeaveCircleTitle": "退出圈子",
+  "leaderboard.actionDisbandCircleTitle": "解散圈子",
+  "leaderboard.actionRemoveMemberDescription": "确认将成员“{name}”移出当前圈子吗？",
+  "leaderboard.actionLeaveCircleDescription": "确认退出当前圈子吗？退出后将不再参与这个圈子的排行榜。",
+  "leaderboard.actionDisbandCircleDescription": "确认解散当前圈子吗？解散后该圈子的成员关系和排行榜记录都会被删除。",
+  "leaderboard.actionClose": "关闭",
+  "leaderboard.actionCancel": "取消",
+  "leaderboard.actionConfirm": "确认",
+  "message.circleMemberRemoved": "成员已移出圈子。",
+  "message.circleLeft": "已退出当前圈子。",
+  "message.circleDisbanded": "当前圈子已解散。",
+  "onboarding.badge": "轻量的喝水提醒和记录工具",
+  "onboarding.title": "欢迎使用谁是吨吨大王",
   "onboarding.description": "桌面端目前功能包括常驻提醒、快速记录、查看历史等。移动端小程序正在开发中，外出也可以记录。",
   "onboarding.recentSync": "日常在手机和电脑之间切换时，应用会在数据变动时自动同步最近 7 天喝水、农场数据和常用设置。",
   "onboarding.backupSync": "换新设备或超过7天没打开旧设备时，用完整云备份恢复更稳。",
