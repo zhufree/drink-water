@@ -304,11 +304,22 @@ export async function handleLeaderboard(ctx: AppContext) {
       `SELECT
          cm.account_id AS account_id,
          u.display_name AS display_name,
-         COALESCE(ds.actual_intake_ml, 0) AS actual_intake_ml,
-         COALESCE(ds.target_ml, 0) AS target_ml
+         COALESCE(
+           CAST(json_extract(snapshot.snapshot_json, '$.actualIntakeMl') AS INTEGER),
+           ds.actual_intake_ml,
+           0
+         ) AS actual_intake_ml,
+         COALESCE(
+           CAST(json_extract(snapshot.snapshot_json, '$.targetMl') AS INTEGER),
+           ds.target_ml,
+           0
+         ) AS target_ml
        FROM circle_members cm
        LEFT JOIN users u
          ON u.account_id = cm.account_id
+       LEFT JOIN daily_snapshots snapshot
+         ON snapshot.account_id = cm.account_id
+        AND snapshot.day_key = ?2
        LEFT JOIN daily_stats ds
          ON ds.circle_code = cm.circle_code
         AND ds.account_id = cm.account_id

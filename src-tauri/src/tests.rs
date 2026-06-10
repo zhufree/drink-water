@@ -152,6 +152,69 @@ mod tests {
     }
 
     #[test]
+    fn remote_today_snapshot_should_use_snapshot_meta_not_local_today_updated_at() {
+        let settings = Settings {
+            device_id: "desktop-device".to_string(),
+            ..Settings::default()
+        };
+        let mut state = PersistedState {
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+        };
+
+        state.today.updated_at = "2026-05-20T10:30:00+08:00".to_string();
+        state
+            .sync_meta
+            .daily_snapshot_updated_at_by_day
+            .insert("2026-05-20".to_string(), "2026-05-20T09:00:00+08:00".to_string());
+        state
+            .sync_meta
+            .daily_snapshot_updated_by_device_id_by_day
+            .insert("2026-05-20".to_string(), "desktop-device".to_string());
+
+        let remote = DailySnapshotRecord {
+            day_key: "2026-05-20".to_string(),
+            snapshot: HistoryItem {
+                day_key: "2026-05-20".to_string(),
+                target_ml: 2000,
+                actual_intake_ml: 500,
+                consumed_ml: 500,
+                debt_incurred_ml: 0,
+                goal_met: false,
+                completed_reminder_slots: 0,
+                missed_reminder_slots: 0,
+            },
+            updated_at: "2026-05-20T10:00:00+08:00".to_string(),
+            updated_by_device_id: "mini-program-openid".to_string(),
+        };
+
+        let should_apply = should_apply_remote_snapshot(
+            state
+                .sync_meta
+                .daily_snapshot_updated_at_by_day
+                .get(&remote.day_key)
+                .map(String::as_str),
+            state
+                .sync_meta
+                .daily_snapshot_updated_by_device_id_by_day
+                .get(&remote.day_key)
+                .map(String::as_str),
+            &remote.updated_at,
+            &remote.updated_by_device_id,
+        );
+
+        assert!(should_apply);
+
+        apply_daily_snapshot(&mut state, &remote);
+
+        assert_eq!(state.today.actual_intake_ml, 500);
+        assert_eq!(state.today.updated_at, "2026-05-20T10:00:00+08:00");
+    }
+
+    #[test]
     fn rollover_archives_previous_day_and_resets_debt() {
         let settings = Settings::default();
         let mut state = PersistedState {

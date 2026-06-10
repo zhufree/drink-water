@@ -625,25 +625,17 @@ fn apply_remote_snapshots(
         guard.sync_meta.last_garden_pull_at = Some(pulled_at.clone());
 
         for remote in daily_snapshots {
-            let local_updated_at = if remote.day_key == guard.today.day_key {
-                Some(guard.today.updated_at.clone())
-            } else {
-                guard
-                    .sync_meta
-                    .daily_snapshot_updated_at_by_day
-                    .get(&remote.day_key)
-                    .cloned()
-                    .or_else(|| Some(fallback_snapshot_updated_at(&remote.day_key)))
-            };
-            let local_updated_by = if remote.day_key == guard.today.day_key {
-                Some(guard.settings.device_id.clone())
-            } else {
-                guard
-                    .sync_meta
-                    .daily_snapshot_updated_by_device_id_by_day
-                    .get(&remote.day_key)
-                    .cloned()
-            };
+            let local_updated_at = guard
+                .sync_meta
+                .daily_snapshot_updated_at_by_day
+                .get(&remote.day_key)
+                .cloned()
+                .or_else(|| Some(fallback_snapshot_updated_at(&remote.day_key)));
+            let local_updated_by = guard
+                .sync_meta
+                .daily_snapshot_updated_by_device_id_by_day
+                .get(&remote.day_key)
+                .cloned();
 
             if should_apply_remote_snapshot(
                 local_updated_at.as_deref(),
