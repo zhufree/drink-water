@@ -12,7 +12,7 @@ const RED_RADISH_SEED_TYPE: &str = "redRadishSeed";
 const PUMPKIN_SEED_TYPE: &str = "pumpkinSeed";
 const ONION_SEED_TYPE: &str = "onionSeed";
 const EGGPLANT_SEED_TYPE: &str = "eggplantSeed";
-const PEA_SEED_TYPE: &str = "gardenPeaSeed";
+const WATERMELON_SEED_TYPE: &str = "watermelonSeed";
 const POTATO_CROP_TYPE: &str = "potato";
 const BELL_PEPPER_CROP_TYPE: &str = "bellPepper";
 const CARROT_CROP_TYPE: &str = "carrot";
@@ -23,7 +23,7 @@ const RED_RADISH_CROP_TYPE: &str = "redRadish";
 const PUMPKIN_CROP_TYPE: &str = "pumpkin";
 const ONION_CROP_TYPE: &str = "onion";
 const EGGPLANT_CROP_TYPE: &str = "eggplant";
-const PEA_CROP_TYPE: &str = "gardenPea";
+const WATERMELON_CROP_TYPE: &str = "watermelon";
 
 const BASIC_SEED_TYPE: &str = POTATO_SEED_TYPE;
 

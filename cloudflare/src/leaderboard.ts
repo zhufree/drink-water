@@ -379,6 +379,47 @@ export async function handleLeaderboard(ctx: AppContext) {
   };
 }
 
+export async function handleCircleMemberGarden(ctx: AppContext) {
+  const deviceId = requireDeviceId(ctx.url.searchParams.get("deviceId"));
+  const circleCode = normalizeCircleCode(ctx.url.searchParams.get("circleCode"));
+  const targetAccountId = requireAccountId(ctx.url.searchParams.get("targetAccountId"));
+  const rawRangeDays = Number(ctx.url.searchParams.get("rangeDays") ?? 28);
+  const rangeDays = Number.isFinite(rawRangeDays)
+    ? Math.min(28, Math.max(1, Math.floor(rawRangeDays)))
+    : 28;
+  const accountId = await ensureLeaderboardAccountForDevice(ctx.env.DB, deviceId, isoNow());
+
+  await ensureCircleMembership(ctx.env.DB, circleCode, accountId);
+  await ensureCircleMembership(ctx.env.DB, circleCode, targetAccountId);
+
+  const cutoffDayKey = dayKeyDaysAgo(rangeDays - 1);
+  const dailyResult = await ctx.env.DB
+    .prepare(
+      `SELECT snapshot_json
+       FROM daily_snapshots
+       WHERE account_id = ?1
+         AND day_key >= ?2
+       ORDER BY day_key DESC`
+    )
+    .bind(targetAccountId, cutoffDayKey)
+    .all<{ snapshot_json: string }>();
+  const gardenRow = await ctx.env.DB
+    .prepare(
+      `SELECT snapshot_json, updated_at
+       FROM garden_snapshots
+       WHERE account_id = ?1`
+    )
+    .bind(targetAccountId)
+    .first<{ snapshot_json: string; updated_at: string }>();
+
+  return {
+    accountId: targetAccountId,
+    history: (dailyResult.results ?? []).map((row) => JSON.parse(row.snapshot_json)),
+    garden: gardenRow ? JSON.parse(gardenRow.snapshot_json) : null,
+    gardenUpdatedAt: gardenRow?.updated_at ?? null
+  };
+}
+
 
 export async function getUser(db: D1Database, deviceId: string) {
   const result = await db

@@ -31,6 +31,7 @@ import {
   redeemBackgroundReward,
   saveSettings,
   setSyncAccount,
+  setActiveBackground,
   startRestBreak,
   toggleAutostart,
   undoLastDrink
@@ -449,6 +450,18 @@ export function useAppController() {
       activeBackground: backgroundId
     }));
     setMessage("");
+  };
+
+  const handleActiveBackgroundChange = async (backgroundId: string) => {
+    setMessage("");
+    try {
+      await setActiveBackground(backgroundId);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.backgroundSelected"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
   };
 
   const handleStartRestBreak = async () => {
@@ -985,6 +998,7 @@ export function useAppController() {
     handleExchangeProduce,
     handleRedeemBackgroundReward,
     handlePreviewBackgroundChange,
+    handleActiveBackgroundChange,
     handleStartRestBreak,
     handleCancelRestBreak,
     handleCreateCircle,

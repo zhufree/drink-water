@@ -118,17 +118,17 @@
       "cropAliases": []
     },
     {
-      "seedType": "gardenPeaSeed",
-      "cropType": "gardenPea",
+      "seedType": "watermelonSeed",
+      "cropType": "watermelon",
       "tier": 2,
       "label": {
-        "zh-CN": "豌豆",
-        "en-US": "Pea"
+        "zh-CN": "西瓜",
+        "en-US": "Watermelon"
       },
-      "seedAsset": "peaSeed",
-      "cropAsset": "peaCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "seedAsset": "watermelonSeed",
+      "cropAsset": "watermelonCrop",
+      "seedAliases": ["gardenPeaSeed"],
+      "cropAliases": ["gardenPea"]
     },
     {
       "seedType": "eggplantSeed",

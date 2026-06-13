@@ -52,7 +52,7 @@ fn seed_exchange_config() -> SeedExchangeConfig {
         PUMPKIN_SEED_TYPE,
         ONION_SEED_TYPE,
         EGGPLANT_SEED_TYPE,
-        PEA_SEED_TYPE,
+        WATERMELON_SEED_TYPE,
         BELL_PEPPER_CROP_TYPE,
         CARROT_CROP_TYPE,
         NAPA_CABBAGE_CROP_TYPE,
@@ -62,7 +62,7 @@ fn seed_exchange_config() -> SeedExchangeConfig {
         PUMPKIN_CROP_TYPE,
         ONION_CROP_TYPE,
         EGGPLANT_CROP_TYPE,
-        PEA_CROP_TYPE,
+        WATERMELON_CROP_TYPE,
         LEGACY_BASIC_SEED_TYPE,
         LEGACY_BASIC_SEED_TYPE_V2,
         LEGACY_ADVANCED_SEED_TYPE,
@@ -501,6 +501,36 @@ fn redeem_background_reward_in_state(
 
     state.garden.unlocked_backgrounds.push(reward.id.clone());
     state.garden.active_background = reward.id;
+    Ok(())
+}
+
+fn set_active_background_in_state(
+    state: &mut PersistedState,
+    background_id: &str,
+) -> Result<(), String> {
+    let background_id = background_id.trim();
+    if background_id == DEFAULT_BACKGROUND_ID {
+        state.garden.active_background = DEFAULT_BACKGROUND_ID.to_string();
+        return Ok(());
+    }
+
+    let exists = background_reward_config()
+        .into_iter()
+        .any(|reward| reward.id == background_id);
+    if !exists {
+        return Err("unknown background reward".to_string());
+    }
+
+    if !state
+        .garden
+        .unlocked_backgrounds
+        .iter()
+        .any(|background| background == background_id)
+    {
+        return Err("background reward is not unlocked".to_string());
+    }
+
+    state.garden.active_background = background_id.to_string();
     Ok(())
 }
 

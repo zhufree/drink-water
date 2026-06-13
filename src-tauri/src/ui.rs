@@ -202,6 +202,7 @@ pub fn run() {
             harvest_crop,
             exchange_produce,
             redeem_background_reward,
+            set_active_background,
             start_rest_break,
             cancel_rest_break,
             complete_rest_break,

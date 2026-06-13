@@ -42,6 +42,9 @@ export const exchangeProduce = (sourceCropType: string, targetSeedType: string, 
 export const redeemBackgroundReward = (rewardId: string) =>
   invoke<GardenState>("redeem_background_reward", { rewardId });
 
+export const setActiveBackground = (backgroundId: string) =>
+  invoke<GardenState>("set_active_background", { backgroundId });
+
 export const startRestBreak = () => invoke<GardenState>("start_rest_break");
 
 export const cancelRestBreak = () => invoke<GardenState>("cancel_rest_break");

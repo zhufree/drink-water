@@ -71,6 +71,10 @@ type TranslationKey =
   | "settings.panelOpacityHelp"
   | "settings.panelBlur"
   | "settings.panelBlurHelp"
+  | "settings.backgroundTitle"
+  | "settings.backgroundDescription"
+  | "settings.backgroundDefault"
+  | "settings.backgroundHint"
   | "settings.language"
   | "settings.notifications"
   | "settings.autostart"
@@ -120,6 +124,7 @@ type TranslationKey =
   | "settings.downloadLatest"
   | "message.syncGapWarning"
   | "message.backgroundSynced"
+  | "message.backgroundSelected"
   | "message.pairCodeCreated"
   | "message.deviceBound"
   | "message.snapshotsPulled"
@@ -165,6 +170,13 @@ type TranslationKey =
   | "leaderboard.progressValue"
   | "leaderboard.targetValue"
   | "leaderboard.noData"
+  | "leaderboard.memberGardenTitle"
+  | "leaderboard.memberGardenDescription"
+  | "leaderboard.memberGardenLoading"
+  | "leaderboard.memberGardenError"
+  | "leaderboard.memberGardenEmpty"
+  | "leaderboard.memberGardenRemove"
+  | "leaderboard.memberGardenActiveCrops"
   | "history.title"
   | "history.description"
   | "history.heatmapTitle"
@@ -200,6 +212,8 @@ type TranslationKey =
   | "garden.collectionEmpty"
   | "garden.inventoryTitle"
   | "garden.inventoryDescription"
+  | "garden.inventorySeeds"
+  | "garden.inventoryProduce"
   | "garden.produceEmpty"
   | "garden.exchangeTitle"
   | "garden.exchangeRule"
@@ -239,6 +253,27 @@ type TranslationKey =
   | "onboarding.badge"
   | "onboarding.title"
   | "onboarding.description"
+  | "onboarding.viewSlide"
+  | "onboarding.previous"
+  | "onboarding.next"
+  | "onboarding.coreTitle"
+  | "onboarding.drinkTitle"
+  | "onboarding.drinkCopy"
+  | "onboarding.logTitle"
+  | "onboarding.logCopy"
+  | "onboarding.reminderTitle"
+  | "onboarding.reminderCopy"
+  | "onboarding.gardenTitle"
+  | "onboarding.plantTitle"
+  | "onboarding.plantCopy"
+  | "onboarding.backgroundTitle"
+  | "onboarding.backgroundCopy"
+  | "onboarding.syncTitle"
+  | "onboarding.multiDeviceTitle"
+  | "onboarding.multiDeviceCopy"
+  | "onboarding.syncOneLine"
+  | "onboarding.syncFlowOld"
+  | "onboarding.syncFlowNew"
   | "onboarding.recentSync"
   | "onboarding.backupSync"
   | "onboarding.syncDetailsTitle"
@@ -335,6 +370,10 @@ const enUs: TranslationTable = {
   "settings.panelOpacityHelp": "Higher values make cards more solid and easier to read over the wallpaper.",
   "settings.panelBlur": "Panel blur",
   "settings.panelBlurHelp": "Lower values reduce the frosted glass effect. Set it to 0 for a crisp background.",
+  "settings.backgroundTitle": "Background",
+  "settings.backgroundDescription": "Choose an unlocked wallpaper, or return to the default interface.",
+  "settings.backgroundDefault": "Default UI",
+  "settings.backgroundHint": "Locked backgrounds can be redeemed in the History exchange center.",
   "settings.language": "Interface language",
   "settings.notifications": "System notifications",
   "settings.autostart": "Launch at startup",
@@ -384,6 +423,7 @@ const enUs: TranslationTable = {
   "settings.downloadLatest": "Download new version",
   "message.syncGapWarning": "This device has been away for more than 7 days. Recent sync may miss older history; restore a full cloud backup if this is a new or stale device.",
   "message.backgroundSynced": "Unlocked the cat collage background and synced it to the cloud.",
+  "message.backgroundSelected": "Background updated.",
   "message.pairCodeCreated": "Pair code created: {code}",
   "message.deviceBound": "Device paired successfully.",
   "message.snapshotsPulled": "Recent state is up to date.",
@@ -429,6 +469,13 @@ const enUs: TranslationTable = {
   "leaderboard.progressValue": "{percent}% complete",
   "leaderboard.targetValue": "Target {amount}",
   "leaderboard.noData": "No one in this circle has synced data for today yet.",
+  "leaderboard.memberGardenTitle": "{name}'s garden",
+  "leaderboard.memberGardenDescription": "View this member's recent garden.",
+  "leaderboard.memberGardenLoading": "Loading this garden...",
+  "leaderboard.memberGardenError": "Could not load this garden right now.",
+  "leaderboard.memberGardenEmpty": "This member has not synced a garden yet.",
+  "leaderboard.memberGardenRemove": "Remove member",
+  "leaderboard.memberGardenActiveCrops": "Growing",
   "history.title": "Hydration history",
   "history.description": "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",
   "history.heatmapTitle": "Last 8 weeks",
@@ -461,6 +508,8 @@ const enUs: TranslationTable = {
   "garden.emptyPlot": "Log water first",
   "garden.inventoryTitle": "Seeds and produce",
   "garden.inventoryDescription": "This shows what you can still plant or exchange right now.",
+  "garden.inventorySeeds": "Seeds",
+  "garden.inventoryProduce": "Produce",
   "garden.produceEmpty": "No exchangeable produce yet. Harvests will appear here first.",
   "garden.collectionTitle": "Collection totals",
   "garden.collectionDescription": "This tracks lifetime harvests and does not go down when you exchange produce.",
@@ -503,10 +552,31 @@ const enUs: TranslationTable = {
   "onboarding.badge": "Welcome",
   "onboarding.title": "A quiet water reminder and tracker",
   "onboarding.description": "The desktop app handles reminders, quick logging, and history. A mobile mini program is in development and will work with the desktop app.",
-  "onboarding.recentSync": "For everyday switching, the app automatically syncs the last 7 days, garden, and common settings.",
-  "onboarding.backupSync": "For a new device or a long gap, restoring a full cloud backup is safer.",
+  "onboarding.viewSlide": "View slide {index}",
+  "onboarding.previous": "Previous",
+  "onboarding.next": "Next",
+  "onboarding.coreTitle": "Start with the three essentials",
+  "onboarding.drinkTitle": "Drink water",
+  "onboarding.drinkCopy": "See today's target and what is still left.",
+  "onboarding.logTitle": "Log quickly",
+  "onboarding.logCopy": "Record one cup, fine-tune the amount, or undo the last log.",
+  "onboarding.reminderTitle": "Stay reminded",
+  "onboarding.reminderCopy": "Reminders follow your active hours and daily target.",
+  "onboarding.gardenTitle": "A little extra motivation",
+  "onboarding.plantTitle": "Plant in daily cells",
+  "onboarding.plantCopy": "Use water records as plots and grow crops over time.",
+  "onboarding.backgroundTitle": "Redeem backgrounds",
+  "onboarding.backgroundCopy": "Harvest crops and exchange them for wallpapers.",
+  "onboarding.syncTitle": "Use it across devices",
+  "onboarding.multiDeviceTitle": "Multi-device sync",
+  "onboarding.multiDeviceCopy": "Desktop and mini program data can stay in sync.",
+  "onboarding.syncOneLine": "Pair devices, sync recent data, back up full history.",
+  "onboarding.syncFlowOld": "Old device creates code",
+  "onboarding.syncFlowNew": "New device enters it",
+  "onboarding.recentSync": "Recent sync covers the latest 7 days automatically.",
+  "onboarding.backupSync": "Use cloud backup for complete history.",
   "onboarding.syncDetailsTitle": "Which sync should I use?",
-  "onboarding.syncDetails": "For short gaps, open the app or use Sync recent state. For more than 7 days, migration, or missing history, upload a full backup on the old device and restore it on the new one.",
+  "onboarding.syncDetails": "Pair devices with a code. Recent sync covers 7 days; cloud backup restores full history.",
   "onboarding.learnSync": "Learn sync",
   "onboarding.hideSyncDetails": "Hide sync details",
   "onboarding.start": "Start using",
@@ -684,6 +754,13 @@ const zhCn: TranslationTable = {
   "leaderboard.progressValue": "完成 {percent}%",
   "leaderboard.targetValue": "目标 {amount}",
   "leaderboard.noData": "今天还没有同圈子成员同步数据。",
+  "leaderboard.memberGardenTitle": "{name} 的田",
+  "leaderboard.memberGardenDescription": "查看这位成员最近的种田情况。",
+  "leaderboard.memberGardenLoading": "正在加载这片田...",
+  "leaderboard.memberGardenError": "暂时无法加载这片田。",
+  "leaderboard.memberGardenEmpty": "这位成员还没有同步田地。",
+  "leaderboard.memberGardenRemove": "移出成员",
+  "leaderboard.memberGardenActiveCrops": "种植中",
   "history.title": "饮水历史",
   "history.description": "用颜色快速查看每天的饮水情况，颜色越健康说明越接近目标。",
   "history.heatmapTitle": "过去 8 周热力格",
@@ -716,6 +793,8 @@ const zhCn: TranslationTable = {
   "garden.emptyPlot": "先记录喝水才能种",
   "garden.inventoryTitle": "种子与果实",
   "garden.inventoryDescription": "这里显示当前还能继续播种或兑换的库存。",
+  "garden.inventorySeeds": "种子",
+  "garden.inventoryProduce": "果实",
   "garden.produceEmpty": "还没有可兑换果实。收获后会先进入这里。",
   "garden.collectionTitle": "图鉴累计",
   "garden.collectionDescription": "这里记录历史累计收获次数，不会因为兑换而减少。",
@@ -776,13 +855,39 @@ Object.assign(zhCn, {
   "message.circleMemberRemoved": "成员已移出圈子。",
   "message.circleLeft": "已退出当前圈子。",
   "message.circleDisbanded": "当前圈子已解散。",
+  "settings.backgroundTitle": "背景设置",
+  "settings.backgroundDescription": "选择已解锁背景，或切回默认界面。",
+  "settings.backgroundDefault": "默认 UI",
+  "settings.backgroundHint": "未解锁的背景可在历史页兑换中心获取。",
+  "message.backgroundSelected": "背景已更新。",
   "onboarding.badge": "轻量的喝水提醒和记录工具",
   "onboarding.title": "欢迎使用谁是吨吨大王",
   "onboarding.description": "桌面端目前功能包括常驻提醒、快速记录、查看历史等。移动端小程序正在开发中，外出也可以记录。",
-  "onboarding.recentSync": "日常在手机和电脑之间切换时，应用会在数据变动时自动同步最近 7 天喝水、农场数据和常用设置。",
-  "onboarding.backupSync": "换新设备或超过7天没打开旧设备时，用完整云备份恢复更稳。",
+  "onboarding.viewSlide": "查看第 {index} 张卡片",
+  "onboarding.previous": "上一张",
+  "onboarding.next": "还有什么？",
+  "onboarding.coreTitle": "在这里你可以",
+  "onboarding.drinkTitle": "喝水",
+  "onboarding.drinkCopy": "设置每日喝水量，实时看到目标和进度。",
+  "onboarding.logTitle": "记录",
+  "onboarding.logCopy": "点击即可记录，也能微调或撤销，还有历史数据热力图。",
+  "onboarding.reminderTitle": "提醒",
+  "onboarding.reminderCopy": "轻量桌面提醒，按目标量和活跃时间自动计算提醒时间。",
+  "onboarding.gardenTitle": "喝水也可以变有趣",
+  "onboarding.plantTitle": "热力图里种菜",
+  "onboarding.plantCopy": "有喝水记录的日子可以变成田地。",
+  "onboarding.backgroundTitle": "兑换背景",
+  "onboarding.backgroundCopy": "收获作物后，可兑换图片背景。",
+  "onboarding.syncTitle": "多端同步",
+  "onboarding.multiDeviceTitle": "电脑和小程序同步",
+  "onboarding.multiDeviceCopy": "桌面端与小程序端数据可实时同步。",
+  "onboarding.syncOneLine": "绑定设备，实时刷新近7天数据，完整历史可云端备份。",
+  "onboarding.syncFlowOld": "旧设备生成绑定码码",
+  "onboarding.syncFlowNew": "新设备输入即可绑定",
+  "onboarding.recentSync": "自动同步最近 7 天内容。",
+  "onboarding.backupSync": "完整历史请用云备份。",
   "onboarding.syncDetailsTitle": "如何在设备间同步数据？",
-  "onboarding.syncDetails": "新用户在任意设备启动时，都会生成设备ID及账号ID，可以通过配对码将多个设备绑定到同一个云端账号进行数据同步（注意，需要旧设备生成配对码，新设备输入配对码完成绑定，不可反向操作）。设备绑定完成后，所有设备内操作将会自动同步到同一个云端账号，但该同步仅包含7天内数据。超过 7 天没启动某一设备的客户端、或迁移到新设备时，先在旧设备上传完整备份，再在新设备恢复。",
+  "onboarding.syncDetails": "旧设备生成绑定码，新设备输入即可绑定。近期同步只覆盖 7 天；完整历史请用云备份。",
   "onboarding.learnSync": "了解同步",
   "onboarding.hideSyncDetails": "收起同步说明",
   "onboarding.start": "开始使用"

@@ -130,6 +130,13 @@ export type LeaderboardEntry = {
   progressPercent: number;
 };
 
+export type LeaderboardMemberGarden = {
+  accountId: string;
+  history: HistoryItem[];
+  garden: GardenState | null;
+  gardenUpdatedAt: string | null;
+};
+
 export type AppUpdateInfo = {
   currentVersion: string;
   latestVersion: string;

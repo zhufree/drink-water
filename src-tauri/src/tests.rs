@@ -569,13 +569,13 @@ mod tests {
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 4);
         exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).unwrap();
-        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, PEA_SEED_TYPE, 1).unwrap();
+        exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, WATERMELON_SEED_TYPE, 1).unwrap();
 
-        let pea_seed_count = state
+        let watermelon_seed_count = state
             .garden
             .seeds
             .iter()
-            .find(|item| item.seed_type == PEA_SEED_TYPE)
+            .find(|item| item.seed_type == WATERMELON_SEED_TYPE)
             .map(|item| item.count)
             .unwrap_or(0);
         let cabbage_seed_count = state
@@ -586,7 +586,7 @@ mod tests {
             .map(|item| item.count)
             .unwrap_or(0);
 
-        assert_eq!(pea_seed_count, 1);
+        assert_eq!(watermelon_seed_count, 1);
         assert_eq!(cabbage_seed_count, 1);
     }
 
@@ -603,10 +603,16 @@ mod tests {
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
-        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE, 1).is_err());
+        assert!(
+            exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, WATERMELON_SEED_TYPE, 1)
+                .is_err()
+        );
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 1);
-        assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, PEA_SEED_TYPE, 1).is_ok());
+        assert!(
+            exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, WATERMELON_SEED_TYPE, 1)
+                .is_ok()
+        );
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 1);
         assert!(exchange_produce_in_state(&mut state, BELL_PEPPER_CROP_TYPE, BROCCOLI_SEED_TYPE, 1).is_err());

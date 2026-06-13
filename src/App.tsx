@@ -50,6 +50,7 @@ export default function App() {
     controller.i18n.t("message.restCancelled"),
     controller.i18n.t("message.restCompleted"),
     controller.i18n.t("message.backgroundSynced"),
+    controller.i18n.t("message.backgroundSelected"),
     controller.i18n.t("message.circleMemberRemoved"),
     controller.i18n.t("message.circleLeft"),
     controller.i18n.t("message.circleDisbanded"),
@@ -191,6 +192,7 @@ export default function App() {
 
               {controller.activeTab === "leaderboard" ? (
                 <LeaderboardPanel
+                  deviceId={controller.settings.deviceId}
                   displayName={controller.draftSettings.displayName}
                   nicknameSaving={controller.nicknameSaving}
                   nicknameSaveState={controller.nicknameSaveState}
@@ -241,6 +243,7 @@ export default function App() {
                 <SettingsPanel
                   draftSettings={controller.draftSettings}
                   activeBackground={activeBackground}
+                  unlockedBackgrounds={controller.gardenState.unlockedBackgrounds}
                   reminderIntervalMinutes={controller.reminderMeta.reminderIntervalMinutes}
                   drinksPerDay={controller.reminderMeta.drinksPerDay}
                   version={APP_VERSION}
@@ -266,7 +269,9 @@ export default function App() {
                   onPullSettingsNow={() => void controller.handlePullSettingsNow()}
                   onUploadCloudBackup={() => void controller.handleUploadCloudBackup()}
                   onRestoreCloudBackup={() => void controller.handleRestoreCloudBackup()}
-                  onPreviewBackgroundChange={controller.handlePreviewBackgroundChange}
+                  onActiveBackgroundChange={(backgroundId) =>
+                    void controller.handleActiveBackgroundChange(backgroundId)
+                  }
                   onSave={() => void controller.handleSaveSettings()}
                 />
               ) : null}

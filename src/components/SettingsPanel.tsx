@@ -1,12 +1,14 @@
 ﻿import type { Dispatch, SetStateAction } from "react";
 import { useState } from "react";
-import { HelpCircle, X } from "lucide-react";
+import { Check, HelpCircle, Image, Lock, RotateCcw, X } from "lucide-react";
+import { BACKGROUND_REWARDS } from "../config/backgroundRewards";
 import { useI18n } from "../i18n";
 import type { AppUpdateInfo, NotificationPermissionState, Settings, SyncMeta } from "../types";
 
 type SettingsPanelProps = {
   draftSettings: Settings;
   activeBackground: string;
+  unlockedBackgrounds: string[];
   reminderIntervalMinutes: number;
   drinksPerDay: number;
   version: string;
@@ -30,13 +32,14 @@ type SettingsPanelProps = {
   onPullSettingsNow: () => void;
   onUploadCloudBackup: () => void;
   onRestoreCloudBackup: () => void;
-  onPreviewBackgroundChange: (backgroundId: string) => void;
+  onActiveBackgroundChange: (backgroundId: string) => void;
   onSave: () => void;
 };
 
 export function SettingsPanel({
   draftSettings,
   activeBackground,
+  unlockedBackgrounds,
   reminderIntervalMinutes,
   drinksPerDay,
   version,
@@ -60,11 +63,11 @@ export function SettingsPanel({
   onPullSettingsNow,
   onUploadCloudBackup,
   onRestoreCloudBackup,
-  onPreviewBackgroundChange,
+  onActiveBackgroundChange,
   onSave
 }: SettingsPanelProps) {
   const [syncHelpOpen, setSyncHelpOpen] = useState(false);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const permissionLabel =
     notificationState === "granted"
       ? t("settings.permissionGranted")
@@ -366,6 +369,81 @@ export function SettingsPanel({
             <small className="text-xs text-slate-300/60">{t("settings.panelBlurHelp")}</small>
           </label>
         </div>
+      </div>
+
+      <div className="panel-surface rounded-[22px] p-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <strong className="text-sm font-semibold text-slate-50">{t("settings.backgroundTitle")}</strong>
+            <p className="mt-1 text-xs text-slate-300/60">{t("settings.backgroundDescription")}</p>
+          </div>
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/8 text-cyan-100">
+            <Image className="h-4 w-4" strokeWidth={2} />
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <button
+            type="button"
+            onClick={() => onActiveBackgroundChange("default")}
+            className={`group overflow-hidden rounded-[18px] border p-2 text-left transition hover:-translate-y-px ${
+              activeBackground === "default"
+                ? "border-cyan-200/70 bg-cyan-300/12"
+                : "border-white/10 bg-white/5 hover:bg-white/8"
+            }`}
+          >
+            <span className="flex aspect-[4/5] items-center justify-center rounded-[14px] bg-[radial-gradient(circle_at_top_left,rgba(125,211,252,0.28),transparent_36%),linear-gradient(145deg,#08101b,#152338_58%,#0c1726)]">
+              <RotateCcw className="h-7 w-7 text-slate-100" strokeWidth={1.8} />
+            </span>
+            <span className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold text-slate-100">{t("settings.backgroundDefault")}</span>
+              {activeBackground === "default" ? (
+                <Check className="h-4 w-4 text-cyan-100" strokeWidth={2.4} />
+              ) : null}
+            </span>
+          </button>
+
+          {BACKGROUND_REWARDS.map((reward) => {
+            const unlocked = unlockedBackgrounds.includes(reward.id);
+            const selected = activeBackground === reward.id;
+
+            return (
+              <button
+                key={reward.id}
+                type="button"
+                disabled={!unlocked}
+                onClick={() => onActiveBackgroundChange(reward.id)}
+                className={`group overflow-hidden rounded-[18px] border p-2 text-left transition ${
+                  unlocked ? "hover:-translate-y-px" : "cursor-not-allowed opacity-55"
+                } ${
+                  selected
+                    ? "border-cyan-200/70 bg-cyan-300/12"
+                    : "border-white/10 bg-white/5 hover:bg-white/8"
+                }`}
+              >
+                <span className="relative block aspect-[4/5] overflow-hidden rounded-[14px] bg-slate-900">
+                  <img
+                    src={reward.preview}
+                    alt={reward.title[locale] ?? reward.title["en-US"]}
+                    className="h-full w-full object-cover"
+                  />
+                  {!unlocked ? (
+                    <span className="absolute inset-0 grid place-items-center bg-slate-950/62">
+                      <Lock className="h-5 w-5 text-slate-200" strokeWidth={2} />
+                    </span>
+                  ) : null}
+                </span>
+                <span className="mt-2 flex items-center justify-between gap-2">
+                  <span className="truncate text-sm font-semibold text-slate-100">
+                    {reward.title[locale] ?? reward.title["en-US"]}
+                  </span>
+                  {selected ? <Check className="h-4 w-4 text-cyan-100" strokeWidth={2.4} /> : null}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-xs text-slate-300/60">{t("settings.backgroundHint")}</p>
       </div>
 
       <div className="panel-surface rounded-[22px] p-4">

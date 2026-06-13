@@ -38,7 +38,7 @@ export function GardenInventoryCard({
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div className="rounded-[18px] bg-white/5 p-3">
           <div className="mb-3 flex items-center justify-between">
-            <strong className="text-sm font-semibold text-slate-100">Seeds</strong>
+            <strong className="text-sm font-semibold text-slate-100">{t("garden.inventorySeeds")}</strong>
             <span className="text-xs text-slate-400">{totalSeedCount}</span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -66,7 +66,7 @@ export function GardenInventoryCard({
 
         <div className="rounded-[18px] bg-white/5 p-3">
           <div className="mb-3 flex items-center justify-between">
-            <strong className="text-sm font-semibold text-slate-100">Produce</strong>
+            <strong className="text-sm font-semibold text-slate-100">{t("garden.inventoryProduce")}</strong>
             <span className="text-xs text-slate-400">{totalProduceCount}</span>
           </div>
           <div className="flex flex-wrap gap-2">

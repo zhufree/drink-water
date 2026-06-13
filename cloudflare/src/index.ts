@@ -7,6 +7,7 @@ import {
   handleDisbandCircle,
   handleJoinCircle,
   handleLeaderboard,
+  handleCircleMemberGarden,
   handleLeaveCircle,
   handleListCircles,
   handleProfile,
@@ -85,6 +86,10 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/api/leaderboard") {
         return json(await handleLeaderboard(ctx));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/circle/member-garden") {
+        return json(await handleCircleMemberGarden(ctx));
       }
 
       if (request.method === "GET" && url.pathname === "/api/update-check") {

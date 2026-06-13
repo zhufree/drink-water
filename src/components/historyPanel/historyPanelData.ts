@@ -20,7 +20,7 @@ export const RED_RADISH_SEED_TYPE = "redRadishSeed";
 export const PUMPKIN_SEED_TYPE = "pumpkinSeed";
 export const ONION_SEED_TYPE = "onionSeed";
 export const EGGPLANT_SEED_TYPE = "eggplantSeed";
-export const PEA_SEED_TYPE = "gardenPeaSeed";
+export const WATERMELON_SEED_TYPE = "watermelonSeed";
 export const BASIC_CROP_TYPE = "potato";
 export const ADVANCED_CROP_TYPE = "bellPepper";
 export const CARROT_CROP_TYPE = "carrot";
@@ -31,7 +31,7 @@ export const RED_RADISH_CROP_TYPE = "redRadish";
 export const PUMPKIN_CROP_TYPE = "pumpkin";
 export const ONION_CROP_TYPE = "onion";
 export const EGGPLANT_CROP_TYPE = "eggplant";
-export const PEA_CROP_TYPE = "gardenPea";
+export const WATERMELON_CROP_TYPE = "watermelon";
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export { CROP_DEFINITIONS, EXCHANGE_OPTIONS };
@@ -199,9 +199,17 @@ export function getUpcomingBoostHours(restState: RestState, cooldownRemainingSec
 }
 
 export function getCropDefinitionBySeed(seedType: string) {
-  return CROP_DEFINITIONS.find((definition) => definition.seedType === seedType) ?? CROP_DEFINITIONS[0];
+  return (
+    CROP_DEFINITIONS.find(
+      (definition) => definition.seedType === seedType || definition.seedAliases.includes(seedType)
+    ) ?? CROP_DEFINITIONS[0]
+  );
 }
 
 export function getCropDefinitionByCrop(cropType: string) {
-  return CROP_DEFINITIONS.find((definition) => definition.cropType === cropType) ?? CROP_DEFINITIONS[0];
+  return (
+    CROP_DEFINITIONS.find(
+      (definition) => definition.cropType === cropType || definition.cropAliases.includes(cropType)
+    ) ?? CROP_DEFINITIONS[0]
+  );
 }

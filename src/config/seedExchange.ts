@@ -18,8 +18,8 @@ import onionCropIcon from "../assets/garden/onion-crop.png";
 import onionSeedIcon from "../assets/garden/onion-seed.png";
 import eggplantCropIcon from "../assets/garden/eggplant-crop.png";
 import eggplantSeedIcon from "../assets/garden/eggplant-seed.png";
-import peaCropIcon from "../assets/garden/pea-crop.png";
-import peaSeedIcon from "../assets/garden/pea-seed.png";
+import watermelonCropIcon from "../assets/garden/watermelon-crop.png";
+import watermelonSeedIcon from "../assets/garden/watermelon-seed.png";
 import seedExchangeJson from "./seedExchange.json";
 import type { Locale } from "../types";
 
@@ -48,6 +48,8 @@ export type SeedExchangeConfig = {
 export type CropDefinition = {
   cropType: string;
   seedType: string;
+  cropAliases: string[];
+  seedAliases: string[];
   tier: number;
   cropLabel: string;
   seedLabel: string;
@@ -73,7 +75,7 @@ const seedAssetMap: Record<string, string> = {
   napaCabbageSeed: napaCabbageSeedIcon,
   onionSeed: onionSeedIcon,
   eggplantSeed: eggplantSeedIcon,
-  peaSeed: peaSeedIcon
+  watermelonSeed: watermelonSeedIcon
 };
 
 const cropAssetMap: Record<string, string> = {
@@ -87,7 +89,7 @@ const cropAssetMap: Record<string, string> = {
   napaCabbageCrop: napaCabbageCropIcon,
   onionCrop: onionCropIcon,
   eggplantCrop: eggplantCropIcon,
-  peaCrop: peaCropIcon
+  watermelonCrop: watermelonCropIcon
 };
 
 export const SEED_EXCHANGE_CONFIG = seedExchangeJson as SeedExchangeConfig;
@@ -95,6 +97,8 @@ export const SEED_EXCHANGE_CONFIG = seedExchangeJson as SeedExchangeConfig;
 export const CROP_DEFINITIONS: CropDefinition[] = SEED_EXCHANGE_CONFIG.seeds.map((seed) => ({
   cropType: seed.cropType,
   seedType: seed.seedType,
+  cropAliases: seed.cropAliases,
+  seedAliases: seed.seedAliases,
   tier: seed.tier,
   cropLabel: seed.label["zh-CN"],
   seedLabel: seed.label["zh-CN"],

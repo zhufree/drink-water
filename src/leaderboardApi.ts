@@ -3,7 +3,8 @@ import type {
   AppUpdateInfo,
   CircleSummary,
   LeaderboardCircleMeta,
-  LeaderboardEntry
+  LeaderboardEntry,
+  LeaderboardMemberGarden
 } from "./types";
 
 type BootstrapResponse = {
@@ -154,6 +155,22 @@ export async function getLeaderboard(input: {
   });
 
   return request<LeaderboardResponse>(`/api/leaderboard?${params.toString()}`);
+}
+
+export async function getCircleMemberGarden(input: {
+  deviceId: string;
+  circleCode: string;
+  targetAccountId: string;
+  rangeDays?: number;
+}) {
+  const params = new URLSearchParams({
+    deviceId: input.deviceId,
+    circleCode: input.circleCode,
+    targetAccountId: input.targetAccountId,
+    rangeDays: String(input.rangeDays ?? 28)
+  });
+
+  return request<LeaderboardMemberGarden>(`/api/circle/member-garden?${params.toString()}`);
 }
 
 export async function removeLeaderboardMember(input: {

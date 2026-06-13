@@ -347,6 +347,31 @@ fn redeem_background_reward(
 }
 
 #[tauri::command]
+fn set_active_background(
+    state: State<'_, AppState>,
+    background_id: String,
+) -> Result<GardenState, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to set active background".to_string())?;
+        reconcile(&mut guard, now);
+        set_active_background_in_state(&mut guard, background_id.trim())?;
+        touch_garden_snapshot(&mut guard, now);
+    }
+
+    state.save()?;
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
 fn start_rest_break(state: State<'_, AppState>) -> Result<GardenState, String> {
     let now = Local::now();
     {
