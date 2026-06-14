@@ -1,6 +1,7 @@
 export type Env = {
   DB: D1Database;
   SYNC_BACKUPS: R2Bucket;
+  DRINK_WATER_CONFIG_TOKEN?: string;
   WECHAT_APP_ID?: string;
   WECHAT_APP_SECRET?: string;
 };
@@ -18,8 +19,8 @@ export type ApiError = {
 export const JSON_HEADERS = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "content-type"
+  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+  "access-control-allow-headers": "authorization,content-type"
 };
 
 

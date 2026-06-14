@@ -5,7 +5,7 @@ import {
   requestPermission
 } from "@tauri-apps/plugin-notification";
 import { markStartupCatchUpPromptShown, saveSettings } from "../api";
-import { checkForAppUpdate, upsertLeaderboardStats } from "../leaderboardApi";
+import { checkForAppUpdate } from "../leaderboardApi";
 import type {
   AppUpdateInfo,
   CircleSummary,
@@ -13,8 +13,7 @@ import type {
   LeaderboardEntry,
   NotificationPermissionState,
   Settings,
-  SyncMeta,
-  TodayStatus
+  SyncMeta
 } from "../types";
 import { APP_VERSION } from "./appControllerConfig";
 import {
@@ -33,14 +32,12 @@ type UseAppControllerEffectsParams = {
   refreshAll: () => Promise<BootstrapResult>;
   settings: Settings;
   draftSettings: Settings;
-  status: TodayStatus | null;
   message: string;
   leaderboardMetric: "intake" | "progress";
   gardenRestActive: boolean;
   gardenRestEndsAt: string | null;
   restTick: number;
   startupPromptCheckedRef: MutableRefObject<boolean>;
-  lastSyncedStatsKeyRef: MutableRefObject<string>;
   setLoading: Dispatch<SetStateAction<boolean>>;
   setNotificationState: Dispatch<SetStateAction<NotificationPermissionState>>;
   setCloudIdentityState: Dispatch<SetStateAction<"loading" | "ready" | "error">>;
@@ -67,14 +64,12 @@ export function useAppControllerEffects({
   refreshAll,
   settings,
   draftSettings,
-  status,
   message,
   leaderboardMetric,
   gardenRestActive,
   gardenRestEndsAt,
   restTick,
   startupPromptCheckedRef,
-  lastSyncedStatsKeyRef,
   setLoading,
   setNotificationState,
   setCloudIdentityState,
@@ -169,6 +164,9 @@ export function useAppControllerEffects({
           setYesterdayCatchUpAmount(250);
           setSyncMeta(await markStartupCatchUpPromptShown());
         }
+      } catch (error) {
+        console.error("[startup] bootstrap failed", error);
+        setMessage(`启动失败：${extractErrorMessage(error)}`);
       } finally {
         if (!disposed) {
           setLoading(false);
@@ -196,36 +194,6 @@ export function useAppControllerEffects({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!settings.deviceId || !settings.activeCircleCode || !status) {
-      return;
-    }
-
-    const syncKey = [
-      settings.deviceId,
-      settings.activeCircleCode,
-      currentDayKey(),
-      status.actualIntakeMl,
-      status.targetMl
-    ].join("|");
-
-    if (lastSyncedStatsKeyRef.current === syncKey) {
-      return;
-    }
-
-    lastSyncedStatsKeyRef.current = syncKey;
-
-    void upsertLeaderboardStats({
-      deviceId: settings.deviceId,
-      circleCode: settings.activeCircleCode,
-      dayKey: currentDayKey(),
-      actualIntakeMl: status.actualIntakeMl,
-      targetMl: status.targetMl
-    }).catch(() => {
-      lastSyncedStatsKeyRef.current = "";
-    });
-  }, [settings.deviceId, settings.activeCircleCode, status]);
 
   useEffect(() => {
     if (!settings.activeCircleCode) {

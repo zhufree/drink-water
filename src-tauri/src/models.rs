@@ -147,6 +147,8 @@ impl Default for RestState {
 pub struct GardenState {
     initial_grant_claimed: bool,
     #[serde(default)]
+    initial_grant_last_awarded_at: Option<String>,
+    #[serde(default)]
     produce_migration_claimed: bool,
     seeds: Vec<SeedInventoryItem>,
     #[serde(default)]
@@ -169,11 +171,9 @@ impl Default for GardenState {
     fn default() -> Self {
         Self {
             initial_grant_claimed: true,
+            initial_grant_last_awarded_at: Some(Local::now().to_rfc3339()),
             produce_migration_claimed: true,
-            seeds: vec![SeedInventoryItem {
-                seed_type: BASIC_SEED_TYPE.to_string(),
-                count: INITIAL_BASIC_SEEDS,
-            }],
+            seeds: initial_seed_grant_items(),
             produce: Vec::new(),
             crops: Vec::new(),
             collection: Vec::new(),
@@ -186,6 +186,11 @@ impl Default for GardenState {
 
 fn default_garden_state() -> GardenState {
     GardenState::default()
+}
+
+fn parse_persisted_state_content(content: &str) -> Result<PersistedState, String> {
+    serde_json::from_str::<PersistedState>(content.trim_start_matches('\u{feff}'))
+        .map_err(|error| format!("failed to parse local state: {error}"))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -362,8 +367,11 @@ impl PersistedState {
 
     fn normalize_garden(&mut self) {
         if !self.garden.initial_grant_claimed {
-            add_seed(&mut self.garden, BASIC_SEED_TYPE, INITIAL_BASIC_SEEDS);
+            for item in initial_seed_grant_items() {
+                add_seed(&mut self.garden, &item.seed_type, item.count);
+            }
             self.garden.initial_grant_claimed = true;
+            self.garden.initial_grant_last_awarded_at = Some(Local::now().to_rfc3339());
         }
 
         for seed in &mut self.garden.seeds {
@@ -494,8 +502,7 @@ impl AppState {
         let store_path = app_dir.join(STORE_FILE_NAME);
         let data = if store_path.exists() {
             let content = fs::read_to_string(&store_path).map_err(|error| error.to_string())?;
-            let mut parsed = serde_json::from_str::<PersistedState>(&content)
-                .unwrap_or_else(|_| PersistedState::new(Local::now()));
+            let mut parsed = parse_persisted_state_content(&content)?;
             parsed.settings = parsed.settings.clone().sanitize();
             parsed.today.target_ml = parsed.settings.daily_target_ml;
             parsed.today.cup_size_ml = parsed.settings.cup_size_ml;

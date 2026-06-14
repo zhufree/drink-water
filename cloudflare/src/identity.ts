@@ -125,76 +125,6 @@ export async function reconcileLegacyDeviceAccount(
     .bind(deviceId, accountId)
     .run();
 
-  await db
-    .prepare(
-      `INSERT OR IGNORE INTO daily_stats (
-         circle_code,
-         account_id,
-         day_key,
-         actual_intake_ml,
-         target_ml,
-         updated_at
-       )
-       SELECT
-         circle_code,
-         ?2,
-         day_key,
-         actual_intake_ml,
-         target_ml,
-         updated_at
-       FROM daily_stats
-       WHERE account_id = ?1`
-    )
-    .bind(deviceId, accountId)
-    .run();
-
-  await db
-    .prepare(
-      `UPDATE daily_stats
-       SET
-         actual_intake_ml = (
-           SELECT old_stats.actual_intake_ml
-           FROM daily_stats old_stats
-           WHERE old_stats.account_id = ?1
-             AND old_stats.circle_code = daily_stats.circle_code
-             AND old_stats.day_key = daily_stats.day_key
-             AND old_stats.updated_at > daily_stats.updated_at
-           ORDER BY old_stats.updated_at DESC
-           LIMIT 1
-         ),
-         target_ml = (
-           SELECT old_stats.target_ml
-           FROM daily_stats old_stats
-           WHERE old_stats.account_id = ?1
-             AND old_stats.circle_code = daily_stats.circle_code
-             AND old_stats.day_key = daily_stats.day_key
-             AND old_stats.updated_at > daily_stats.updated_at
-           ORDER BY old_stats.updated_at DESC
-           LIMIT 1
-         ),
-         updated_at = (
-           SELECT old_stats.updated_at
-           FROM daily_stats old_stats
-           WHERE old_stats.account_id = ?1
-             AND old_stats.circle_code = daily_stats.circle_code
-             AND old_stats.day_key = daily_stats.day_key
-             AND old_stats.updated_at > daily_stats.updated_at
-           ORDER BY old_stats.updated_at DESC
-           LIMIT 1
-         )
-       WHERE account_id = ?2
-         AND EXISTS (
-           SELECT 1
-           FROM daily_stats old_stats
-           WHERE old_stats.account_id = ?1
-             AND old_stats.circle_code = daily_stats.circle_code
-             AND old_stats.day_key = daily_stats.day_key
-             AND old_stats.updated_at > daily_stats.updated_at
-         )`
-    )
-    .bind(deviceId, accountId)
-    .run();
-
   await migrateAccountScopedSnapshot(
     db,
     "daily_snapshots",
@@ -226,7 +156,6 @@ export async function reconcileLegacyDeviceAccount(
     .bind(deviceId, accountId)
     .run();
 
-  await db.prepare(`DELETE FROM daily_stats WHERE account_id = ?1`).bind(deviceId).run();
   await db.prepare(`DELETE FROM circle_members WHERE account_id = ?1`).bind(deviceId).run();
   await db.prepare(`DELETE FROM users WHERE account_id = ?1`).bind(deviceId).run();
   await db

@@ -10,8 +10,13 @@
       },
       "seedAsset": "potatoSeed",
       "cropAsset": "potatoCrop",
-      "seedAliases": ["bokChoy", "bokChoySeed"],
-      "cropAliases": ["bokChoy"]
+      "seedAliases": [
+        "bokChoy",
+        "bokChoySeed"
+      ],
+      "cropAliases": [
+        "bokChoy"
+      ]
     },
     {
       "seedType": "bellPepperSeed",
@@ -23,8 +28,12 @@
       },
       "seedAsset": "bellPepperSeed",
       "cropAsset": "bellPepperCrop",
-      "seedAliases": ["cabbageSeed"],
-      "cropAliases": ["cabbage"]
+      "seedAliases": [
+        "cabbageSeed"
+      ],
+      "cropAliases": [
+        "cabbage"
+      ]
     },
     {
       "seedType": "carrotSeed",
@@ -36,8 +45,12 @@
       },
       "seedAsset": "carrotSeed",
       "cropAsset": "carrotCrop",
-      "seedAliases": ["peaSeed"],
-      "cropAliases": ["pea"]
+      "seedAliases": [
+        "peaSeed"
+      ],
+      "cropAliases": [
+        "pea"
+      ]
     },
     {
       "seedType": "napaCabbageSeed",
@@ -62,8 +75,12 @@
       },
       "seedAsset": "broccoliSeed",
       "cropAsset": "broccoliCrop",
-      "seedAliases": ["tomatoSeed"],
-      "cropAliases": ["tomato"]
+      "seedAliases": [
+        "tomatoSeed"
+      ],
+      "cropAliases": [
+        "tomato"
+      ]
     },
     {
       "seedType": "radishSeed",
@@ -75,8 +92,12 @@
       },
       "seedAsset": "radishSeed",
       "cropAsset": "radishCrop",
-      "seedAliases": ["cornSeed"],
-      "cropAliases": ["corn"]
+      "seedAliases": [
+        "cornSeed"
+      ],
+      "cropAliases": [
+        "corn"
+      ]
     },
     {
       "seedType": "redRadishSeed",
@@ -127,8 +148,12 @@
       },
       "seedAsset": "watermelonSeed",
       "cropAsset": "watermelonCrop",
-      "seedAliases": ["gardenPeaSeed"],
-      "cropAliases": ["gardenPea"]
+      "seedAliases": [
+        "gardenPeaSeed"
+      ],
+      "cropAliases": [
+        "gardenPea"
+      ]
     },
     {
       "seedType": "eggplantSeed",

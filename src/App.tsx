@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { FirstRunOnboardingModal } from "./components/FirstRunOnboardingModal";
+import { InitialSeedGrantModal } from "./components/InitialSeedGrantModal";
 import { LeaderboardPanel } from "./components/LeaderboardPanel";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { RestOverlay } from "./components/RestOverlay";
@@ -46,6 +47,7 @@ export default function App() {
     controller.i18n.t("message.settingsSaved"),
     controller.i18n.t("message.exportSuccess"),
     controller.i18n.t("message.importSuccess"),
+    controller.i18n.t("message.initialSeedsGranted"),
     controller.i18n.t("message.restStarted"),
     controller.i18n.t("message.restCancelled"),
     controller.i18n.t("message.restCompleted"),
@@ -88,7 +90,7 @@ export default function App() {
 
   return (
     <I18nProvider locale={controller.locale}>
-      {controller.loading || !controller.status ? (
+      {controller.loading ? (
         <main
           className="app-shell grid h-screen place-items-center px-[14px] py-[12px] text-slate-100"
           style={shellStyle}
@@ -96,6 +98,20 @@ export default function App() {
         >
           <div className="app-shell__overlay" />
           <div className="relative z-10">{controller.i18n.t("app.loading")}</div>
+        </main>
+      ) : !controller.status ? (
+        <main
+          className="app-shell grid h-screen place-items-center px-[14px] py-[12px] text-slate-100"
+          style={shellStyle}
+          data-background-theme={activeBackground}
+        >
+          <div className="app-shell__overlay" />
+          <div className="relative z-10 max-w-[320px] text-center">
+            <h1 className="m-0 text-base font-semibold">启动失败</h1>
+            <p className="mt-2 text-sm text-slate-300/85">
+              {controller.message || "没有读取到今日状态，请重启应用或查看日志。"}
+            </p>
+          </div>
         </main>
       ) : (
         <main
@@ -120,6 +136,12 @@ export default function App() {
               />
             ) : null}
 
+            {!showOnboarding && controller.initialSeedGrantNoticeAt ? (
+              <InitialSeedGrantModal
+                onDismiss={controller.handleDismissInitialSeedGrant}
+              />
+            ) : null}
+
             {!showOnboarding && controller.yesterdayCatchUpItem ? (
               <StartupCatchUpModal
                 historyItem={controller.yesterdayCatchUpItem}
@@ -134,6 +156,7 @@ export default function App() {
               <WindowChrome
                 activeTab={controller.activeTab}
                 syncBusy={controller.syncBusy}
+                activeDrinkerCount={controller.activeDrinkerCount}
                 onRefreshSnapshots={() => void controller.handleRefreshSnapshotsNow()}
                 onOpenSettings={() => controller.setActiveTab("settings")}
                 onMinimize={() =>

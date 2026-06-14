@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "id": "catCollage",
     "title": {
@@ -12,8 +12,14 @@
     "previewAsset": "bg1",
     "redeemable": true,
     "requirements": [
-      { "cropType": "potato", "count": 6 },
-      { "cropType": "carrot", "count": 6 }
+      {
+        "cropType": "potato",
+        "count": 6
+      },
+      {
+        "cropType": "carrot",
+        "count": 6
+      }
     ]
   },
   {

@@ -9,6 +9,13 @@ import type {
   TodayStatus,
   HistoryItem
 } from "./types";
+import type { BackgroundRewardConfig } from "./config/backgroundRewards";
+import type { SeedExchangeConfig } from "./config/seedExchange";
+
+export type DrinkWaterConfig = {
+  seedExchange: SeedExchangeConfig;
+  backgroundRewards: BackgroundRewardConfig[];
+};
 
 export const getSettings = () => invoke<Settings>("get_settings");
 
@@ -29,6 +36,9 @@ export const getHistory = (range: number) =>
   invoke<HistoryItem[]>("get_history", { range });
 
 export const getGardenState = () => invoke<GardenState>("get_garden_state");
+
+export const getDrinkWaterConfig = () =>
+  invoke<DrinkWaterConfig>("get_drink_water_config");
 
 export const plantSeed = (dayKey: string, seedType: string) =>
   invoke<GardenState>("plant_seed", { dayKey, seedType });

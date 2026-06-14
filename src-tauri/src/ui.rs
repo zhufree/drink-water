@@ -198,6 +198,7 @@ pub fn run() {
             undo_last_drink,
             log_yesterday_drink,
             get_garden_state,
+            get_drink_water_config,
             plant_seed,
             harvest_crop,
             exchange_produce,

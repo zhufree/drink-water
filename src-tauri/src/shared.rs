@@ -25,6 +25,7 @@ const ONION_CROP_TYPE: &str = "onion";
 const EGGPLANT_CROP_TYPE: &str = "eggplant";
 const WATERMELON_CROP_TYPE: &str = "watermelon";
 
+#[cfg(test)]
 const BASIC_SEED_TYPE: &str = POTATO_SEED_TYPE;
 
 const LEGACY_BASIC_SEED_TYPE: &str = "bokChoy";
@@ -38,7 +39,8 @@ const LEGACY_ADVANCED_CROP_TYPE: &str = "cabbage";
 const LEGACY_CARROT_CROP_TYPE: &str = "pea";
 const LEGACY_BROCCOLI_CROP_TYPE: &str = "tomato";
 const LEGACY_RADISH_CROP_TYPE: &str = "corn";
-const INITIAL_BASIC_SEEDS: u32 = 12;
+const INITIAL_TIER_SEED_GRANT: u8 = 1;
+const INITIAL_SEED_GRANT_COUNT: u32 = 1;
 const DAY_SECONDS: i64 = 24 * 60 * 60;
 const REST_COOLDOWN_MINUTES: i64 = 20;
 const REST_SHORT_BREAK_SECONDS: u32 = 60;

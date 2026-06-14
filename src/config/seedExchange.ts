@@ -92,27 +92,31 @@ const cropAssetMap: Record<string, string> = {
   watermelonCrop: watermelonCropIcon
 };
 
-export const SEED_EXCHANGE_CONFIG = seedExchangeJson as SeedExchangeConfig;
+function buildCropDefinitions(config: SeedExchangeConfig): CropDefinition[] {
+  return config.seeds.map((seed) => ({
+    cropType: seed.cropType,
+    seedType: seed.seedType,
+    cropAliases: seed.cropAliases,
+    seedAliases: seed.seedAliases,
+    tier: seed.tier,
+    cropLabel: seed.label["zh-CN"],
+    seedLabel: seed.label["zh-CN"],
+    cropIcon: cropAssetMap[seed.cropAsset] ?? potatoCropIcon,
+    seedIcon: seedAssetMap[seed.seedAsset] ?? potatoSeedIcon
+  }));
+}
 
-export const CROP_DEFINITIONS: CropDefinition[] = SEED_EXCHANGE_CONFIG.seeds.map((seed) => ({
-  cropType: seed.cropType,
-  seedType: seed.seedType,
-  cropAliases: seed.cropAliases,
-  seedAliases: seed.seedAliases,
-  tier: seed.tier,
-  cropLabel: seed.label["zh-CN"],
-  seedLabel: seed.label["zh-CN"],
-  cropIcon: cropAssetMap[seed.cropAsset] ?? potatoCropIcon,
-  seedIcon: seedAssetMap[seed.seedAsset] ?? potatoSeedIcon
-}));
-
-export const EXCHANGE_OPTIONS: ExchangeOption[] = CROP_DEFINITIONS.flatMap((source) =>
-  CROP_DEFINITIONS.flatMap((target) => {
+function buildExchangeOptions(
+  config: SeedExchangeConfig,
+  definitions: CropDefinition[]
+): ExchangeOption[] {
+  return definitions.flatMap((source) =>
+    definitions.flatMap((target) => {
     if (target.seedType === source.seedType) {
       return [];
     }
 
-    const rule = SEED_EXCHANGE_CONFIG.exchangeRules.find(
+    const rule = config.exchangeRules.find(
       (item) => item.tierGap === target.tier - source.tier
     );
     if (!rule) {
@@ -128,4 +132,18 @@ export const EXCHANGE_OPTIONS: ExchangeOption[] = CROP_DEFINITIONS.flatMap((sour
       }
     ];
   })
+  );
+}
+
+export let SEED_EXCHANGE_CONFIG = seedExchangeJson as SeedExchangeConfig;
+export let CROP_DEFINITIONS: CropDefinition[] = buildCropDefinitions(SEED_EXCHANGE_CONFIG);
+export let EXCHANGE_OPTIONS: ExchangeOption[] = buildExchangeOptions(
+  SEED_EXCHANGE_CONFIG,
+  CROP_DEFINITIONS
 );
+
+export function applySeedExchangeConfig(config: SeedExchangeConfig) {
+  SEED_EXCHANGE_CONFIG = config;
+  CROP_DEFINITIONS = buildCropDefinitions(config);
+  EXCHANGE_OPTIONS = buildExchangeOptions(config, CROP_DEFINITIONS);
+}

@@ -1,9 +1,11 @@
 import type { ApiError, AppContext, Env } from "./common.ts";
 import { HttpError, JSON_HEADERS, json } from "./common.ts";
+import { handleDrinkWaterConfig, handleUpdateDrinkWaterConfig } from "./config.ts";
 import { handleWeChatSession } from "./wechat.ts";
 import {
   handleBootstrap,
   handleCreateCircle,
+  handleDailyActivity,
   handleDisbandCircle,
   handleJoinCircle,
   handleLeaderboard,
@@ -42,6 +44,17 @@ export default {
     try {
       if (request.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, service: "drink-water-leaderboard" });
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/config/drink-water") {
+        return json(await handleDrinkWaterConfig(ctx));
+      }
+
+      if (
+        (request.method === "POST" || request.method === "PUT") &&
+        url.pathname === "/api/config/drink-water"
+      ) {
+        return json(await handleUpdateDrinkWaterConfig(ctx));
       }
 
       if (url.pathname === "/api/wechat/session") {
@@ -86,6 +99,10 @@ export default {
 
       if (request.method === "GET" && url.pathname === "/api/leaderboard") {
         return json(await handleLeaderboard(ctx));
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/activity/daily") {
+        return json(await handleDailyActivity(ctx));
       }
 
       if (request.method === "GET" && url.pathname === "/api/circle/member-garden") {

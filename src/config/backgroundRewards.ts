@@ -28,11 +28,20 @@ const previewAssetMap: Record<string, string> = {
   bg3
 };
 
-export const BACKGROUND_REWARDS: BackgroundReward[] =
-  (backgroundRewardsJson as BackgroundRewardConfig[]).map((reward) => ({
+function buildBackgroundRewards(config: BackgroundRewardConfig[]): BackgroundReward[] {
+  return config.map((reward) => ({
     ...reward,
     preview: previewAssetMap[reward.previewAsset] ?? bg1
   }));
+}
+
+export let BACKGROUND_REWARDS: BackgroundReward[] = buildBackgroundRewards(
+  backgroundRewardsJson as BackgroundRewardConfig[]
+);
+
+export function applyBackgroundRewardsConfig(config: BackgroundRewardConfig[]) {
+  BACKGROUND_REWARDS = buildBackgroundRewards(config);
+}
 
 export function getBackgroundRewardById(rewardId: string) {
   return BACKGROUND_REWARDS.find((reward) => reward.id === rewardId) ?? null;

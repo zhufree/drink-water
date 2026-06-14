@@ -23,6 +23,24 @@ mod tests {
         }
     }
 
+    fn seed_count(garden: &GardenState, seed_type: &str) -> u32 {
+        garden
+            .seeds
+            .iter()
+            .find(|item| item.seed_type == seed_type)
+            .map(|item| item.count)
+            .unwrap_or(0)
+    }
+
+    fn tier_one_seed_types() -> Vec<String> {
+        seed_exchange_config()
+            .seeds
+            .into_iter()
+            .filter(|seed| seed.tier == INITIAL_TIER_SEED_GRANT)
+            .map(|seed| seed.seed_type)
+            .collect()
+    }
+
     #[test]
     fn missed_slots_accumulate_history_debt_by_cup_size() {
         let settings = Settings::default();
@@ -356,12 +374,37 @@ mod tests {
 
         let parsed = serde_json::from_value::<PersistedState>(value).unwrap();
         assert!(parsed.garden.initial_grant_claimed);
-        assert_eq!(parsed.garden.seeds[0].seed_type, BASIC_SEED_TYPE);
-        assert_eq!(parsed.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+        assert!(parsed.garden.initial_grant_last_awarded_at.is_some());
+        assert_eq!(parsed.garden.seeds.len(), tier_one_seed_types().len());
+        for seed_type in tier_one_seed_types() {
+            assert_eq!(seed_count(&parsed.garden, &seed_type), INITIAL_SEED_GRANT_COUNT);
+        }
 
         let mut existing = parsed.clone();
         existing.normalize_garden();
-        assert_eq!(existing.garden.seeds[0].count, INITIAL_BASIC_SEEDS);
+        for seed_type in tier_one_seed_types() {
+            assert_eq!(
+                seed_count(&existing.garden, &seed_type),
+                seed_count(&parsed.garden, &seed_type)
+            );
+        }
+    }
+
+    #[test]
+    fn persisted_state_parser_accepts_utf8_bom() {
+        let settings = Settings::default();
+        let state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(local_dt(2026, 6, 13, 9, 0), &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+        };
+        let content = format!("\u{feff}{}", serde_json::to_string(&state).unwrap());
+
+        let parsed = parse_persisted_state_content(&content).unwrap();
+
+        assert_eq!(parsed.today.day_key, "2026-06-13");
     }
 
     #[test]
@@ -374,7 +417,7 @@ mod tests {
             "garden": {
                 "initialGrantClaimed": true,
                 "seeds": [
-                    { "seedType": BASIC_SEED_TYPE, "count": INITIAL_BASIC_SEEDS }
+                    { "seedType": BASIC_SEED_TYPE, "count": INITIAL_SEED_GRANT_COUNT }
                 ],
                 "produce": [],
                 "crops": [],
@@ -419,7 +462,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(state.garden.crops.len(), 1);
-        assert_eq!(state.garden.seeds[0].count, INITIAL_BASIC_SEEDS - 1);
+        assert_eq!(seed_count(&state.garden, BASIC_SEED_TYPE), INITIAL_SEED_GRANT_COUNT - 1);
         assert!(plant_seed_in_state(
             &mut state,
             "2026-05-19",
@@ -466,14 +509,8 @@ mod tests {
         assert_eq!(state.garden.collection.len(), 1);
         assert_eq!(state.garden.collection[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(state.garden.collection[0].harvest_count, 1);
-        let basic_seed_count = state
-            .garden
-            .seeds
-            .iter()
-            .find(|item| item.seed_type == BASIC_SEED_TYPE)
-            .map(|item| item.count)
-            .unwrap_or(0);
-        assert!((INITIAL_BASIC_SEEDS..=INITIAL_BASIC_SEEDS + 2).contains(&basic_seed_count));
+        let basic_seed_count = seed_count(&state.garden, BASIC_SEED_TYPE);
+        assert!((INITIAL_SEED_GRANT_COUNT..=INITIAL_SEED_GRANT_COUNT + 1).contains(&basic_seed_count));
         assert_eq!(state.garden.produce.len(), 1);
         assert_eq!(state.garden.produce[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(state.garden.produce[0].count, 1);
@@ -507,14 +544,8 @@ mod tests {
             let harvest_time = now + chrono::Duration::minutes(minute);
             harvest_crop_in_state(&mut state, "2026-05-19", harvest_time).unwrap();
 
-            let basic_seed_count = state
-                .garden
-                .seeds
-                .iter()
-                .find(|item| item.seed_type == BASIC_SEED_TYPE)
-                .map(|item| item.count)
-                .unwrap_or(0);
-            let rewarded = basic_seed_count.saturating_sub(INITIAL_BASIC_SEEDS - 1);
+            let basic_seed_count = seed_count(&state.garden, BASIC_SEED_TYPE);
+            let rewarded = basic_seed_count.saturating_sub(INITIAL_SEED_GRANT_COUNT - 1);
             assert!((1..=2).contains(&rewarded));
         }
     }
@@ -552,7 +583,7 @@ mod tests {
             .unwrap_or(0);
 
         assert_eq!(basic_produce_count, 0);
-        assert_eq!(advanced_seed_count, 1);
+        assert_eq!(advanced_seed_count, INITIAL_SEED_GRANT_COUNT + 1);
     }
 
     #[test]
@@ -587,7 +618,7 @@ mod tests {
             .unwrap_or(0);
 
         assert_eq!(watermelon_seed_count, 1);
-        assert_eq!(cabbage_seed_count, 1);
+        assert_eq!(cabbage_seed_count, INITIAL_SEED_GRANT_COUNT + 1);
     }
 
     #[test]
@@ -745,6 +776,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
         };
+        add_seed(&mut state.garden, BASIC_SEED_TYPE, 1);
 
         plant_seed_in_state(
             &mut state,

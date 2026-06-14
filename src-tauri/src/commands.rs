@@ -238,6 +238,13 @@ fn get_garden_state(state: State<'_, AppState>) -> Result<GardenState, String> {
 }
 
 #[tauri::command]
+fn get_drink_water_config() -> Result<DrinkWaterConfig, String> {
+    let config = runtime_drink_water_config();
+    refresh_drink_water_config_in_background();
+    Ok(config)
+}
+
+#[tauri::command]
 fn plant_seed(
     _app: AppHandle,
     state: State<'_, AppState>,
@@ -756,8 +763,7 @@ fn import_cloud_backup_payload(
     state: State<'_, AppState>,
     payload: String,
 ) -> Result<bool, String> {
-    let mut parsed =
-        serde_json::from_str::<PersistedState>(&payload).map_err(|error| error.to_string())?;
+    let mut parsed = parse_persisted_state_content(&payload)?;
     normalize_imported_state(&mut parsed);
 
     state.replace_data(parsed)?;

@@ -240,7 +240,6 @@ export async function handleDisbandCircle(ctx: AppContext) {
     throw new HttpError(403, "Remove other members before disbanding the circle");
   }
 
-  await ctx.env.DB.prepare(`DELETE FROM daily_stats WHERE circle_code = ?1`).bind(circleCode).run();
   await ctx.env.DB.prepare(`DELETE FROM circle_members WHERE circle_code = ?1`).bind(circleCode).run();
   await ctx.env.DB.prepare(`DELETE FROM circles WHERE circle_code = ?1`).bind(circleCode).run();
   return { ok: true };
@@ -304,26 +303,14 @@ export async function handleLeaderboard(ctx: AppContext) {
       `SELECT
          cm.account_id AS account_id,
          u.display_name AS display_name,
-         COALESCE(
-           CAST(json_extract(snapshot.snapshot_json, '$.actualIntakeMl') AS INTEGER),
-           ds.actual_intake_ml,
-           0
-         ) AS actual_intake_ml,
-         COALESCE(
-           CAST(json_extract(snapshot.snapshot_json, '$.targetMl') AS INTEGER),
-           ds.target_ml,
-           0
-         ) AS target_ml
+         COALESCE(CAST(json_extract(snapshot.snapshot_json, '$.actualIntakeMl') AS INTEGER), 0) AS actual_intake_ml,
+         COALESCE(CAST(json_extract(snapshot.snapshot_json, '$.targetMl') AS INTEGER), 0) AS target_ml
        FROM circle_members cm
        LEFT JOIN users u
          ON u.account_id = cm.account_id
        LEFT JOIN daily_snapshots snapshot
          ON snapshot.account_id = cm.account_id
         AND snapshot.day_key = ?2
-       LEFT JOIN daily_stats ds
-         ON ds.circle_code = cm.circle_code
-        AND ds.account_id = cm.account_id
-        AND ds.day_key = ?2
        WHERE cm.circle_code = ?1`
     )
     .bind(circleCode, dayKey)
@@ -376,6 +363,23 @@ export async function handleLeaderboard(ctx: AppContext) {
       rank: index + 1,
       ...row
     }))
+  };
+}
+
+export async function handleDailyActivity(ctx: AppContext) {
+  const dayKey = requireDayKey(ctx.url.searchParams.get("dayKey"));
+  const row = await ctx.env.DB
+    .prepare(
+      `SELECT COUNT(*) AS active_count
+       FROM daily_snapshots
+       WHERE day_key = ?1`
+    )
+    .bind(dayKey)
+    .first<{ active_count: number }>();
+
+  return {
+    dayKey,
+    activeCount: row?.active_count ?? 0
   };
 }
 
@@ -500,10 +504,6 @@ export async function getCircleMemberCount(db: D1Database, circleCode: string) {
 }
 
 export async function removeCircleMembership(db: D1Database, circleCode: string, accountId: string) {
-  await db
-    .prepare(`DELETE FROM daily_stats WHERE circle_code = ?1 AND account_id = ?2`)
-    .bind(circleCode, accountId)
-    .run();
   await db
     .prepare(`DELETE FROM circle_members WHERE circle_code = ?1 AND account_id = ?2`)
     .bind(circleCode, accountId)

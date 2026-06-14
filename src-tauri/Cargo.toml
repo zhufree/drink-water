@@ -1,6 +1,6 @@
 [package]
 name = "drink-water"
-version = "0.6.2"
+version = "0.6.5"
 description = "Hydration reminder desktop app with debt tracking"
 authors = ["OpenAI Codex"]
 license = ""

@@ -1,11 +1,22 @@
-#[derive(Debug, Deserialize)]
+const DEFAULT_DRINK_WATER_CONFIG_URL: &str = "https://water-api.zhufree.fun/api/config/drink-water";
+
+static DRINK_WATER_CONFIG: OnceLock<RwLock<DrinkWaterConfig>> = OnceLock::new();
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DrinkWaterConfig {
+    seed_exchange: SeedExchangeConfig,
+    background_rewards: Vec<BackgroundRewardConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SeedExchangeConfig {
     seeds: Vec<SeedExchangeSeedConfig>,
     exchange_rules: Vec<SeedExchangeRuleConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SeedExchangeSeedConfig {
     seed_type: String,
@@ -17,7 +28,7 @@ struct SeedExchangeSeedConfig {
     crop_aliases: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SeedExchangeRuleConfig {
     tier_gap: i16,
@@ -25,20 +36,89 @@ struct SeedExchangeRuleConfig {
     target_seed_count: u32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BackgroundRewardConfig {
     id: String,
+    #[serde(default)]
+    title: HashMap<String, String>,
+    #[serde(default)]
+    description: HashMap<String, String>,
+    #[serde(default)]
+    preview_asset: String,
     redeemable: bool,
     #[serde(default)]
     requirements: Vec<BackgroundRewardRequirementConfig>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BackgroundRewardRequirementConfig {
     crop_type: String,
     count: u32,
+}
+
+fn local_drink_water_config() -> DrinkWaterConfig {
+    DrinkWaterConfig {
+        seed_exchange: serde_json::from_str(include_str!("../../src/config/seedExchange.json").trim_start_matches('\u{feff}'))
+            .expect("seed exchange config must be valid JSON"),
+        background_rewards: serde_json::from_str(include_str!("../../src/config/backgroundRewards.json").trim_start_matches('\u{feff}'))
+            .expect("background reward config must be valid JSON"),
+    }
+}
+
+fn runtime_drink_water_config() -> DrinkWaterConfig {
+    DRINK_WATER_CONFIG
+        .get_or_init(|| RwLock::new(local_drink_water_config()))
+        .read()
+        .map(|guard| guard.clone())
+        .unwrap_or_else(|_| local_drink_water_config())
+}
+
+fn set_runtime_drink_water_config(config: DrinkWaterConfig) -> Result<(), String> {
+    let lock = DRINK_WATER_CONFIG.get_or_init(|| RwLock::new(local_drink_water_config()));
+    let mut guard = lock
+        .write()
+        .map_err(|_| "failed to update runtime config".to_string())?;
+    *guard = config;
+    Ok(())
+}
+
+fn drink_water_config_url() -> String {
+    option_env!("DRINK_WATER_CONFIG_URL")
+        .unwrap_or(DEFAULT_DRINK_WATER_CONFIG_URL)
+        .to_string()
+}
+
+async fn fetch_remote_drink_water_config() -> Result<DrinkWaterConfig, String> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(5))
+        .build()
+        .map_err(|error| error.to_string())?
+        .get(drink_water_config_url())
+        .header("User-Agent", "DrinkWater/0.6.5")
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|error| error.to_string())?
+        .error_for_status()
+        .map_err(|error| error.to_string())?
+        .json::<DrinkWaterConfig>()
+        .await
+        .map_err(|error| error.to_string())
+}
+
+async fn refresh_drink_water_config() -> DrinkWaterConfig {
+    if let Ok(config) = fetch_remote_drink_water_config().await {
+        let _ = set_runtime_drink_water_config(config);
+    }
+    runtime_drink_water_config()
+}
+
+fn refresh_drink_water_config_in_background() {
+    spawn(async {
+        let _ = refresh_drink_water_config().await;
+    });
 }
 
 fn seed_exchange_config() -> SeedExchangeConfig {
@@ -76,13 +156,23 @@ fn seed_exchange_config() -> SeedExchangeConfig {
         LEGACY_RADISH_CROP_TYPE,
     ];
 
-    serde_json::from_str(include_str!("../../src/config/seedExchange.json").trim_start_matches('\u{feff}'))
-        .expect("seed exchange config must be valid JSON")
+    runtime_drink_water_config().seed_exchange
 }
 
 fn background_reward_config() -> Vec<BackgroundRewardConfig> {
-    serde_json::from_str(include_str!("../../src/config/backgroundRewards.json").trim_start_matches('\u{feff}'))
-        .expect("background reward config must be valid JSON")
+    runtime_drink_water_config().background_rewards
+}
+
+fn initial_seed_grant_items() -> Vec<SeedInventoryItem> {
+    seed_exchange_config()
+        .seeds
+        .into_iter()
+        .filter(|seed| seed.tier == INITIAL_TIER_SEED_GRANT)
+        .map(|seed| SeedInventoryItem {
+            seed_type: seed.seed_type,
+            count: INITIAL_SEED_GRANT_COUNT,
+        })
+        .collect()
 }
 
 fn normalize_seed_type(seed_type: &str) -> Result<String, String> {

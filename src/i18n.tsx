@@ -10,6 +10,12 @@ type TranslationKey =
   | "message.exportSuccess"
   | "message.importSuccess"
   | "message.yesterdayCatchUpSaved"
+  | "message.initialSeedsGranted"
+  | "initialSeeds.badge"
+  | "initialSeeds.title"
+  | "initialSeeds.description"
+  | "initialSeeds.seedCount"
+  | "initialSeeds.confirm"
   | "message.seedPlanted"
   | "message.cropHarvested"
   | "message.exchangeSuccess"
@@ -27,6 +33,7 @@ type TranslationKey =
   | "window.openSettings"
   | "window.minimize"
   | "window.hideToTray"
+  | "window.activeDrinkers"
   | "tabs.navigation"
   | "tabs.today"
   | "tabs.history"
@@ -309,6 +316,12 @@ const enUs: TranslationTable = {
   "message.exportSuccess": "Data exported.",
   "message.importSuccess": "Data imported and refreshed.",
   "message.yesterdayCatchUpSaved": "Added {amount} to yesterday's log.",
+  "message.initialSeedsGranted": "Initial seeds granted: one of each tier-one seed.",
+  "initialSeeds.badge": "Starter pack",
+  "initialSeeds.title": "Seeds are ready",
+  "initialSeeds.description": "You received one of each tier-one seed. Log water, pick a day, and start planting.",
+  "initialSeeds.seedCount": "x {count}",
+  "initialSeeds.confirm": "Got it",
   "message.seedPlanted": "Planted on {day}.",
   "message.cropHarvested": "Harvested crops from {day}.",
   "message.exchangeSuccess": "Exchanged for {count} {seed} seeds.",
@@ -326,6 +339,7 @@ const enUs: TranslationTable = {
   "window.openSettings": "Open settings",
   "window.minimize": "Minimize",
   "window.hideToTray": "Hide to tray",
+  "window.activeDrinkers": "{count} people are drinking too",
   "tabs.navigation": "Switch sections",
   "tabs.today": "Today",
   "tabs.history": "History",
@@ -607,6 +621,12 @@ const zhCn: TranslationTable = {
   "message.exportSuccess": "数据已导出。",
   "message.importSuccess": "数据已导入并刷新。",
   "message.yesterdayCatchUpSaved": "已为昨天补记 {amount}。",
+  "message.initialSeedsGranted": "已发放初始种子：一级种子每样 1 颗。",
+  "initialSeeds.badge": "新手种子包",
+  "initialSeeds.title": "种子已发放",
+  "initialSeeds.description": "记录喝水后，第二天就可以种下种子，水量多少会影响作物生长速度哦。",
+  "initialSeeds.seedCount": "x {count}",
+  "initialSeeds.confirm": "知道了",
   "message.seedPlanted": "已在 {day} 播种。",
   "message.cropHarvested": "已收获 {day} 的作物。",
   "message.exchangeSuccess": "已兑换 {count} 颗 {seed} 种子。",
@@ -621,6 +641,7 @@ const zhCn: TranslationTable = {
   "window.openSettings": "打开设置",
   "window.minimize": "最小化",
   "window.hideToTray": "隐藏到托盘",
+  "window.activeDrinkers": "{count} 人也在喝水",
   "tabs.navigation": "页面切换",
   "tabs.today": "今日",
   "tabs.history": "历史",

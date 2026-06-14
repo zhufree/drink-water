@@ -84,6 +84,7 @@ export type GardenCollectionItem = {
 
 export type GardenState = {
   initialGrantClaimed: boolean;
+  initialGrantLastAwardedAt: string | null;
   produceMigrationClaimed: boolean;
   seeds: SeedInventoryItem[];
   produce: ProduceInventoryItem[];

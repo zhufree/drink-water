@@ -1,4 +1,4 @@
-import { Minus, RefreshCw, Settings, X } from "lucide-react";
+import { Minus, RefreshCw, Settings, UsersRound, X } from "lucide-react";
 import { useI18n } from "../i18n";
 
 type TabKey = "today" | "history" | "leaderboard" | "settings";
@@ -6,6 +6,7 @@ type TabKey = "today" | "history" | "leaderboard" | "settings";
 type WindowChromeProps = {
   activeTab: TabKey;
   syncBusy: boolean;
+  activeDrinkerCount: number | null;
   onRefreshSnapshots: () => void;
   onOpenSettings: () => void;
   onMinimize: () => void;
@@ -15,6 +16,7 @@ type WindowChromeProps = {
 export function WindowChrome({
   activeTab,
   syncBusy,
+  activeDrinkerCount,
   onRefreshSnapshots,
   onOpenSettings,
   onMinimize,
@@ -33,7 +35,7 @@ export function WindowChrome({
             className="h-3 w-3 rounded-full bg-gradient-to-br from-cyan-300 to-emerald-300 shadow-[0_0_16px_rgba(114,208,255,0.48)]"
             data-tauri-drag-region
           />
-          <div data-tauri-drag-region>
+          <div className="min-w-0" data-tauri-drag-region>
             <strong className="text-clarity block text-[13px] font-semibold text-slate-50" data-tauri-drag-region>
               Drink Water
             </strong>
@@ -41,6 +43,15 @@ export function WindowChrome({
               {t("window.subtitle")}
             </span>
           </div>
+          {typeof activeDrinkerCount === "number" ? (
+            <span
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-200/16 bg-cyan-200/10 px-2.5 py-1 text-[11px] font-medium text-cyan-50"
+              data-tauri-drag-region
+            >
+              <UsersRound className="h-3.5 w-3.5 text-cyan-100" strokeWidth={2} />
+              {t("window.activeDrinkers", { count: activeDrinkerCount })}
+            </span>
+          ) : null}
         </div>
       </div>
 

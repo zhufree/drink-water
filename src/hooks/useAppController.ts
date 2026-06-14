@@ -12,6 +12,7 @@ import {
   exchangeProduce,
   exportCloudBackupPayload,
   exportData,
+  getDrinkWaterConfig,
   getGardenSnapshot,
   getGardenState,
   getHistory,
@@ -36,10 +37,13 @@ import {
   toggleAutostart,
   undoLastDrink
 } from "../api";
+import { applyBackgroundRewardsConfig } from "../config/backgroundRewards";
+import { applySeedExchangeConfig } from "../config/seedExchange";
 import { createI18n } from "../i18n";
 import {
   createLeaderboardCircle,
   disbandLeaderboardCircle,
+  getDailyActivity,
   getLeaderboard,
   joinLeaderboardCircle,
   leaveLeaderboardCircle,
@@ -111,6 +115,24 @@ const defaultSyncMeta: SyncMeta = {
 
 export { APP_VERSION, COPYRIGHT, RELEASE_URL };
 
+const INITIAL_SEED_GRANT_DISMISS_PREFIX = "drinkWater.initialSeedGrantDismissed.";
+
+function isInitialSeedGrantNoticeDismissed(awardedAt: string) {
+  try {
+    return localStorage.getItem(`${INITIAL_SEED_GRANT_DISMISS_PREFIX}${awardedAt}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markInitialSeedGrantNoticeDismissed(awardedAt: string) {
+  try {
+    localStorage.setItem(`${INITIAL_SEED_GRANT_DISMISS_PREFIX}${awardedAt}`, "1");
+  } catch {
+    // The in-memory dismissal below still keeps the current session quiet.
+  }
+}
+
 export function useAppController() {
   const [activeTab, setActiveTab] = useState<TabKey>("today");
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -135,6 +157,7 @@ export function useAppController() {
     useState<"intake" | "progress">("intake");
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [activeDrinkerCount, setActiveDrinkerCount] = useState<number | null>(null);
   const [activeCircleOwnerAccountId, setActiveCircleOwnerAccountId] = useState<string | null>(null);
   const [activeCircleMemberCount, setActiveCircleMemberCount] = useState(0);
   const [updateInfo, setUpdateInfo] = useState<AppUpdateInfo | null>(null);
@@ -147,9 +170,9 @@ export function useAppController() {
   const [pairCode, setPairCode] = useState("");
   const [pairCodeInput, setPairCodeInput] = useState("");
   const [syncBusy, setSyncBusy] = useState(false);
+  const [initialSeedGrantNoticeAt, setInitialSeedGrantNoticeAt] = useState<string | null>(null);
 
   const startupPromptCheckedRef = useRef(false);
-  const lastSyncedStatsKeyRef = useRef("");
   const autoPullingSnapshotsRef = useRef(false);
 
   const locale: Locale = draftSettings.locale ?? settings.locale ?? "zh-CN";
@@ -169,6 +192,14 @@ export function useAppController() {
     });
 
   const refreshAll = async () => {
+    try {
+      const runtimeConfig = await getDrinkWaterConfig();
+      applySeedExchangeConfig(runtimeConfig.seedExchange);
+      applyBackgroundRewardsConfig(runtimeConfig.backgroundRewards);
+    } catch (error) {
+      console.warn("[config] failed to load runtime config, using bundled config", error);
+    }
+
     const [nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta] = await Promise.all([
       getSettings(),
       getTodayStatus(),
@@ -186,8 +217,28 @@ export function useAppController() {
     setHistory(nextHistory);
     setGardenState(nextGardenState);
     setSyncMeta(nextSyncMeta);
+    try {
+      const activity = await getDailyActivity(currentDayKey());
+      setActiveDrinkerCount(activity.activeCount);
+    } catch (error) {
+      console.warn("[activity] failed to load daily active count", error);
+      setActiveDrinkerCount(null);
+    }
+    if (
+      nextGardenState.initialGrantLastAwardedAt &&
+      !isInitialSeedGrantNoticeDismissed(nextGardenState.initialGrantLastAwardedAt)
+    ) {
+      setInitialSeedGrantNoticeAt(nextGardenState.initialGrantLastAwardedAt);
+    }
 
     return { nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta };
+  };
+
+  const handleDismissInitialSeedGrant = () => {
+    if (initialSeedGrantNoticeAt) {
+      markInitialSeedGrantNoticeDismissed(initialSeedGrantNoticeAt);
+    }
+    setInitialSeedGrantNoticeAt(null);
   };
 
   const syncRecentSnapshots = async (input: { dayKeys?: string[]; garden?: boolean }) => {
@@ -910,14 +961,12 @@ export function useAppController() {
     refreshAll,
     settings,
     draftSettings,
-    status,
     message,
     leaderboardMetric,
     gardenRestActive: gardenState.rest.active,
     gardenRestEndsAt: gardenState.rest.endsAt,
     restTick,
     startupPromptCheckedRef,
-    lastSyncedStatsKeyRef,
     setLoading,
     setNotificationState,
     setCloudIdentityState,
@@ -952,6 +1001,7 @@ export function useAppController() {
     loading,
     saving,
     message,
+    initialSeedGrantNoticeAt,
     notificationState,
     yesterdayCatchUpItem,
     yesterdayCatchUpAmount,
@@ -962,6 +1012,7 @@ export function useAppController() {
     leaderboardMetric,
     leaderboardEntries,
     leaderboardLoading,
+    activeDrinkerCount,
     activeCircleOwnerAccountId,
     activeCircleMemberCount,
     updateInfo,
@@ -991,6 +1042,7 @@ export function useAppController() {
     handleAutostartChange,
     handleExportData,
     handleImportData,
+    handleDismissInitialSeedGrant,
     handleDismissYesterdayCatchUp,
     handleConfirmYesterdayCatchUp,
     handlePlantSeed,

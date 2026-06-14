@@ -39,6 +39,11 @@ type UpdateCheckResponse = {
   publishedAt: string;
 };
 
+type DailyActivityResponse = {
+  dayKey: string;
+  activeCount: number;
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const retries = init?.method === "GET" || !init?.method ? 2 : 1;
   let lastError: Error | null = null;
@@ -129,19 +134,6 @@ export async function listLeaderboardCircles(deviceId: string) {
   return result.circles;
 }
 
-export async function upsertLeaderboardStats(input: {
-  deviceId: string;
-  circleCode: string;
-  dayKey: string;
-  actualIntakeMl: number;
-  targetMl: number;
-}) {
-  return request<{ ok: true }>("/api/stats/upsert", {
-    method: "POST",
-    body: JSON.stringify(input)
-  });
-}
-
 export async function getLeaderboard(input: {
   circleCode: string;
   dayKey: string;
@@ -155,6 +147,11 @@ export async function getLeaderboard(input: {
   });
 
   return request<LeaderboardResponse>(`/api/leaderboard?${params.toString()}`);
+}
+
+export async function getDailyActivity(dayKey: string) {
+  const params = new URLSearchParams({ dayKey });
+  return request<DailyActivityResponse>(`/api/activity/daily?${params.toString()}`);
 }
 
 export async function getCircleMemberGarden(input: {
