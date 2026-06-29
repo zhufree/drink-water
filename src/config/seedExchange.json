@@ -9,14 +9,7 @@
         "en-US": "Potato"
       },
       "seedAsset": "potatoSeed",
-      "cropAsset": "potatoCrop",
-      "seedAliases": [
-        "bokChoy",
-        "bokChoySeed"
-      ],
-      "cropAliases": [
-        "bokChoy"
-      ]
+      "cropAsset": "potatoCrop"
     },
     {
       "seedType": "bellPepperSeed",
@@ -27,13 +20,7 @@
         "en-US": "Bell pepper"
       },
       "seedAsset": "bellPepperSeed",
-      "cropAsset": "bellPepperCrop",
-      "seedAliases": [
-        "cabbageSeed"
-      ],
-      "cropAliases": [
-        "cabbage"
-      ]
+      "cropAsset": "bellPepperCrop"
     },
     {
       "seedType": "carrotSeed",
@@ -44,13 +31,7 @@
         "en-US": "Carrot"
       },
       "seedAsset": "carrotSeed",
-      "cropAsset": "carrotCrop",
-      "seedAliases": [
-        "peaSeed"
-      ],
-      "cropAliases": [
-        "pea"
-      ]
+      "cropAsset": "carrotCrop"
     },
     {
       "seedType": "napaCabbageSeed",
@@ -61,9 +42,7 @@
         "en-US": "Napa cabbage"
       },
       "seedAsset": "napaCabbageSeed",
-      "cropAsset": "napaCabbageCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "cropAsset": "napaCabbageCrop"
     },
     {
       "seedType": "broccoliSeed",
@@ -74,13 +53,7 @@
         "en-US": "Broccoli"
       },
       "seedAsset": "broccoliSeed",
-      "cropAsset": "broccoliCrop",
-      "seedAliases": [
-        "tomatoSeed"
-      ],
-      "cropAliases": [
-        "tomato"
-      ]
+      "cropAsset": "broccoliCrop"
     },
     {
       "seedType": "radishSeed",
@@ -91,13 +64,7 @@
         "en-US": "White radish"
       },
       "seedAsset": "radishSeed",
-      "cropAsset": "radishCrop",
-      "seedAliases": [
-        "cornSeed"
-      ],
-      "cropAliases": [
-        "corn"
-      ]
+      "cropAsset": "radishCrop"
     },
     {
       "seedType": "redRadishSeed",
@@ -108,9 +75,7 @@
         "en-US": "Red radish"
       },
       "seedAsset": "redRadishSeed",
-      "cropAsset": "redRadishCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "cropAsset": "redRadishCrop"
     },
     {
       "seedType": "pumpkinSeed",
@@ -121,9 +86,7 @@
         "en-US": "Pumpkin"
       },
       "seedAsset": "pumpkinSeed",
-      "cropAsset": "pumpkinCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "cropAsset": "pumpkinCrop"
     },
     {
       "seedType": "onionSeed",
@@ -134,9 +97,7 @@
         "en-US": "Onion"
       },
       "seedAsset": "onionSeed",
-      "cropAsset": "onionCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "cropAsset": "onionCrop"
     },
     {
       "seedType": "watermelonSeed",
@@ -147,13 +108,7 @@
         "en-US": "Watermelon"
       },
       "seedAsset": "watermelonSeed",
-      "cropAsset": "watermelonCrop",
-      "seedAliases": [
-        "gardenPeaSeed"
-      ],
-      "cropAliases": [
-        "gardenPea"
-      ]
+      "cropAsset": "watermelonCrop"
     },
     {
       "seedType": "eggplantSeed",
@@ -164,9 +119,7 @@
         "en-US": "Eggplant"
       },
       "seedAsset": "eggplantSeed",
-      "cropAsset": "eggplantCrop",
-      "seedAliases": [],
-      "cropAliases": []
+      "cropAsset": "eggplantCrop"
     }
   ],
   "exchangeRules": [

@@ -66,7 +66,13 @@ fn log_drink(
 
         reconcile(&mut guard, now);
 
-        guard.today.last_log_undo = Some(DrinkUndoSnapshot {
+        if let Some(previous) = guard.today.last_log_undo.take() {
+            if guard.today.last_log_undos.is_empty() {
+                guard.today.last_log_undos.push(previous);
+            }
+        }
+        let undo_snapshot = DrinkUndoSnapshot {
+            logged_amount_ml: Some(amount_ml),
             actual_intake_ml: guard.today.actual_intake_ml,
             effective_intake_ml: guard.today.effective_intake_ml,
             debt_ml: guard.today.debt_ml,
@@ -77,7 +83,12 @@ fn log_drink(
             last_drink_at: guard.today.last_drink_at.clone(),
             notification_token: guard.today.notification_token,
             last_notified_token: guard.today.last_notified_token,
-        });
+        };
+        guard.today.last_log_undos.push(undo_snapshot);
+        if guard.today.last_log_undos.len() > 3 {
+            let overflow = guard.today.last_log_undos.len() - 3;
+            guard.today.last_log_undos.drain(0..overflow);
+        }
         guard.today.last_logged_amount_ml = Some(amount_ml);
         guard.today.actual_intake_ml = guard.today.actual_intake_ml.saturating_add(amount_ml);
         guard.today.last_drink_at = Some(now.to_rfc3339());
@@ -111,7 +122,13 @@ fn undo_last_drink(app: AppHandle, state: State<'_, AppState>) -> Result<TodaySt
             .lock()
             .map_err(|_| "failed to undo water log".to_string())?;
 
-        let Some(snapshot) = guard.today.last_log_undo.clone() else {
+        if let Some(previous) = guard.today.last_log_undo.take() {
+            if guard.today.last_log_undos.is_empty() {
+                guard.today.last_log_undos.push(previous);
+            }
+        }
+
+        let Some(snapshot) = guard.today.last_log_undos.pop() else {
             return Err("there is no drink record to undo".to_string());
         };
 
@@ -125,7 +142,7 @@ fn undo_last_drink(app: AppHandle, state: State<'_, AppState>) -> Result<TodaySt
         guard.today.last_drink_at = snapshot.last_drink_at;
         guard.today.notification_token = snapshot.notification_token;
         guard.today.last_notified_token = snapshot.last_notified_token;
-        guard.today.last_logged_amount_ml = None;
+        guard.today.last_logged_amount_ml = guard.today.last_log_undos.last().and_then(|item| item.logged_amount_ml);
         guard.today.last_log_undo = None;
         guard.today.updated_at = now.to_rfc3339();
 
@@ -1038,6 +1055,7 @@ fn apply_daily_snapshot(state: &mut PersistedState, remote: &DailySnapshotRecord
         state.today.last_slot_spawned = None;
         state.today.last_logged_amount_ml = None;
         state.today.last_log_undo = None;
+        state.today.last_log_undos.clear();
         state.today.updated_at = remote.updated_at.clone();
         return;
     }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, RefreshCw, Star } from "lucide-react";
+import { Check, Copy, RefreshCw, Star, X } from "lucide-react";
 import { useI18n } from "../i18n";
 import { getCircleMemberGarden } from "../leaderboardApi";
 import type {
@@ -81,10 +81,12 @@ export function LeaderboardPanel({
   onDisbandCircle,
   onRefresh
 }: LeaderboardPanelProps) {
-  const { t, formatMl } = useI18n();
+  const { t, formatMl, locale } = useI18n();
   const [copied, setCopied] = useState(false);
   const [pendingAction, setPendingAction] = useState<CircleActionModalState>(null);
   const [selectedMember, setSelectedMember] = useState<LeaderboardEntry | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [circleModalOpen, setCircleModalOpen] = useState(false);
   const [memberGarden, setMemberGarden] = useState<LeaderboardMemberGarden | null>(null);
   const [memberGardenLoading, setMemberGardenLoading] = useState(false);
   const [memberGardenError, setMemberGardenError] = useState<string | null>(null);
@@ -134,6 +136,23 @@ export function LeaderboardPanel({
             className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-white/8 text-slate-100 transition hover:bg-white/14"
           >
             <RefreshCw className={`h-[18px] w-[18px] ${loading ? "animate-spin" : ""}`} strokeWidth={1.9} />
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setProfileModalOpen(true)}
+            className="rounded-[14px] border border-cyan-200/24 bg-cyan-300/10 px-3 py-3 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
+          >
+            {locale === "zh-CN" ? "修改个人信息" : "Edit profile"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCircleModalOpen(true)}
+            className="rounded-[14px] border border-white/12 bg-white/7 px-3 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-px hover:bg-white/10"
+          >
+            {t("leaderboard.circleTitle")}
           </button>
         </div>
 
@@ -296,100 +315,188 @@ export function LeaderboardPanel({
         ) : null}
       </div>
 
-      <div className="panel-surface rounded-[22px] p-4">
-        <strong className="text-sm font-semibold text-slate-50">{t("leaderboard.circleTitle")}</strong>
-        <p className="mt-2 text-sm text-slate-300/78">{t("leaderboard.circleDescription")}</p>
-
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] gap-3">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-slate-300/70">{t("leaderboard.circleCreateName")}</span>
-            <input
-              type="text"
-              maxLength={48}
-              value={circleNameInput}
-              onChange={(event) => onCircleNameInputChange(event.target.value)}
-              className="rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 outline-none"
-            />
-          </label>
-          <div className="flex items-end">
-            <button
-              onClick={onCreateCircle}
-              className="w-full rounded-[14px] border border-cyan-200/30 bg-cyan-300/10 px-3 py-3 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
-            >
-              {t("leaderboard.circleCreate")}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] gap-3">
-          <label className="flex flex-col gap-2">
-            <span className="text-sm text-slate-300/70">{t("leaderboard.circleJoinCode")}</span>
-            <input
-              type="text"
-              maxLength={6}
-              value={circleCodeInput}
-              onChange={(event) => onCircleCodeInputChange(event.target.value.toUpperCase())}
-              className="rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 uppercase outline-none"
-            />
-          </label>
-          <div className="flex items-end">
-            <button
-              onClick={onJoinCircle}
-              className="w-full rounded-[14px] border border-emerald-200/30 bg-emerald-300/10 px-3 py-3 text-sm font-semibold text-emerald-100 transition hover:-translate-y-px hover:bg-emerald-300/16"
-            >
-              {t("leaderboard.circleJoin")}
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {activeCircleCode ? (
-            canLeave ? (
+      {circleModalOpen ? (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/72 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[86vh] w-full max-w-md flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[rgba(7,13,24,0.96)] shadow-[0_22px_60px_rgba(0,0,0,0.45)]">
+            <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-4">
+              <div>
+                <h3 className="m-0 text-lg font-semibold text-slate-50">{t("leaderboard.circleTitle")}</h3>
+                <p className="mt-1 text-sm text-slate-300/78">{t("leaderboard.circleDescription")}</p>
+              </div>
               <button
-                onClick={() => setPendingAction({ type: "leave-circle" })}
-                className="rounded-[14px] border border-amber-200/30 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:-translate-y-px hover:bg-amber-300/16"
+                type="button"
+                onClick={() => setCircleModalOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-slate-100 transition hover:bg-white/14"
               >
-                {t("leaderboard.leaveCircle")}
+                <X className="h-5 w-5" strokeWidth={1.9} />
               </button>
-            ) : canDisband ? (
-              <button
-                onClick={() => setPendingAction({ type: "disband-circle" })}
-                className="rounded-[14px] border border-rose-200/30 bg-rose-300/10 px-4 py-2.5 text-sm font-semibold text-rose-100 transition hover:-translate-y-px hover:bg-rose-300/16"
-              >
-                {t("leaderboard.disbandCircle")}
-              </button>
-            ) : isOwner ? (
-              <span className="rounded-[14px] border border-white/10 bg-white/6 px-4 py-2.5 text-sm text-slate-300/74">
-                {t("leaderboard.ownerLeaveBlocked")}
-              </span>
-            ) : null
-          ) : null}
-        </div>
-      </div>
+            </div>
 
-      <div className="panel-surface rounded-[22px] p-4">
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-semibold text-slate-50">{t("leaderboard.displayName")}</span>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              maxLength={32}
-              value={displayName}
-              onChange={(event) => onDisplayNameChange(event.target.value)}
-              className="min-w-0 flex-1 rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 outline-none"
-            />
-            <button
-              onClick={onSaveDisplayName}
-              className="shrink-0 rounded-[14px] border border-cyan-200/24 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
-            >
-              {nicknameSaving ? t("leaderboard.displayNameSaving") : t("leaderboard.displayNameSave")}
-            </button>
+            <div className="flex flex-col gap-4 overflow-y-auto p-4">
+              <div className="rounded-[18px] border border-white/10 bg-white/6 p-3">
+                <strong className="text-sm font-semibold text-slate-50">
+                  {locale === "zh-CN" ? "我的圈子" : "My circles"}
+                </strong>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {circlesLoadState === "loading" ? (
+                    <span className="text-sm text-slate-300/70">{t("leaderboard.circleLoading")}</span>
+                  ) : circlesLoadState === "error" ? (
+                    <span className="text-sm text-amber-200">{t("leaderboard.circleLoadFailed")}</span>
+                  ) : circles.length > 0 ? (
+                    circles.map((circle) => {
+                      const active = activeCircleCode === circle.circleCode;
+                      return (
+                        <button
+                          key={circle.circleCode}
+                          type="button"
+                          onClick={() => onSelectCircle(circle)}
+                          className={`rounded-full px-3 py-2 text-sm transition ${
+                            active
+                              ? "border border-sky-300/70 bg-sky-400/18 font-semibold text-sky-50 shadow-[0_0_0_1px_rgba(125,211,252,0.18)]"
+                              : "border border-white/10 bg-white/7 text-slate-100 hover:-translate-y-px hover:border-cyan-200/30 hover:bg-white/10"
+                          }`}
+                        >
+                          {circle.circleName || circle.circleCode}
+                          {active ? (
+                            <span className="ml-2 text-xs text-sky-100/82">
+                              {locale === "zh-CN" ? "当前" : "Current"}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <span className="text-sm text-slate-300/70">{t("leaderboard.circleEmpty")}</span>
+                  )}
+                </div>
+
+                {activeCircleCode ? (
+                  <div className="mt-4 border-t border-white/10 pt-4">
+                    {canLeave ? (
+                      <button
+                        type="button"
+                        onClick={() => setPendingAction({ type: "leave-circle" })}
+                        className="w-full rounded-[14px] border border-amber-200/30 bg-amber-300/10 px-4 py-3 text-sm font-semibold text-amber-100 transition hover:-translate-y-px hover:bg-amber-300/16"
+                      >
+                        {t("leaderboard.leaveCircle")}
+                      </button>
+                    ) : canDisband ? (
+                      <button
+                        type="button"
+                        onClick={() => setPendingAction({ type: "disband-circle" })}
+                        className="w-full rounded-[14px] border border-rose-200/30 bg-rose-300/10 px-4 py-3 text-sm font-semibold text-rose-100 transition hover:-translate-y-px hover:bg-rose-300/16"
+                      >
+                        {t("leaderboard.disbandCircle")}
+                      </button>
+                    ) : isOwner ? (
+                      <span className="block rounded-[14px] border border-white/10 bg-white/6 px-4 py-3 text-sm text-slate-300/74">
+                        {t("leaderboard.ownerLeaveBlocked")}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-[18px] border border-white/10 bg-white/6 p-3">
+                <strong className="text-sm font-semibold text-slate-50">{t("leaderboard.circleCreate")}</strong>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_104px] gap-3">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-slate-300/70">{t("leaderboard.circleCreateName")}</span>
+                    <input
+                      type="text"
+                      maxLength={48}
+                      value={circleNameInput}
+                      onChange={(event) => onCircleNameInputChange(event.target.value)}
+                      className="min-w-0 rounded-[14px] border border-white/12 bg-slate-950/54 px-3 py-2 text-slate-50 outline-none"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={onCreateCircle}
+                      className="w-full rounded-[14px] border border-cyan-200/30 bg-cyan-300/10 px-3 py-3 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
+                    >
+                      {t("leaderboard.circleCreate")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[18px] border border-white/10 bg-white/6 p-3">
+                <strong className="text-sm font-semibold text-slate-50">{t("leaderboard.circleJoin")}</strong>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_104px] gap-3">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm text-slate-300/70">{t("leaderboard.circleJoinCode")}</span>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={circleCodeInput}
+                      onChange={(event) => onCircleCodeInputChange(event.target.value.toUpperCase())}
+                      className="min-w-0 rounded-[14px] border border-white/12 bg-slate-950/54 px-3 py-2 text-slate-50 uppercase outline-none"
+                    />
+                  </label>
+                  <div className="flex items-end">
+                    <button
+                      type="button"
+                      onClick={onJoinCircle}
+                      className="w-full rounded-[14px] border border-emerald-200/30 bg-emerald-300/10 px-3 py-3 text-sm font-semibold text-emerald-100 transition hover:-translate-y-px hover:bg-emerald-300/16"
+                    >
+                      {t("leaderboard.circleJoin")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </label>
-        <p className={`mt-2 min-h-5 text-xs ${nicknameStatusClass}`}>
-          {nicknameSaveMessage ?? t("leaderboard.identityHint")}
-        </p>
-      </div>
+        </div>
+      ) : null}
+
+      {profileModalOpen ? (
+        <div className="fixed inset-0 z-40 grid place-items-center bg-slate-950/72 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-[26px] border border-white/10 bg-[rgba(7,13,24,0.96)] p-4 shadow-[0_22px_60px_rgba(0,0,0,0.45)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="m-0 text-lg font-semibold text-slate-50">
+                  {locale === "zh-CN" ? "修改个人信息" : "Edit profile"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-300/78">{t("leaderboard.identityHint")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setProfileModalOpen(false)}
+                aria-label="Close"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/8 text-slate-100 transition hover:bg-white/14"
+              >
+                <X className="h-5 w-5" strokeWidth={1.9} />
+              </button>
+            </div>
+
+            <label className="mt-4 flex flex-col gap-2">
+              <span className="text-sm font-semibold text-slate-50">{t("leaderboard.displayName")}</span>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  maxLength={32}
+                  value={displayName}
+                  onChange={(event) => onDisplayNameChange(event.target.value)}
+                  className="min-w-0 flex-1 rounded-[14px] border border-white/12 bg-slate-950/54 px-3 py-2 text-slate-50 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={onSaveDisplayName}
+                  className="shrink-0 rounded-[14px] border border-cyan-200/24 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:-translate-y-px hover:bg-cyan-300/16"
+                >
+                  {nicknameSaving ? t("leaderboard.displayNameSaving") : t("leaderboard.displayNameSave")}
+                </button>
+              </div>
+            </label>
+            <p className={`mt-2 min-h-5 text-xs ${nicknameStatusClass}`}>
+              {nicknameSaveMessage ?? t("leaderboard.identityHint")}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <MemberGardenModal
         open={Boolean(selectedMember)}

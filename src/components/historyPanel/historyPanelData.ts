@@ -200,16 +200,12 @@ export function getUpcomingBoostHours(restState: RestState, cooldownRemainingSec
 
 export function getCropDefinitionBySeed(seedType: string) {
   return (
-    CROP_DEFINITIONS.find(
-      (definition) => definition.seedType === seedType || definition.seedAliases.includes(seedType)
-    ) ?? CROP_DEFINITIONS[0]
+    CROP_DEFINITIONS.find((definition) => definition.seedType === seedType) ?? CROP_DEFINITIONS[0]
   );
 }
 
 export function getCropDefinitionByCrop(cropType: string) {
   return (
-    CROP_DEFINITIONS.find(
-      (definition) => definition.cropType === cropType || definition.cropAliases.includes(cropType)
-    ) ?? CROP_DEFINITIONS[0]
+    CROP_DEFINITIONS.find((definition) => definition.cropType === cropType) ?? CROP_DEFINITIONS[0]
   );
 }

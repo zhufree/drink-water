@@ -274,6 +274,18 @@ export function useAppController() {
     setSyncMeta(await getSyncMeta());
   };
 
+  const pushRecentDailySnapshotsToCloud = async (accountId: string, deviceId: string) => {
+    const dailySnapshots = await getRecentDailySnapshots(7);
+    if (dailySnapshots.length === 0) {
+      return;
+    }
+
+    await pushSnapshotBundle(accountId, deviceId, {
+      dailySnapshots
+    });
+    setSyncMeta(await getSyncMeta());
+  };
+
   const pullRemoteSnapshotsToLocal = async (accountId: string, deviceId: string) => {
     const result = await pullSnapshotBundle(accountId, deviceId);
 
@@ -286,7 +298,9 @@ export function useAppController() {
 
     await applyRemoteSettingsSnapshot(result.settingsSnapshot, new Date().toISOString());
 
-    return refreshAll();
+    const refreshed = await refreshAll();
+    await pushRecentDailySnapshotsToCloud(accountId, deviceId);
+    return refreshed;
   };
 
   const shouldApplyRemoteSettingsSnapshot = (

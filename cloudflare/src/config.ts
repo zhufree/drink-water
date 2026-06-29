@@ -98,9 +98,7 @@ function normalizeSeed(value: unknown, index: number) {
     tier: requireInteger(seed.tier, `seed ${index + 1} tier`),
     label: normalizeLocaleMap(seed.label, `seed ${index + 1} label`),
     seedAsset: requireString(seed.seedAsset, `seed ${index + 1} seedAsset`),
-    cropAsset: requireString(seed.cropAsset, `seed ${index + 1} cropAsset`),
-    seedAliases: normalizeStringList(seed.seedAliases),
-    cropAliases: normalizeStringList(seed.cropAliases)
+    cropAsset: requireString(seed.cropAsset, `seed ${index + 1} cropAsset`)
   };
 }
 
@@ -149,22 +147,6 @@ function normalizeLocaleMap(value: unknown, label: string) {
     "zh-CN": String(map["zh-CN"] ?? "").trim(),
     "en-US": String(map["en-US"] ?? "").trim()
   };
-}
-
-function normalizeStringList(value: unknown) {
-  if (value == null) {
-    return [];
-  }
-  if (typeof value === "string") {
-    return value
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  }
-  throw new HttpError(400, "aliases must be a list or comma-separated string");
 }
 
 function requireRecord(value: unknown, label: string) {

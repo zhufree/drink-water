@@ -22,10 +22,6 @@ struct SeedExchangeSeedConfig {
     seed_type: String,
     crop_type: String,
     tier: u8,
-    #[serde(default)]
-    seed_aliases: Vec<String>,
-    #[serde(default)]
-    crop_aliases: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -96,7 +92,7 @@ async fn fetch_remote_drink_water_config() -> Result<DrinkWaterConfig, String> {
         .build()
         .map_err(|error| error.to_string())?
         .get(drink_water_config_url())
-        .header("User-Agent", "DrinkWater/0.6.5")
+        .header("User-Agent", "DrinkWater/0.7.0")
         .header("Accept", "application/json")
         .send()
         .await
@@ -214,25 +210,51 @@ fn seed_tier(seed_type: &str) -> Option<u8> {
         .map(|seed| seed.tier)
 }
 
+fn legacy_seed_type(seed_type: &str) -> Option<&'static str> {
+    match seed_type {
+        LEGACY_BASIC_SEED_TYPE | LEGACY_BASIC_SEED_TYPE_V2 => Some(POTATO_SEED_TYPE),
+        LEGACY_ADVANCED_SEED_TYPE => Some(BELL_PEPPER_SEED_TYPE),
+        LEGACY_CARROT_SEED_TYPE => Some(CARROT_SEED_TYPE),
+        LEGACY_BROCCOLI_SEED_TYPE => Some(BROCCOLI_SEED_TYPE),
+        LEGACY_RADISH_SEED_TYPE => Some(RADISH_SEED_TYPE),
+        _ => None,
+    }
+}
+
+fn legacy_crop_type(crop_type: &str) -> Option<&'static str> {
+    match crop_type {
+        LEGACY_BASIC_CROP_TYPE => Some(POTATO_CROP_TYPE),
+        LEGACY_ADVANCED_CROP_TYPE => Some(BELL_PEPPER_CROP_TYPE),
+        LEGACY_CARROT_CROP_TYPE => Some(CARROT_CROP_TYPE),
+        LEGACY_BROCCOLI_CROP_TYPE => Some(BROCCOLI_CROP_TYPE),
+        LEGACY_RADISH_CROP_TYPE => Some(RADISH_CROP_TYPE),
+        _ => None,
+    }
+}
+
 fn canonical_seed_type(seed_type: &str) -> Option<String> {
     let candidate = seed_type.trim();
+    if let Some(legacy) = legacy_seed_type(candidate) {
+        return Some(legacy.to_string());
+    }
+
     seed_exchange_config()
         .seeds
         .into_iter()
-        .find(|seed| {
-            seed.seed_type == candidate || seed.seed_aliases.iter().any(|alias| alias == candidate)
-        })
+        .find(|seed| seed.seed_type == candidate)
         .map(|seed| seed.seed_type)
 }
 
 fn canonical_crop_type(crop_type: &str) -> Option<String> {
     let candidate = crop_type.trim();
+    if let Some(legacy) = legacy_crop_type(candidate) {
+        return Some(legacy.to_string());
+    }
+
     seed_exchange_config()
         .seeds
         .into_iter()
-        .find(|seed| {
-            seed.crop_type == candidate || seed.crop_aliases.iter().any(|alias| alias == candidate)
-        })
+        .find(|seed| seed.crop_type == candidate)
         .map(|seed| seed.crop_type)
 }
 

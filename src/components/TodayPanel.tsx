@@ -1,6 +1,14 @@
+import { useState } from "react";
+import { X } from "lucide-react";
 import { useI18n } from "../i18n";
 import type { Settings, TodayStatus } from "../types";
 import { clamp } from "../utils";
+import {
+  calculateEffectiveHydrationMl,
+  findBeverageOption,
+  formatBeverageRatio,
+  getBeverageCategoryGroups
+} from "../beverages";
 
 type TodayPanelProps = {
   settings: Settings;
@@ -27,8 +35,15 @@ export function TodayPanel({
   onLog,
   onUndo
 }: TodayPanelProps) {
-  const { t, formatMl } = useI18n();
+  const { t, formatMl, locale } = useI18n();
+  const [selectedBeverageId, setSelectedBeverageId] = useState("water");
+  const [beveragePickerOpen, setBeveragePickerOpen] = useState(false);
   const cupStep = Math.max(10, settings.cupStepMl);
+  const beverageGroups = getBeverageCategoryGroups(locale);
+  const selectedBeverage = findBeverageOption(selectedBeverageId, locale);
+  const selectedBeverageRatio = formatBeverageRatio(selectedBeverage.ratio);
+  const defaultCupEffectiveMl = calculateEffectiveHydrationMl(settings.cupSizeMl, selectedBeverage.id);
+  const quickEffectiveMl = calculateEffectiveHydrationMl(quickAmount, selectedBeverage.id);
   const expectedWidth = widthPercent(status.expectedMl, status.targetMl);
   const actualWidth = widthPercent(status.actualIntakeMl, status.targetMl);
   const debtWidth = Math.max(0, expectedWidth - actualWidth);
@@ -37,6 +52,10 @@ export function TodayPanel({
     0,
     100
   );
+  const beverageLabel = locale === "zh-CN" ? "饮品" : "Beverage";
+  const conversionText = locale === "zh-CN"
+    ? `${quickAmount} ml 计入 ${quickEffectiveMl} ml`
+    : `${quickAmount} ml counts as ${quickEffectiveMl} ml`;
 
   return (
     <section className="flex flex-col gap-3">
@@ -129,19 +148,31 @@ export function TodayPanel({
 
         <div className="space-y-3">
           <div className="rounded-[18px] border border-white/8 bg-white/4 p-3">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <span className="text-xs font-medium uppercase tracking-[0.22em] text-slate-300/68">
-                Amount
-              </span>
-              <div className="rounded-[16px] border border-white/8 bg-white/5 px-4 py-2 text-right">
+            <div className="mb-3 grid gap-3 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+              <div className="rounded-[16px] border border-white/8 bg-white/5 px-4 py-3">
                 <span className="text-clarity text-[11px] uppercase tracking-[0.2em] text-slate-300/55">
-                  Current
+                  {locale === "zh-CN" ? "当前杯量" : "Current amount"}
                 </span>
-                <div className="text-clarity text-2xl font-semibold leading-none text-slate-50">
+                <div className="text-clarity mt-2 text-2xl font-semibold leading-none text-slate-50">
                   {quickAmount}
                   <span className="ml-1 text-sm font-medium text-slate-300/80">ml</span>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => setBeveragePickerOpen(true)}
+                className="rounded-[16px] border border-sky-200/18 bg-sky-300/10 px-4 py-3 text-left transition hover:border-sky-200/35 hover:bg-sky-300/14"
+              >
+                <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-50">
+                  <span>{beverageLabel}</span>
+                  <span>{selectedBeverage.label} · {selectedBeverageRatio}</span>
+                </div>
+                <div className="mt-2 text-sm text-slate-300/78">{selectedBeverage.description}</div>
+              </button>
+            </div>
+
+            <div className="mb-3 rounded-[14px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-300/82">
+              {conversionText}
             </div>
 
             <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
@@ -168,25 +199,25 @@ export function TodayPanel({
 
           <div className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => onLog(settings.cupSizeMl)}
+              onClick={() => onLog(defaultCupEffectiveMl)}
               className="no-text-clarity rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-4 text-left text-slate-950 transition hover:brightness-105"
             >
               <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-900/60">
                 Default
               </span>
               <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
-                {t("today.logOneCup", { amount: formatMl(settings.cupSizeMl) })}
+                {t("today.logOneCup", { amount: formatMl(defaultCupEffectiveMl) })}
               </span>
             </button>
             <button
-              onClick={() => onLog(quickAmount)}
+              onClick={() => onLog(quickEffectiveMl)}
               className="rounded-[18px] border border-white/8 bg-white/5 px-4 py-4 text-left text-slate-50 transition hover:bg-white/8"
             >
               <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-300/62">
                 Adjusted
               </span>
               <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
-                {t("today.logAmount", { amount: formatMl(quickAmount) })}
+                {t("today.logAmount", { amount: formatMl(quickEffectiveMl) })}
               </span>
             </button>
           </div>
@@ -206,6 +237,69 @@ export function TodayPanel({
           </button>
         </div>
       </article>
+
+      {beveragePickerOpen ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/72 p-4 backdrop-blur-sm">
+          <div className="max-h-[min(720px,92vh)] w-full max-w-[520px] overflow-y-auto rounded-[24px] border border-white/10 bg-[rgba(30,43,64,0.96)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.48)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="m-0 text-xl font-semibold text-slate-50">
+                  {locale === "zh-CN" ? "选择饮品类型" : "Choose beverage"}
+                </h3>
+                <p className="mt-2 text-sm text-slate-300/78">
+                  {locale === "zh-CN"
+                    ? "按保守比例折算为计入喝水目标的水量。"
+                    : "Counts each drink toward the water goal with a conservative ratio."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBeveragePickerOpen(false)}
+                aria-label={locale === "zh-CN" ? "关闭" : "Close"}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/8 text-slate-100 transition hover:bg-white/12"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-5">
+              {beverageGroups.map((group) => (
+                <section key={group.id}>
+                  <h4 className="m-0 text-sm font-semibold text-sky-300">{group.label}</h4>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {group.options.map((option) => {
+                      const active = option.id === selectedBeverage.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedBeverageId(option.id);
+                            setBeveragePickerOpen(false);
+                          }}
+                          className={`rounded-[14px] border px-3 py-3 text-left transition ${
+                            active
+                              ? "border-blue-300/80 bg-blue-500/22 text-slate-50"
+                              : "border-white/10 bg-white/7 text-slate-100 hover:border-white/18 hover:bg-white/10"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3 text-base font-semibold">
+                            <span>{option.label}</span>
+                            <span>{formatBeverageRatio(option.ratio)}</span>
+                          </div>
+                          <div className="mt-2 text-sm leading-snug text-slate-300/78">
+                            {option.description}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

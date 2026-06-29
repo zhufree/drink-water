@@ -2,6 +2,7 @@ import {
   HttpError,
   compareSemver,
   dayKeyDaysAgo,
+  generateCircleCode,
   isoNow,
   normalizeCircleCode,
   normalizeCircleName,

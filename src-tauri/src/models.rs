@@ -1,6 +1,8 @@
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DrinkUndoSnapshot {
+    #[serde(default)]
+    logged_amount_ml: Option<u32>,
     actual_intake_ml: u32,
     effective_intake_ml: u32,
     debt_ml: u32,
@@ -36,6 +38,8 @@ pub struct DailyRecord {
     last_logged_amount_ml: Option<u32>,
     #[serde(default)]
     last_log_undo: Option<DrinkUndoSnapshot>,
+    #[serde(default)]
+    last_log_undos: Vec<DrinkUndoSnapshot>,
     #[serde(default)]
     notification_token: u32,
     #[serde(default)]
@@ -465,6 +469,7 @@ impl DailyRecord {
             last_drink_at: None,
             last_logged_amount_ml: None,
             last_log_undo: None,
+            last_log_undos: Vec::new(),
             notification_token: 0,
             last_notified_token: None,
             snooze_until: None,

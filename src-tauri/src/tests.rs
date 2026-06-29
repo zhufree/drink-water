@@ -289,6 +289,7 @@ mod tests {
         today.pending_slot_index = Some(1);
 
         let snapshot = DrinkUndoSnapshot {
+            logged_amount_ml: Some(250),
             actual_intake_ml: 500,
             effective_intake_ml: 500,
             debt_ml: 0,
@@ -325,6 +326,38 @@ mod tests {
         assert_eq!(state.today.actual_intake_ml, 500);
         assert_eq!(state.today.pending_slot_index, Some(1));
         assert_eq!(state.today.completed_reminder_slots, 0);
+    }
+
+    #[test]
+    fn undo_stack_keeps_three_latest_logs() {
+        let settings = Settings::default();
+        let mut today = DailyRecord::new(local_dt(2026, 5, 19, 9, 0), &settings);
+
+        for amount in [100, 200, 300, 400] {
+            today.last_log_undos.push(DrinkUndoSnapshot {
+                logged_amount_ml: Some(amount),
+                actual_intake_ml: today.actual_intake_ml,
+                effective_intake_ml: today.effective_intake_ml,
+                debt_ml: today.debt_ml,
+                pending_slot_index: today.pending_slot_index,
+                pending_since: today.pending_since.clone(),
+                snooze_until: today.snooze_until.clone(),
+                completed_reminder_slots: today.completed_reminder_slots,
+                last_drink_at: today.last_drink_at.clone(),
+                notification_token: today.notification_token,
+                last_notified_token: today.last_notified_token,
+            });
+            if today.last_log_undos.len() > 3 {
+                let overflow = today.last_log_undos.len() - 3;
+                today.last_log_undos.drain(0..overflow);
+            }
+            today.actual_intake_ml += amount;
+            today.effective_intake_ml = today.actual_intake_ml;
+        }
+
+        assert_eq!(today.last_log_undos.len(), 3);
+        assert_eq!(today.last_log_undos[0].logged_amount_ml, Some(200));
+        assert_eq!(today.last_log_undos[2].logged_amount_ml, Some(400));
     }
 
     #[test]
@@ -439,6 +472,53 @@ mod tests {
         assert_eq!(parsed.garden.produce.len(), 1);
         assert_eq!(parsed.garden.produce[0].crop_type, POTATO_CROP_TYPE);
         assert_eq!(parsed.garden.produce[0].count, 8);
+    }
+
+    #[test]
+    fn legacy_garden_ids_are_normalized_without_config_aliases() {
+        let settings = Settings::default();
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(local_dt(2026, 5, 20, 9, 0), &settings),
+            history: Vec::new(),
+            garden: GardenState {
+                initial_grant_claimed: true,
+                initial_grant_last_awarded_at: None,
+                produce_migration_claimed: true,
+                seeds: vec![SeedInventoryItem {
+                    seed_type: LEGACY_BASIC_SEED_TYPE_V2.to_string(),
+                    count: 2,
+                }],
+                produce: vec![ProduceInventoryItem {
+                    crop_type: LEGACY_ADVANCED_CROP_TYPE.to_string(),
+                    count: 3,
+                }],
+                crops: vec![PlantedCrop {
+                    day_key: "2026-05-19".to_string(),
+                    seed_type: LEGACY_CARROT_SEED_TYPE.to_string(),
+                    planted_at: local_dt(2026, 5, 20, 9, 0).to_rfc3339(),
+                    harvested_at: None,
+                    boost_applied_seconds: 0,
+                }],
+                collection: vec![GardenCollectionItem {
+                    crop_type: LEGACY_BROCCOLI_CROP_TYPE.to_string(),
+                    harvest_count: 4,
+                    first_harvested_at: None,
+                    last_harvested_at: None,
+                }],
+                active_background: DEFAULT_BACKGROUND_ID.to_string(),
+                unlocked_backgrounds: Vec::new(),
+                rest: RestState::default(),
+            },
+            sync_meta: SyncMeta::default(),
+        };
+
+        state.normalize_garden();
+
+        assert_eq!(state.garden.seeds[0].seed_type, POTATO_SEED_TYPE);
+        assert_eq!(state.garden.produce[0].crop_type, BELL_PEPPER_CROP_TYPE);
+        assert_eq!(state.garden.crops[0].seed_type, CARROT_SEED_TYPE);
+        assert_eq!(state.garden.collection[0].crop_type, BROCCOLI_CROP_TYPE);
     }
 
     #[test]

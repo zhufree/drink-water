@@ -6,7 +6,7 @@ export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.6.5";
+export const APP_VERSION = "0.7.0";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -49,9 +49,7 @@ export const defaultGardenState: GardenState = {
 };
 
 export function getSeedDisplayName(seedType: string, locale: Locale) {
-  const seed = SEED_EXCHANGE_CONFIG.seeds.find(
-    (item) => item.seedType === seedType || item.seedAliases.includes(seedType)
-  );
+  const seed = SEED_EXCHANGE_CONFIG.seeds.find((item) => item.seedType === seedType);
 
   return seed?.label[locale] ?? seed?.label["zh-CN"] ?? SEED_EXCHANGE_CONFIG.seeds[0].label[locale];
 }

@@ -30,8 +30,6 @@ export type SeedExchangeSeedConfig = {
   label: Record<Locale, string>;
   seedAsset: string;
   cropAsset: string;
-  seedAliases: string[];
-  cropAliases: string[];
 };
 
 export type SeedExchangeRuleConfig = {
@@ -48,8 +46,6 @@ export type SeedExchangeConfig = {
 export type CropDefinition = {
   cropType: string;
   seedType: string;
-  cropAliases: string[];
-  seedAliases: string[];
   tier: number;
   cropLabel: string;
   seedLabel: string;
@@ -96,8 +92,6 @@ function buildCropDefinitions(config: SeedExchangeConfig): CropDefinition[] {
   return config.seeds.map((seed) => ({
     cropType: seed.cropType,
     seedType: seed.seedType,
-    cropAliases: seed.cropAliases,
-    seedAliases: seed.seedAliases,
     tier: seed.tier,
     cropLabel: seed.label["zh-CN"],
     seedLabel: seed.label["zh-CN"],

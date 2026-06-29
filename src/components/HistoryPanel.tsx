@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { GardenState, HistoryItem, RestState } from "../types";
 import { GardenCollectionCard } from "./historyPanel/GardenCollectionCard";
 import { GardenInventoryCard } from "./historyPanel/GardenInventoryCard";
@@ -151,7 +151,6 @@ export function HistoryPanel({
   const upcomingBoostHours = getUpcomingBoostHours(restState, restCooldownRemainingSeconds);
   const harvestCount = gardenState.collection.reduce((total, item) => total + item.harvestCount, 0);
   const plantableCount = gridCells.filter((cell) => cell.actualIntakeMl > 0 && !cropsByDay.has(cell.dayKey)).length;
-  const recentItems = [...history].sort((left, right) => right.dayKey.localeCompare(left.dayKey)).slice(0, 7);
 
   return (
     <section className="flex flex-col gap-3">
@@ -190,7 +189,7 @@ export function HistoryPanel({
       />
 
       <GardenCollectionCard collection={gardenState.collection} />
-      <RecentHistoryCard recentItems={recentItems} />
+      <RecentHistoryCard history={history} />
 
       <SeedExchangeModal
         open={exchangeOpen}

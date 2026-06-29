@@ -66,7 +66,7 @@ fn to_today_status(settings: &Settings, today: &DailyRecord) -> TodayStatus {
         pending_since: today.pending_since.clone(),
         completed_reminder_slots: today.completed_reminder_slots,
         missed_reminder_slots: today.missed_reminder_slots,
-        can_undo_last_drink: today.last_log_undo.is_some(),
+        can_undo_last_drink: today.last_log_undo.is_some() || !today.last_log_undos.is_empty(),
         last_logged_amount_ml: today.last_logged_amount_ml,
     }
 }
@@ -159,6 +159,7 @@ fn mark_pending_as_missed(today: &mut DailyRecord) {
         .total_debt_incurred_ml
         .saturating_add(today.cup_size_ml);
     today.last_log_undo = None;
+    today.last_log_undos.clear();
     today.last_logged_amount_ml = None;
     today.last_notified_token = None;
 }
