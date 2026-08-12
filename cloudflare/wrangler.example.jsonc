@@ -1,0 +1,27 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+  "name": "drink-water-leaderboard",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-24",
+  "routes": [
+    {
+      "pattern": "YOUR_API_DOMAIN",
+      "custom_domain": true
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "YOUR_D1_DATABASE_NAME",
+      "database_id": "YOUR_D1_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "SYNC_BACKUPS",
+      "bucket_name": "YOUR_R2_BUCKET_NAME"
+    }
+  ]
+}

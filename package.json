@@ -2,9 +2,11 @@
   "name": "drink-water",
   "private": true,
   "version": "0.7.0",
+  "packageManager": "pnpm@9.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "node --test src/syncRetry.test.mjs cloudflare/src/snapshots-combined.test.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",

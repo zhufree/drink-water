@@ -13,6 +13,8 @@
 
 本文档对应当前项目中的“快照优先版：近 7 天增量快照同步 + R2 全量云备份”实现。
 
+> 范围：本文档以本仓库中的桌面端与 Worker 代码为准。小程序代码不在本仓库，其实现和发布状态需要在对应项目单独核对。
+
 ---
 
 ## 2. 设计目标
@@ -758,7 +760,7 @@ Tauri 侧新增了若干命令，用于让前端组装快照、应用快照、�
 说明内容只覆盖用户开始使用前最需要知道的两件事：
 
 - 这个应用用于桌面端喝水提醒、快速记录和查看历史
-- 移动端小程序正在开发中，后续可以和桌面端一起使用
+- 当前桌面端首启文案把移动端小程序描述为“正在开发中”；这只是本仓库内的用户文案，不是小程序发布凭证
 - 日常短期换设备时，应用会自动同步最近 7 天、农场和常用设置
 - 新设备迁移或超过 7 天未同步时，更适合用完整云备份恢复
 
@@ -870,7 +872,8 @@ GET /api/sync/snapshots
 - `cloudflare/src/index.ts`
 - `cloudflare/migrations/0003_sync.sql`
 - `cloudflare/migrations/0006_settings_snapshots.sql`
-- `cloudflare/wrangler.jsonc`
+- `cloudflare/wrangler.example.jsonc`（可提交模板）
+- `cloudflare/wrangler.jsonc`（本地/部署实例，Git 忽略）
 
 ### 前端同步调用
 

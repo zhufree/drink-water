@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local Worker development. Never commit real values.
+DRINK_WATER_CONFIG_TOKEN=replace-with-a-long-random-token
+WECHAT_APP_ID=replace-with-wechat-app-id
+WECHAT_APP_SECRET=replace-with-wechat-app-secret
