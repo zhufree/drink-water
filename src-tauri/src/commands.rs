@@ -106,6 +106,7 @@ fn log_drink(
         guard.today.debt_ml = 0;
         let day_key = guard.today.day_key.clone();
         touch_daily_snapshot(&mut guard, &day_key, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -149,6 +150,7 @@ fn undo_last_drink(app: AppHandle, state: State<'_, AppState>) -> Result<TodaySt
         reconcile(&mut guard, now);
         let day_key = guard.today.day_key.clone();
         touch_daily_snapshot(&mut guard, &day_key, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -278,6 +280,7 @@ fn plant_seed(
         reconcile(&mut guard, now);
         plant_seed_in_state(&mut guard, &day_key, &seed_type, now)?;
         touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -304,6 +307,7 @@ fn harvest_crop(
         reconcile(&mut guard, now);
         harvest_crop_in_state(&mut guard, &day_key, now)?;
         touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -334,6 +338,7 @@ fn exchange_produce(
         reconcile(&mut guard, now);
         exchange_produce_in_state(&mut guard, &source_crop_type, &target_seed_type, quantity)?;
         touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -359,6 +364,7 @@ fn redeem_background_reward(
         reconcile(&mut guard, now);
         redeem_background_reward_in_state(&mut guard, reward_id.trim())?;
         touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -384,6 +390,7 @@ fn set_active_background(
         reconcile(&mut guard, now);
         set_active_background_in_state(&mut guard, background_id.trim())?;
         touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -525,6 +532,7 @@ fn log_yesterday_drink(
         apply_yesterday_catch_up(&mut guard, now, amount_ml)?;
         let yesterday = day_key(now - chrono::Duration::days(1));
         touch_daily_snapshot(&mut guard, &yesterday, now);
+        refresh_achievements(&mut guard, now);
     }
 
     state.save()?;
@@ -721,6 +729,9 @@ fn apply_remote_snapshots(
         }
 
         guard.normalize_sync_meta();
+        if refresh_achievements(&mut guard, Local::now()) {
+            changed = true;
+        }
     }
 
     state.save()?;
@@ -772,6 +783,70 @@ fn export_cloud_backup_payload(state: State<'_, AppState>) -> Result<String, Str
         .map_err(|_| "failed to read local state".to_string())?
         .clone();
     serde_json::to_string_pretty(&data).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn get_achievement_state(state: State<'_, AppState>) -> Result<AchievementState, String> {
+    let receipts = {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to read achievement state".to_string())?;
+        reconcile(&mut guard, Local::now());
+        refresh_achievements(&mut guard, Local::now());
+        guard.achievements.clone()
+    };
+    state.save()?;
+    Ok(AchievementState { receipts })
+}
+
+#[tauri::command]
+fn get_achievement_snapshot(
+    state: State<'_, AppState>,
+) -> Result<AchievementSnapshotRecord, String> {
+    let snapshot = {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to read achievement snapshot".to_string())?;
+        reconcile(&mut guard, Local::now());
+        refresh_achievements(&mut guard, Local::now());
+        AchievementSnapshotRecord {
+            receipts: guard.achievements.clone(),
+            updated_by_device_id: guard.settings.device_id.clone(),
+        }
+    };
+    state.save()?;
+    Ok(snapshot)
+}
+
+#[tauri::command]
+fn apply_remote_achievement_receipts(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    achievement_receipts: Vec<AchievementReceipt>,
+) -> Result<bool, String> {
+    if achievement_receipts.iter().any(|receipt| !valid_receipt(receipt)) {
+        return Err("invalid achievement receipt".to_string());
+    }
+    let changed = {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to apply achievement receipts".to_string())?;
+        let merged = merge_achievement_receipts(&guard.achievements, &achievement_receipts);
+        if merged == guard.achievements {
+            false
+        } else {
+            guard.achievements = merged;
+            true
+        }
+    };
+    if changed {
+        state.save()?;
+        emit_state_updated(&app);
+    }
+    Ok(changed)
 }
 
 #[tauri::command]
@@ -903,6 +978,7 @@ fn normalize_imported_state(parsed: &mut PersistedState) {
     parsed.normalize_garden();
     parsed.normalize_sync_meta();
     reconcile(parsed, Local::now());
+    refresh_achievements(parsed, Local::now());
 }
 
 fn normalize_account_id(account_id: &str) -> Result<String, String> {

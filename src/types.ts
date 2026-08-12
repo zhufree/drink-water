@@ -57,6 +57,43 @@ export type HistoryItem = {
   missedReminderSlots: number;
 };
 
+export type AchievementId =
+  | "first_sip"
+  | "first_goal"
+  | "first_reminder_answer"
+  | "drink_streak_7"
+  | "goal_streak_7"
+  | "drink_streak_30"
+  | "first_plant"
+  | "first_harvest"
+  | "harvest_10"
+  | "same_crop_5"
+  | "crop_varieties_3"
+  | "first_background";
+
+export type AchievementEvidence = {
+  kind: "daily" | "streak" | "garden" | "collection" | "background";
+  startDay?: string;
+  endDay?: string;
+  cropType?: string;
+  value?: number;
+};
+
+export type AchievementReceipt = {
+  achievementId: AchievementId;
+  unlockedAt: string;
+  evidence: AchievementEvidence;
+};
+
+export type AchievementState = {
+  receipts: AchievementReceipt[];
+};
+
+export type AchievementSnapshotRecord = {
+  receipts: AchievementReceipt[];
+  updatedByDeviceId: string;
+};
+
 export type SeedInventoryItem = {
   seedType: string;
   count: number;

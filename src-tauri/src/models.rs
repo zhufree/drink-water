@@ -327,6 +327,41 @@ pub struct GardenSnapshotRecord {
     updated_by_device_id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AchievementEvidence {
+    kind: String,
+    #[serde(default)]
+    start_day: Option<String>,
+    #[serde(default)]
+    end_day: Option<String>,
+    #[serde(default)]
+    crop_type: Option<String>,
+    #[serde(default)]
+    value: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AchievementReceipt {
+    achievement_id: String,
+    unlocked_at: String,
+    evidence: AchievementEvidence,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AchievementState {
+    receipts: Vec<AchievementReceipt>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AchievementSnapshotRecord {
+    receipts: Vec<AchievementReceipt>,
+    updated_by_device_id: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloudBackupMeta {
@@ -346,6 +381,8 @@ struct PersistedState {
     garden: GardenState,
     #[serde(default)]
     sync_meta: SyncMeta,
+    #[serde(default)]
+    achievements: Vec<AchievementReceipt>,
 }
 
 impl PersistedState {
@@ -359,6 +396,7 @@ impl PersistedState {
             today,
             history: Vec::new(),
             garden: GardenState::default(),
+            achievements: Vec::new(),
         }
     }
 
@@ -519,6 +557,7 @@ impl AppState {
             parsed.normalize_history();
             parsed.normalize_garden();
             parsed.normalize_sync_meta();
+            refresh_achievements(&mut parsed, Local::now());
             parsed
         } else {
             PersistedState::new(Local::now())

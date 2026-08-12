@@ -46,6 +46,7 @@
 - `history`
 - `garden`
 - `syncMeta`
+- `achievements`（已经解锁的永久成就收据）
 
 其中 `syncMeta` 是这次新增的同步元数据，用于记录：
 
@@ -67,6 +68,7 @@
 - 保存最近 7 天的日快照
 - 保存当前农场快照
 - 保存当前设置快照
+- 保存成就解锁收据；按成就 ID 做单调并集
 - 保存云备份的元信息索引
 
 ### 3.3 云端备份层
@@ -201,7 +203,18 @@
 - 当前只同步跨设备应该一致的设置项，例如每日目标、杯量、杯量步进、提醒间隔、活跃时间段、语言
 - 不同步设备本地属性，例如设备 ID、桌面面板透明度、开机启动、通知权限、当前圈子选择等
 
-### 4.5 云备份元信息
+### 4.5 成就收据
+
+#### 表：`achievement_receipts`
+
+用途：保存已经由某台设备根据本地历史可靠解锁的成就。主键为
+`(account_id, achievement_id)`；同一成就只保留较早的合法 `unlocked_at` 及其证据。
+这张表不受 7 天日快照窗口限制，因此 30 天连续饮水成就在原设备解锁后可以永久跨端继承。
+
+主要字段：`account_id`、`achievement_id`、`unlocked_at`、`evidence_json`、
+`created_by_device_id`、`updated_at`。
+
+### 4.6 云备份元信息
 
 #### 表：`backup_manifests`
 
@@ -334,14 +347,14 @@ backups/xxxxxxxx/2026-06-04T09:35:00.000Z-DEVICE_ID.json
 用途：
 
 - 一次请求上传多个数据域的快照
-- 请求体可以包含 `dailySnapshots`、`gardenSnapshot`、`settingsSnapshot`
+- 请求体可以包含 `dailySnapshots`、`gardenSnapshot`、`settingsSnapshot`、`achievementReceipts`
 - 每个字段都是可选的，客户端只上传本次变更涉及的数据域
 
 #### `GET /api/sync/snapshots`
 
 用途：
 
-- 一次请求拉取最近 7 天日快照、当前农场快照、当前设置快照
+- 一次请求拉取最近 7 天日快照、当前农场快照、当前设置快照和全部成就收据
 - 用于应用启动、手动同步近期状态、切换高频页面等用户路径
 
 说明：
@@ -384,6 +397,9 @@ Tauri 侧新增了若干命令，用于让前端组装快照、应用快照、�
 - `get_recent_daily_snapshots`
 - `get_garden_snapshot`
 - `get_settings_snapshot`
+- `get_achievement_state`
+- `get_achievement_snapshot`
+- `apply_remote_achievement_receipts`
 - `apply_remote_snapshots`
 - `apply_remote_settings_snapshot`
 - `export_cloud_backup_payload`
@@ -425,6 +441,12 @@ Tauri 侧新增了若干命令，用于让前端组装快照、应用快照、�
 
 - 把从云端拉到的设置快照应用到本地 JSON
 - 按 `updated_at` 比较后决定是否覆盖本地对应设置
+
+### 成就命令
+
+- `get_achievement_state` 从本地可见历史补发成就并返回永久收据
+- `get_achievement_snapshot` 组装用于上传的完整成就收据集合
+- `apply_remote_achievement_receipts` 严格验证远端收据，并按 ID 合并；较早的合法解锁时间胜出，已经解锁的成就不会重新上锁
 
 ### `export_cloud_backup_payload`
 
@@ -685,7 +707,12 @@ Tauri 侧新增了若干命令，用于让前端组装快照、应用快照、�
 - 服务端还会结合 `updated_by_device_id` 做稳定排序
 - 确保结果可重复、可确定
 
-### 10.5 当前版本不做的事情
+### 10.5 成就收据合并规则
+
+成就不使用 Last-Write-Wins。它使用只增不减的集合并集：新 ID 会加入本地；同一 ID
+保留较早的合法 `unlockedAt`。这避免 7 天饮水窗口、农场快照覆盖或换设备导致成就丢失。
+
+### 10.6 当前版本不做的事情
 
 当前版本不做：
 
@@ -872,6 +899,7 @@ GET /api/sync/snapshots
 - `cloudflare/src/index.ts`
 - `cloudflare/migrations/0003_sync.sql`
 - `cloudflare/migrations/0006_settings_snapshots.sql`
+- `cloudflare/migrations/0011_achievement_receipts.sql`
 - `cloudflare/wrangler.example.jsonc`（可提交模板）
 - `cloudflare/wrangler.jsonc`（本地/部署实例，Git 忽略）
 
@@ -887,6 +915,7 @@ GET /api/sync/snapshots
 - `src-tauri/src/commands.rs`
 - `src-tauri/src/models.rs`
 - `src-tauri/src/ui.rs`
+- `src-tauri/src/achievements.rs`
 
 ---
 

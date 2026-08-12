@@ -50,6 +50,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         let changed = reconcile(&mut state, local_dt(2026, 5, 19, 11, 0));
@@ -125,6 +126,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
         let remote = SettingsSnapshotRecord {
             snapshot: SettingsSnapshot {
@@ -181,6 +183,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         state.today.updated_at = "2026-05-20T10:30:00+08:00".to_string();
@@ -241,6 +244,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         state.today.pending_slot_index = Some(3);
@@ -315,6 +319,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         let saved = state.today.last_log_undo.clone().unwrap();
@@ -378,6 +383,7 @@ mod tests {
             }],
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 9, 30), 250).unwrap();
@@ -401,6 +407,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
         let mut value = serde_json::to_value(state).unwrap();
         value.as_object_mut().unwrap().remove("garden");
@@ -432,6 +439,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
         let content = format!("\u{feff}{}", serde_json::to_string(&state).unwrap());
 
@@ -511,6 +519,7 @@ mod tests {
                 rest: RestState::default(),
             },
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         state.normalize_garden();
@@ -531,6 +540,7 @@ mod tests {
             history: vec![history_item("2026-05-19", 250, 2000)],
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         plant_seed_in_state(
@@ -578,6 +588,7 @@ mod tests {
             history: vec![history_item("2026-05-19", 2000, 2000)],
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
@@ -610,8 +621,9 @@ mod tests {
                 today: DailyRecord::new(now, &settings),
                 history: vec![history_item("2026-05-19", 2000, 2000)],
                 garden: GardenState::default(),
-            sync_meta: SyncMeta::default(),
-        };
+                sync_meta: SyncMeta::default(),
+                achievements: Vec::new(),
+            };
 
             plant_seed_in_state(
                 &mut state,
@@ -640,6 +652,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).is_err());
@@ -676,6 +689,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 4);
@@ -711,6 +725,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
@@ -742,6 +757,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 6);
@@ -777,6 +793,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 6);
@@ -822,6 +839,7 @@ mod tests {
             history: Vec::new(),
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
 
         state.garden.active_background = CAT_COLLAGE_BACKGROUND_ID.to_string();
@@ -855,6 +873,7 @@ mod tests {
             ],
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
         };
         add_seed(&mut state.garden, BASIC_SEED_TYPE, 1);
 
@@ -896,6 +915,145 @@ mod tests {
             after_growth,
             before_growth + ((REST_LONG_BOOST_SECONDS * 100) / DAY_SECONDS as u32)
         );
+    }
+
+    #[test]
+    fn achievement_evaluation_unlocks_all_twelve_catalog_ids_from_complete_evidence() {
+        let now = local_dt(2026, 6, 30, 12, 0);
+        let settings = Settings::default();
+        let mut today = DailyRecord::new(now, &settings);
+        today.actual_intake_ml = today.target_ml;
+        today.completed_reminder_slots = 1;
+        let mut history = Vec::new();
+        for offset in 1..30 {
+            let day = now.date_naive() - chrono::Duration::days(offset);
+            let mut item = history_item(&day.format("%Y-%m-%d").to_string(), 2000, 2000);
+            item.completed_reminder_slots = 1;
+            history.push(item);
+        }
+        let garden = GardenState {
+            crops: vec![PlantedCrop {
+                day_key: "2026-06-30".to_string(),
+                seed_type: BASIC_SEED_TYPE.to_string(),
+                planted_at: now.to_rfc3339(),
+                harvested_at: None,
+                boost_applied_seconds: 0,
+            }],
+            collection: vec![
+                GardenCollectionItem {
+                    crop_type: "cat".to_string(),
+                    harvest_count: 5,
+                    first_harvested_at: Some((now - chrono::Duration::days(10)).to_rfc3339()),
+                    last_harvested_at: Some(now.to_rfc3339()),
+                },
+                GardenCollectionItem {
+                    crop_type: "dog".to_string(),
+                    harvest_count: 3,
+                    first_harvested_at: None,
+                    last_harvested_at: None,
+                },
+                GardenCollectionItem {
+                    crop_type: "duck".to_string(),
+                    harvest_count: 2,
+                    first_harvested_at: None,
+                    last_harvested_at: None,
+                },
+            ],
+            unlocked_backgrounds: vec![CAT_COLLAGE_BACKGROUND_ID.to_string()],
+            ..GardenState::default()
+        };
+        let state = PersistedState {
+            settings,
+            today,
+            history,
+            garden,
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+
+        let receipts = evaluate_achievement_receipts(&state, now);
+        let ids: Vec<&str> = receipts
+            .iter()
+            .map(|receipt| receipt.achievement_id.as_str())
+            .collect();
+        assert_eq!(ids.len(), ACHIEVEMENT_IDS.len());
+        assert!(ACHIEVEMENT_IDS.iter().all(|id| ids.contains(id)));
+    }
+
+    #[test]
+    fn thirty_day_drink_streak_requires_every_consecutive_day_key() {
+        let now = local_dt(2026, 6, 30, 12, 0);
+        let settings = Settings::default();
+        let mut today = DailyRecord::new(now, &settings);
+        today.actual_intake_ml = 250;
+        let mut history = Vec::new();
+        for offset in 1..30 {
+            if offset == 14 {
+                continue;
+            }
+            let day = now.date_naive() - chrono::Duration::days(offset);
+            history.push(history_item(&day.format("%Y-%m-%d").to_string(), 250, 2000));
+        }
+        let state = PersistedState {
+            settings,
+            today,
+            history,
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+
+        assert!(!evaluate_achievement_receipts(&state, now)
+            .iter()
+            .any(|receipt| receipt.achievement_id == "drink_streak_30"));
+    }
+
+    #[test]
+    fn achievement_receipts_are_permanent_and_remote_merge_keeps_earlier_valid_receipt() {
+        let local = achievement_test_receipt("first_sip", "2026-06-20T12:00:00+08:00");
+        let remote_earlier = achievement_test_receipt("first_sip", "2026-06-19T12:00:00+08:00");
+        let remote_unknown = achievement_test_receipt("not_published", "2026-06-01T12:00:00+08:00");
+
+        let merged = merge_achievement_receipts(&[local], &[remote_earlier.clone(), remote_unknown]);
+        assert_eq!(merged, vec![remote_earlier]);
+    }
+
+    #[test]
+    fn legacy_state_defaults_receipts_and_backfills_without_relocking() {
+        let now = local_dt(2026, 6, 30, 12, 0);
+        let mut state = PersistedState::new(now);
+        state.today.actual_intake_ml = 250;
+        let mut json = serde_json::to_value(&state).unwrap();
+        json.as_object_mut().unwrap().remove("achievements");
+        let mut parsed: PersistedState = serde_json::from_value(json).unwrap();
+        assert!(parsed.achievements.is_empty());
+
+        assert!(refresh_achievements(&mut parsed, now));
+        assert!(parsed
+            .achievements
+            .iter()
+            .any(|receipt| receipt.achievement_id == "first_sip"));
+
+        parsed.today.actual_intake_ml = 0;
+        assert!(!refresh_achievements(&mut parsed, now + chrono::Duration::minutes(1)));
+        assert!(parsed
+            .achievements
+            .iter()
+            .any(|receipt| receipt.achievement_id == "first_sip"));
+    }
+
+    fn achievement_test_receipt(id: &str, unlocked_at: &str) -> AchievementReceipt {
+        AchievementReceipt {
+            achievement_id: id.to_string(),
+            unlocked_at: unlocked_at.to_string(),
+            evidence: AchievementEvidence {
+                kind: "daily".to_string(),
+                start_day: None,
+                end_day: Some("2026-06-19".to_string()),
+                crop_type: None,
+                value: Some(1),
+            },
+        }
     }
 }
 

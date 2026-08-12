@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AchievementReceipt,
   CloudBackupMeta,
   DailySnapshotRecord,
   GardenSnapshotRecord,
@@ -32,6 +33,7 @@ type SnapshotBundlePullResponse = {
   dailySnapshots: DailySnapshotRecord[];
   gardenSnapshot: GardenSnapshotRecord | null;
   settingsSnapshot: SettingsSnapshotRecord | null;
+  achievementReceipts: AchievementReceipt[];
 };
 
 type BackupUploadResponse = {
@@ -153,6 +155,7 @@ export async function pushSnapshotBundle(
     dailySnapshots?: DailySnapshotRecord[];
     gardenSnapshot?: GardenSnapshotRecord | null;
     settingsSnapshot?: SettingsSnapshotRecord | null;
+    achievementReceipts?: AchievementReceipt[];
   }
 ) {
   return request<{ ok: true }>("/api/sync/snapshots/push", {
@@ -162,7 +165,8 @@ export async function pushSnapshotBundle(
       deviceId,
       dailySnapshots: input.dailySnapshots ?? [],
       gardenSnapshot: input.gardenSnapshot ?? undefined,
-      settingsSnapshot: input.settingsSnapshot ?? undefined
+      settingsSnapshot: input.settingsSnapshot ?? undefined,
+      achievementReceipts: input.achievementReceipts ?? undefined
     })
   });
 }

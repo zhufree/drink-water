@@ -30,6 +30,10 @@ class MemoryStatement {
       return this.db.settingsSnapshots.get(accountId) ?? null;
     }
 
+    if (this.sql.includes("FROM achievement_receipts")) {
+      throw new Error("achievement receipt queries must use all()");
+    }
+
     throw new Error(`Unhandled first SQL: ${this.sql}`);
   }
 
@@ -39,6 +43,15 @@ class MemoryStatement {
       const results = Array.from(this.db.dailySnapshots.values())
         .filter((row) => row.account_id === accountId && row.day_key >= cutoffDayKey)
         .sort((left, right) => right.day_key.localeCompare(left.day_key));
+      return { results };
+    }
+
+
+    if (this.sql.includes("FROM achievement_receipts")) {
+      const [accountId] = this.values;
+      const results = Array.from(this.db.achievementReceipts.values())
+        .filter((row) => row.account_id === accountId)
+        .sort((left, right) => left.achievement_id.localeCompare(right.achievement_id));
       return { results };
     }
 
@@ -98,6 +111,31 @@ class MemoryStatement {
       return { success: true };
     }
 
+
+    if (this.sql.includes("INSERT INTO achievement_receipts")) {
+      const [
+        accountId,
+        achievementId,
+        unlockedAt,
+        evidenceJson,
+        createdByDeviceId,
+        updatedAt
+      ] = this.values;
+      const key = `${accountId}|${achievementId}`;
+      const existing = this.db.achievementReceipts.get(key);
+      if (!existing || unlockedAt < existing.unlocked_at) {
+        this.db.achievementReceipts.set(key, {
+          account_id: accountId,
+          achievement_id: achievementId,
+          unlocked_at: unlockedAt,
+          evidence_json: evidenceJson,
+          created_by_device_id: createdByDeviceId,
+          updated_at: updatedAt
+        });
+      }
+      return { success: true };
+    }
+
     throw new Error(`Unhandled run SQL: ${this.sql}`);
   }
 }
@@ -108,6 +146,7 @@ class MemoryD1 {
     this.dailySnapshots = new Map();
     this.gardenSnapshots = new Map();
     this.settingsSnapshots = new Map();
+    this.achievementReceipts = new Map();
   }
 
   prepare(sql) {
@@ -135,6 +174,16 @@ async function request(env, path, init = {}) {
   );
   const body = await response.json();
   assert.equal(response.status, 200, JSON.stringify(body));
+  return body;
+}
+
+async function requestError(env, path, init, expectedStatus) {
+  const response = await worker.fetch(
+    new Request(`https://water-api.test${path}`, init),
+    env
+  );
+  const body = await response.json();
+  assert.equal(response.status, expectedStatus, JSON.stringify(body));
   return body;
 }
 
@@ -187,3 +236,120 @@ assert.deepEqual(pulled.settingsSnapshot.snapshot, {
   cupSizeMl: 250,
   locale: "zh-CN"
 });
+assert.deepEqual(pulled.achievementReceipts, []);
+
+const laterEvidence = {
+  kind: "daily",
+  startDay: dayKey,
+  endDay: dayKey,
+  value: 250
+};
+await request(env, "/api/sync/snapshots/push", {
+  method: "POST",
+  body: JSON.stringify({
+    accountId: "account-a",
+    deviceId: "device-a",
+    achievementReceipts: [
+      {
+        achievementId: "first_sip",
+        unlockedAt: `${dayKey}T09:00:00.000Z`,
+        evidence: laterEvidence
+      }
+    ]
+  })
+});
+
+const earlierEvidence = {
+  kind: "daily",
+  startDay: dayKey,
+  endDay: dayKey,
+  value: 200
+};
+await request(env, "/api/sync/snapshots/push", {
+  method: "POST",
+  body: JSON.stringify({
+    accountId: "account-a",
+    deviceId: "device-a",
+    achievementReceipts: [
+      {
+        achievementId: "first_sip",
+        unlockedAt: `${dayKey}T08:30:00.000Z`,
+        evidence: earlierEvidence
+      },
+      {
+        achievementId: "harvest_10",
+        unlockedAt: "2026-06-08T08:30:00.000Z",
+        evidence: { kind: "collection", value: 10 }
+      }
+    ]
+  })
+});
+
+await request(env, "/api/sync/snapshots/push", {
+  method: "POST",
+  body: JSON.stringify({
+    accountId: "account-a",
+    deviceId: "device-a",
+    achievementReceipts: [
+      {
+        achievementId: "first_sip",
+        unlockedAt: `${dayKey}T10:00:00.000Z`,
+        evidence: { kind: "daily", endDay: dayKey, value: 999 }
+      }
+    ]
+  })
+});
+
+const pulledWithAchievements = await request(
+  env,
+  "/api/sync/snapshots?accountId=account-a&deviceId=device-a"
+);
+assert.deepEqual(pulledWithAchievements.achievementReceipts, [
+  {
+    achievementId: "first_sip",
+    unlockedAt: `${dayKey}T08:30:00.000Z`,
+    evidence: earlierEvidence
+  },
+  {
+    achievementId: "harvest_10",
+    unlockedAt: "2026-06-08T08:30:00.000Z",
+    evidence: { kind: "collection", value: 10 }
+  }
+]);
+
+for (const achievementReceipt of [
+  {
+    achievementId: "unknown_achievement",
+    unlockedAt: "2026-06-08T08:30:00.000Z",
+    evidence: { kind: "daily" }
+  },
+  {
+    achievementId: "first_goal",
+    unlockedAt: "not-a-date",
+    evidence: { kind: "daily" }
+  },
+  {
+    achievementId: "drink_streak_7",
+    unlockedAt: "2026-06-08T08:30:00.000Z",
+    evidence: { kind: "streak", startDay: "2026/06/02", value: 7 }
+  },
+  {
+    achievementId: "same_crop_5",
+    unlockedAt: "2026-06-08T08:30:00.000Z",
+    evidence: { kind: "collection", cropType: "", value: -1 }
+  }
+]) {
+  await requestError(
+    env,
+    "/api/sync/snapshots/push",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        accountId: "account-a",
+        deviceId: "device-a",
+        achievementReceipts: [achievementReceipt]
+      })
+    },
+    400
+  );
+}

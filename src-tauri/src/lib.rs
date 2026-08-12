@@ -22,6 +22,7 @@ use tauri_plugin_notification::NotificationExt;
 
 include!("shared.rs");
 include!("models.rs");
+include!("achievements.rs");
 include!("commands.rs");
 include!("garden.rs");
 include!("hydration.rs");

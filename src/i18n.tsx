@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import type { Locale } from "./types";
+import type { AchievementId, Locale } from "./types";
 
 type TranslationKey =
   | "app.loading"
@@ -184,6 +184,11 @@ type TranslationKey =
   | "leaderboard.memberGardenEmpty"
   | "leaderboard.memberGardenRemove"
   | "leaderboard.memberGardenActiveCrops"
+  | "achievements.title"
+  | "achievements.summary"
+  | "achievements.empty"
+  | "achievements.unlockedAt"
+  | "achievements.progress"
   | "history.title"
   | "history.description"
   | "history.heatmapTitle"
@@ -490,6 +495,11 @@ const enUs: TranslationTable = {
   "leaderboard.memberGardenEmpty": "This member has not synced a garden yet.",
   "leaderboard.memberGardenRemove": "Remove member",
   "leaderboard.memberGardenActiveCrops": "Growing",
+  "achievements.title": "My achievements",
+  "achievements.summary": "{unlocked} of {total} unlocked",
+  "achievements.empty": "Start your first one",
+  "achievements.unlockedAt": "Unlocked {time}",
+  "achievements.progress": "{current} / {target}",
   "history.title": "Hydration history",
   "history.description": "Use color to scan how each day went. Healthier colors mean you were closer to the goal.",
   "history.heatmapTitle": "Last 8 weeks",
@@ -782,6 +792,11 @@ const zhCn: TranslationTable = {
   "leaderboard.memberGardenEmpty": "这位成员还没有同步田地。",
   "leaderboard.memberGardenRemove": "移出成员",
   "leaderboard.memberGardenActiveCrops": "种植中",
+  "achievements.title": "我的成就",
+  "achievements.summary": "已解锁 {unlocked} / {total}",
+  "achievements.empty": "等待第一枚徽章",
+  "achievements.unlockedAt": "解锁于 {time}",
+  "achievements.progress": "{current} / {target}",
   "history.title": "饮水历史",
   "history.description": "用颜色快速查看每天的饮水情况，颜色越健康说明越接近目标。",
   "history.heatmapTitle": "过去 8 周热力格",
@@ -919,6 +934,40 @@ const translations: Record<Locale, TranslationTable> = {
   "en-US": enUs
 };
 
+const achievementCopy: Record<
+  Locale,
+  Record<AchievementId, { name: string; description: string }>
+> = {
+  "zh-CN": {
+    first_sip: { name: "第一滴清泉", description: "完成一次饮水记录" },
+    first_goal: { name: "满杯而归", description: "首次完成当天饮水目标" },
+    first_reminder_answer: { name: "与提醒击掌", description: "首次响应饮水提醒" },
+    first_plant: { name: "第一颗芽", description: "首次在田地里种下作物" },
+    first_harvest: { name: "初熟之喜", description: "首次收获一份作物" },
+    first_background: { name: "水境初开", description: "首次解锁一个背景" },
+    drink_streak_7: { name: "七日清流", description: "连续七个自然日都有饮水" },
+    goal_streak_7: { name: "七日满盈", description: "连续七个自然日完成目标" },
+    drink_streak_30: { name: "月轮长流", description: "连续三十个自然日都有饮水" },
+    harvest_10: { name: "十篮丰收", description: "累计收获十份作物" },
+    same_crop_5: { name: "拿手作物", description: "同一种作物累计收获五次" },
+    crop_varieties_3: { name: "三色菜园", description: "收获过三种不同作物" }
+  },
+  "en-US": {
+    first_sip: { name: "First Spring", description: "Log water for the first time" },
+    first_goal: { name: "Brimming Cup", description: "Meet a daily hydration goal" },
+    first_reminder_answer: { name: "Reminder High Five", description: "Answer a hydration reminder" },
+    first_plant: { name: "First Sprout", description: "Plant your first crop" },
+    first_harvest: { name: "First Harvest", description: "Harvest your first crop" },
+    first_background: { name: "A New Waterscape", description: "Unlock your first background" },
+    drink_streak_7: { name: "Seven-Day Stream", description: "Drink water for seven calendar days in a row" },
+    goal_streak_7: { name: "Seven Days Full", description: "Meet your goal for seven calendar days in a row" },
+    drink_streak_30: { name: "Moonlit Current", description: "Drink water for thirty calendar days in a row" },
+    harvest_10: { name: "Ten Baskets", description: "Harvest ten crops in total" },
+    same_crop_5: { name: "Signature Crop", description: "Harvest the same crop five times" },
+    crop_varieties_3: { name: "Three-Color Garden", description: "Harvest three different crop varieties" }
+  }
+};
+
 function normalizeLocale(locale: string): Locale {
   return locale === "en-US" ? "en-US" : "zh-CN";
 }
@@ -939,6 +988,8 @@ export type I18nApi = {
   formatMl: (value: number) => string;
   formatDateTime: (value: string | null) => string;
   formatShortDay: (value: string) => string;
+  achievementName: (id: AchievementId) => string;
+  achievementDescription: (id: AchievementId) => string;
 };
 
 export function createI18n(locale: Locale): I18nApi {
@@ -971,7 +1022,9 @@ export function createI18n(locale: Locale): I18nApi {
         month: "numeric",
         day: "numeric"
       }).format(date);
-    }
+    },
+    achievementName: (id) => achievementCopy[resolvedLocale][id].name,
+    achievementDescription: (id) => achievementCopy[resolvedLocale][id].description
   };
 }
 

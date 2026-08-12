@@ -3,6 +3,7 @@ import { HistoryPanel } from "./components/HistoryPanel";
 import { FirstRunOnboardingModal } from "./components/FirstRunOnboardingModal";
 import { InitialSeedGrantModal } from "./components/InitialSeedGrantModal";
 import { LeaderboardPanel } from "./components/LeaderboardPanel";
+import { AchievementShowcase } from "./components/leaderboardPanel/AchievementShowcase";
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { RestOverlay } from "./components/RestOverlay";
 import { SettingsPanel } from "./components/SettingsPanel";
@@ -214,52 +215,59 @@ export default function App() {
               ) : null}
 
               {controller.activeTab === "leaderboard" ? (
-                <LeaderboardPanel
-                  deviceId={controller.settings.deviceId}
-                  displayName={controller.draftSettings.displayName}
-                  nicknameSaving={controller.nicknameSaving}
-                  nicknameSaveState={controller.nicknameSaveState}
-                  nicknameSaveMessage={controller.nicknameSaveMessage}
-                  cloudIdentityState={controller.cloudIdentityState}
-                  cloudIdentityError={controller.cloudIdentityError}
-                  activeCircleCode={controller.settings.activeCircleCode}
-                  activeCircleName={controller.settings.activeCircleName}
-                  viewerAccountId={controller.syncMeta.accountId}
-                  circleMeta={{
-                    ownerAccountId: controller.activeCircleOwnerAccountId,
-                    memberCount: controller.activeCircleMemberCount
-                  }}
-                  circles={controller.circles}
-                  circlesLoadState={controller.circlesLoadState}
-                  circleCodeInput={controller.circleCodeInput}
-                  circleNameInput={controller.circleNameInput}
-                  metric={controller.leaderboardMetric}
-                  leaderboard={controller.leaderboardEntries}
-                  loading={controller.leaderboardLoading}
-                  onDisplayNameChange={(value) => {
-                    controller.setDraftSettings((current) => ({
-                      ...current,
-                      displayName: value
-                    }));
-                    controller.resetNicknameSaveFeedback();
-                  }}
-                  onSaveDisplayName={() => void controller.handleSaveDisplayName()}
-                  onCircleCodeInputChange={controller.setCircleCodeInput}
-                  onCircleNameInputChange={controller.setCircleNameInput}
-                  onCreateCircle={() => void controller.handleCreateCircle()}
-                  onJoinCircle={() => void controller.handleJoinCircle()}
-                  onReconnectIdentity={() =>
-                    void controller.handleReconnectLeaderboard()
-                  }
-                  onSelectCircle={(circle) => void controller.handleSelectCircle(circle)}
-                  onMetricChange={controller.setLeaderboardMetric}
-                  onRemoveMember={(targetAccountId, displayName) =>
-                    void controller.handleRemoveCircleMember(targetAccountId, displayName)
-                  }
-                  onLeaveCircle={() => void controller.handleLeaveCurrentCircle()}
-                  onDisbandCircle={() => void controller.handleDisbandCurrentCircle()}
-                  onRefresh={() => void controller.refreshLeaderboard()}
-                />
+                <>
+                  <AchievementShowcase
+                    receipts={controller.achievementReceipts}
+                    history={controller.history}
+                    garden={controller.gardenState}
+                  />
+                  <LeaderboardPanel
+                    deviceId={controller.settings.deviceId}
+                    displayName={controller.draftSettings.displayName}
+                    nicknameSaving={controller.nicknameSaving}
+                    nicknameSaveState={controller.nicknameSaveState}
+                    nicknameSaveMessage={controller.nicknameSaveMessage}
+                    cloudIdentityState={controller.cloudIdentityState}
+                    cloudIdentityError={controller.cloudIdentityError}
+                    activeCircleCode={controller.settings.activeCircleCode}
+                    activeCircleName={controller.settings.activeCircleName}
+                    viewerAccountId={controller.syncMeta.accountId}
+                    circleMeta={{
+                      ownerAccountId: controller.activeCircleOwnerAccountId,
+                      memberCount: controller.activeCircleMemberCount
+                    }}
+                    circles={controller.circles}
+                    circlesLoadState={controller.circlesLoadState}
+                    circleCodeInput={controller.circleCodeInput}
+                    circleNameInput={controller.circleNameInput}
+                    metric={controller.leaderboardMetric}
+                    leaderboard={controller.leaderboardEntries}
+                    loading={controller.leaderboardLoading}
+                    onDisplayNameChange={(value) => {
+                      controller.setDraftSettings((current) => ({
+                        ...current,
+                        displayName: value
+                      }));
+                      controller.resetNicknameSaveFeedback();
+                    }}
+                    onSaveDisplayName={() => void controller.handleSaveDisplayName()}
+                    onCircleCodeInputChange={controller.setCircleCodeInput}
+                    onCircleNameInputChange={controller.setCircleNameInput}
+                    onCreateCircle={() => void controller.handleCreateCircle()}
+                    onJoinCircle={() => void controller.handleJoinCircle()}
+                    onReconnectIdentity={() =>
+                      void controller.handleReconnectLeaderboard()
+                    }
+                    onSelectCircle={(circle) => void controller.handleSelectCircle(circle)}
+                    onMetricChange={controller.setLeaderboardMetric}
+                    onRemoveMember={(targetAccountId, displayName) =>
+                      void controller.handleRemoveCircleMember(targetAccountId, displayName)
+                    }
+                    onLeaveCircle={() => void controller.handleLeaveCurrentCircle()}
+                    onDisbandCircle={() => void controller.handleDisbandCurrentCircle()}
+                    onRefresh={() => void controller.refreshLeaderboard()}
+                  />
+                </>
               ) : null}
 
               {controller.activeTab === "settings" ? (

@@ -5,6 +5,7 @@ import {
   requestPermission
 } from "@tauri-apps/plugin-notification";
 import {
+  applyRemoteAchievementReceipts,
   applyRemoteSnapshots,
   applyRemoteSettingsSnapshot,
   cancelRestBreak,
@@ -12,6 +13,8 @@ import {
   exchangeProduce,
   exportCloudBackupPayload,
   exportData,
+  getAchievementSnapshot,
+  getAchievementState,
   getDrinkWaterConfig,
   getGardenSnapshot,
   getGardenState,
@@ -59,6 +62,7 @@ import {
   uploadCloudBackup
 } from "../syncApi";
 import type {
+  AchievementReceipt,
   AppUpdateInfo,
   CircleSummary,
   HistoryItem,
@@ -140,6 +144,7 @@ export function useAppController() {
   const [status, setStatus] = useState<TodayStatus | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [gardenState, setGardenState] = useState(defaultGardenState);
+  const [achievementReceipts, setAchievementReceipts] = useState<AchievementReceipt[]>([]);
   const [syncMeta, setSyncMeta] = useState<SyncMeta>(defaultSyncMeta);
   const [quickAmount, setQuickAmount] = useState<number>(defaultSettings.cupSizeMl);
   const [loading, setLoading] = useState(true);
@@ -200,11 +205,12 @@ export function useAppController() {
       console.warn("[config] failed to load runtime config, using bundled config", error);
     }
 
-    const [nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta] = await Promise.all([
+    const [nextSettings, nextStatus, nextHistory, nextGardenState, nextAchievementState, nextSyncMeta] = await Promise.all([
       getSettings(),
       getTodayStatus(),
       getHistory(56),
       getGardenState(),
+      getAchievementState(),
       getSyncMeta()
     ]);
 
@@ -216,6 +222,7 @@ export function useAppController() {
     setStatus(nextStatus);
     setHistory(nextHistory);
     setGardenState(nextGardenState);
+    setAchievementReceipts(nextAchievementState.receipts);
     setSyncMeta(nextSyncMeta);
     try {
       const activity = await getDailyActivity(currentDayKey());
@@ -231,7 +238,7 @@ export function useAppController() {
       setInitialSeedGrantNoticeAt(nextGardenState.initialGrantLastAwardedAt);
     }
 
-    return { nextSettings, nextStatus, nextHistory, nextGardenState, nextSyncMeta };
+    return { nextSettings, nextStatus, nextHistory, nextGardenState, nextAchievementState, nextSyncMeta };
   };
 
   const handleDismissInitialSeedGrant = () => {
@@ -250,6 +257,7 @@ export function useAppController() {
 
     const dailySnapshots: DailySnapshotRecord[] = [];
     let gardenSnapshot: GardenSnapshotRecord | null = null;
+    const achievementSnapshot = await getAchievementSnapshot();
 
     if (input.dayKeys && input.dayKeys.length > 0) {
       const snapshots = await getRecentDailySnapshots(7);
@@ -264,10 +272,11 @@ export function useAppController() {
       gardenSnapshot = await getGardenSnapshot();
     }
 
-    if (dailySnapshots.length > 0 || gardenSnapshot) {
+    if (dailySnapshots.length > 0 || gardenSnapshot || achievementSnapshot.receipts.length > 0) {
       await pushSnapshotBundle(meta.accountId, settings.deviceId, {
         dailySnapshots,
-        gardenSnapshot
+        gardenSnapshot,
+        achievementReceipts: achievementSnapshot.receipts
       });
     }
 
@@ -275,13 +284,14 @@ export function useAppController() {
   };
 
   const pushRecentDailySnapshotsToCloud = async (accountId: string, deviceId: string) => {
-    const dailySnapshots = await getRecentDailySnapshots(7);
-    if (dailySnapshots.length === 0) {
-      return;
-    }
+    const [dailySnapshots, achievementSnapshot] = await Promise.all([
+      getRecentDailySnapshots(7),
+      getAchievementSnapshot()
+    ]);
 
     await pushSnapshotBundle(accountId, deviceId, {
-      dailySnapshots
+      dailySnapshots,
+      achievementReceipts: achievementSnapshot.receipts
     });
     setSyncMeta(await getSyncMeta());
   };
@@ -297,6 +307,7 @@ export function useAppController() {
     );
 
     await applyRemoteSettingsSnapshot(result.settingsSnapshot, new Date().toISOString());
+    await applyRemoteAchievementReceipts(result.achievementReceipts ?? []);
 
     const refreshed = await refreshAll();
     await pushRecentDailySnapshotsToCloud(accountId, deviceId);
@@ -1007,6 +1018,7 @@ export function useAppController() {
     status,
     history,
     gardenState,
+    achievementReceipts,
     syncMeta,
     pairCode,
     pairCodeInput,

@@ -1,5 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  AchievementReceipt,
+  AchievementSnapshotRecord,
+  AchievementState,
   DailySnapshotRecord,
   GardenSnapshotRecord,
   GardenState,
@@ -36,6 +39,15 @@ export const getHistory = (range: number) =>
   invoke<HistoryItem[]>("get_history", { range });
 
 export const getGardenState = () => invoke<GardenState>("get_garden_state");
+
+export const getAchievementState = () =>
+  invoke<AchievementState>("get_achievement_state");
+
+export const getAchievementSnapshot = () =>
+  invoke<AchievementSnapshotRecord>("get_achievement_snapshot");
+
+export const applyRemoteAchievementReceipts = (achievementReceipts: AchievementReceipt[]) =>
+  invoke<boolean>("apply_remote_achievement_receipts", { achievementReceipts });
 
 export const getDrinkWaterConfig = () =>
   invoke<DrinkWaterConfig>("get_drink_water_config");
