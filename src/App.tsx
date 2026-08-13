@@ -70,6 +70,7 @@ export default function App() {
     controller.i18n.t("message.yesterdayCatchUpSaved", { amount: TEMPLATE_VALUE }),
     controller.i18n.t("message.seedPlanted", { day: TEMPLATE_VALUE }),
     controller.i18n.t("message.cropHarvested", { day: TEMPLATE_VALUE }),
+    controller.i18n.t("message.cropsHarvested"),
     controller.i18n.t("message.exchangeSuccess", {
       count: TEMPLATE_VALUE,
       seed: TEMPLATE_VALUE
@@ -204,6 +205,7 @@ export default function App() {
                     void controller.handlePlantSeed(dayKey, seedType)
                   }
                   onHarvestCrop={(dayKey) => void controller.handleHarvestCrop(dayKey)}
+                  onHarvestAllCrops={() => void controller.handleHarvestAllCrops()}
                   onExchangeProduce={(sourceCropType, targetSeedType, quantity) =>
                     void controller.handleExchangeProduce(sourceCropType, targetSeedType, quantity)
                   }

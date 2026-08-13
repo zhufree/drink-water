@@ -58,6 +58,9 @@ export const plantSeed = (dayKey: string, seedType: string) =>
 export const harvestCrop = (dayKey: string) =>
   invoke<GardenState>("harvest_crop", { dayKey });
 
+export const harvestAllCrops = () =>
+  invoke<GardenState>("harvest_all_crops");
+
 export const exchangeProduce = (sourceCropType: string, targetSeedType: string, quantity = 1) =>
   invoke<GardenState>("exchange_produce", { sourceCropType, targetSeedType, quantity });
 

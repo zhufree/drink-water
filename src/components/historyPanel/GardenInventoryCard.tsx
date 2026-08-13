@@ -41,7 +41,7 @@ export function GardenInventoryCard({
             <strong className="text-sm font-semibold text-slate-100">{t("garden.inventorySeeds")}</strong>
             <span className="text-xs text-slate-400">{totalSeedCount}</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {seedEntries.map(([seedType, count]) => {
               const definition = getCropDefinitionBySeed(seedType);
               return (
@@ -49,10 +49,10 @@ export function GardenInventoryCard({
                   key={seedType}
                   title={definition.seedLabel}
                   aria-label={`${definition.seedLabel} x ${count}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+                  className="flex min-w-0 items-center justify-center gap-1 rounded-[14px] bg-white/7 px-2 py-2 text-sm text-slate-100"
                 >
-                  <PixelIcon src={definition.seedIcon} size={30} />
-                  <span className="tabular-nums">x {count}</span>
+                  <PixelIcon src={definition.seedIcon} size={26} />
+                  <span className="truncate tabular-nums">x {count}</span>
                 </span>
               );
             })}
@@ -69,7 +69,7 @@ export function GardenInventoryCard({
             <strong className="text-sm font-semibold text-slate-100">{t("garden.inventoryProduce")}</strong>
             <span className="text-xs text-slate-400">{totalProduceCount}</span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {produceEntries.map(([cropType, count]) => {
               const definition = getCropDefinitionByCrop(cropType);
               return (
@@ -77,10 +77,10 @@ export function GardenInventoryCard({
                   key={cropType}
                   title={definition.cropLabel}
                   aria-label={`${definition.cropLabel} x ${count}`}
-                  className="inline-flex items-center gap-2 rounded-full bg-white/7 px-3 py-2 text-sm text-slate-100"
+                  className="flex min-w-0 items-center justify-center gap-1 rounded-[14px] bg-white/7 px-2 py-2 text-sm text-slate-100"
                 >
-                  <PixelIcon src={definition.cropIcon} size={30} />
-                  <span className="tabular-nums">x {count}</span>
+                  <PixelIcon src={definition.cropIcon} size={26} />
+                  <span className="truncate tabular-nums">x {count}</span>
                 </span>
               );
             })}

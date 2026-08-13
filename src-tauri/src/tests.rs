@@ -1055,6 +1055,18 @@ mod tests {
             },
         }
     }
+
+    #[test]
+    fn achievement_receipt_serialization_omits_absent_optional_evidence() {
+        let receipt = achievement_test_receipt("first_sip", "2026-06-20T12:00:00+08:00");
+        let serialized = serde_json::to_value(receipt).unwrap();
+        let evidence = serialized["evidence"].as_object().unwrap();
+
+        assert!(!evidence.contains_key("startDay"));
+        assert!(!evidence.contains_key("cropType"));
+        assert_eq!(evidence["endDay"], "2026-06-19");
+        assert_eq!(evidence["value"], 1);
+    }
 }
 
 

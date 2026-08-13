@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { GardenState, HistoryItem, RestState } from "../types";
+import { useI18n } from "../i18n";
+import { HoldToConfirmButton } from "./HoldToConfirmButton";
 import { GardenCollectionCard } from "./historyPanel/GardenCollectionCard";
 import { GardenInventoryCard } from "./historyPanel/GardenInventoryCard";
 import { HistoryHeatmapCard } from "./historyPanel/HistoryHeatmapCard";
@@ -15,6 +17,7 @@ import {
   EXCHANGE_OPTIONS,
   buildHistoryGrid,
   getCropDefinitionByCrop,
+  getCropGrowth,
   getUpcomingBoostHours,
   sumInventoryByKey
 } from "./historyPanel/historyPanelData";
@@ -26,6 +29,7 @@ type HistoryPanelProps = {
   restCooldownRemainingSeconds: number;
   onPlantSeed: (dayKey: string, seedType: string) => void;
   onHarvestCrop: (dayKey: string) => void;
+  onHarvestAllCrops: () => void;
   onExchangeProduce: (sourceCropType: string, targetSeedType: string, quantity: number) => void;
   onRedeemBackgroundReward: (rewardId: string) => void;
   onStartRest: () => void;
@@ -38,13 +42,20 @@ export function HistoryPanel({
   restCooldownRemainingSeconds,
   onPlantSeed,
   onHarvestCrop,
+  onHarvestAllCrops,
   onExchangeProduce,
   onRedeemBackgroundReward,
   onStartRest
 }: HistoryPanelProps) {
+  const { t } = useI18n();
   const gridCells = buildHistoryGrid(history, 28);
+  const maturityGridCells = buildHistoryGrid(history, 56);
   const activeCrops = gardenState.crops.filter((crop) => !crop.harvestedAt);
   const cropsByDay = new Map(activeCrops.map((crop) => [crop.dayKey, crop]));
+  const matureCropCount = activeCrops.reduce((count, crop) => {
+    const cell = maturityGridCells.find((item) => item.dayKey === crop.dayKey);
+    return cell && getCropGrowth(cell, crop).mature ? count + 1 : count;
+  }, 0);
   const seedCountByType = useMemo(
     () =>
       sumInventoryByKey(gardenState.seeds.map((seed) => ({ key: seed.seedType, count: seed.count }))),
@@ -154,11 +165,6 @@ export function HistoryPanel({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="panel-surface panel-surface-flat rounded-[22px] p-4">
-        <h2 className="m-0 text-lg font-semibold text-slate-50">历史农场</h2>
-        <p className="mt-1 text-sm text-slate-300/78">按天种植和收获，把喝水记录慢慢养成一片小农场。</p>
-      </div>
-
       <HistoryHeatmapCard
         gridCells={gridCells}
         history={history}
@@ -172,6 +178,19 @@ export function HistoryPanel({
         onPlantSeed={onPlantSeed}
         onHarvestCrop={onHarvestCrop}
       />
+
+      <HoldToConfirmButton
+        onComplete={onHarvestAllCrops}
+        disabled={matureCropCount === 0}
+        ariaLabel={t("garden.harvestAll")}
+        progressClassName="bg-gradient-to-r from-amber-500/75 via-orange-400/60 to-amber-200/32 transition-[width] duration-75 ease-linear"
+        className="relative w-full touch-none overflow-hidden rounded-[18px] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-left text-amber-50 transition hover:bg-amber-300/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <span className="block text-sm font-semibold">{t("garden.harvestAll")}</span>
+        <span className="mt-1 block text-[11px] text-amber-100/70">
+          {t("garden.holdToHarvestAll")} · {matureCropCount}
+        </span>
+      </HoldToConfirmButton>
 
       <RestBoostCard
         restState={restState}

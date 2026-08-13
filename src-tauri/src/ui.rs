@@ -204,6 +204,7 @@ pub fn run() {
             get_drink_water_config,
             plant_seed,
             harvest_crop,
+            harvest_all_crops,
             exchange_produce,
             redeem_background_reward,
             set_active_background,

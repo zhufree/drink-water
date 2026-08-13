@@ -15,7 +15,7 @@ export function GardenCollectionCard({ collection }: GardenCollectionCardProps) 
       <h3 className="m-0 text-lg font-semibold text-slate-50">{t("garden.collectionTitle")}</h3>
       <p className="mt-1 text-sm text-slate-300/78">{t("garden.collectionDescription")}</p>
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 grid grid-cols-4 gap-2">
         {collection.length > 0 ? (
           collection.map((item) => {
             const definition = getCropDefinitionByCrop(item.cropType);
@@ -24,10 +24,10 @@ export function GardenCollectionCard({ collection }: GardenCollectionCardProps) 
                 key={item.cropType}
                 title={definition.cropLabel}
                 aria-label={`${definition.cropLabel} x ${item.harvestCount}`}
-                className="inline-flex items-center gap-2 rounded-full border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-100"
+                className="flex min-w-0 items-center justify-center gap-1 rounded-[14px] border border-white/8 bg-white/4 px-2 py-2 text-sm text-slate-100"
               >
-                <PixelIcon src={definition.cropIcon} size={30} />
-                <span className="tabular-nums">x {item.harvestCount}</span>
+                <PixelIcon src={definition.cropIcon} size={26} />
+                <span className="truncate tabular-nums">x {item.harvestCount}</span>
               </span>
             );
           })

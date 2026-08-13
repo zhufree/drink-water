@@ -95,8 +95,7 @@ export function HistoryHeatmapCard({
       </div>
 
       <div className="mb-3 rounded-[16px] border border-white/8 bg-white/4 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-300/78">当前播种：</span>
+        <div className="grid grid-cols-4 gap-2">
           {selectableSeeds.length > 0 ? (
             selectableSeeds.map(([seedType, count]) => {
               const selected = seedType === selectedSeedType;
@@ -108,14 +107,14 @@ export function HistoryHeatmapCard({
                   title={definition.seedLabel}
                   aria-label={`${definition.seedLabel} x ${count}`}
                   onClick={() => onSelectSeed(seedType)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                  className={`flex min-w-0 items-center justify-center gap-1 rounded-[14px] border px-2 py-2 text-sm transition ${
                     selected
                       ? "border-emerald-200/70 bg-emerald-300/18 text-emerald-50"
                       : "border-white/8 bg-white/4 text-slate-200 hover:border-white/12 hover:bg-white/7"
                   }`}
                 >
-                  <PixelIcon src={definition.seedIcon} size={30} />
-                  <span className="tabular-nums">x {count}</span>
+                  <PixelIcon src={definition.seedIcon} size={26} />
+                  <span className="truncate tabular-nums">x {count}</span>
                 </button>
               );
             })

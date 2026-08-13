@@ -27,6 +27,27 @@ test("all twelve achievement receipts pass semantic validation", () => {
   }
 });
 
+test("null optional evidence fields from desktop clients are treated as absent", () => {
+  assert.deepEqual(
+    validateAchievementReceipt({
+      achievementId: "first_sip",
+      unlockedAt,
+      evidence: {
+        kind: "daily",
+        startDay: null,
+        endDay: "2026-05-01",
+        cropType: null,
+        value: 1
+      }
+    }),
+    {
+      achievementId: "first_sip",
+      unlockedAt,
+      evidence: { kind: "daily", endDay: "2026-05-01", value: 1 }
+    }
+  );
+});
+
 test("invalid and semantically mismatched evidence is rejected", () => {
   const invalidReceipts = [
     null,

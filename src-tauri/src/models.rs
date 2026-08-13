@@ -331,13 +331,13 @@ pub struct GardenSnapshotRecord {
 #[serde(rename_all = "camelCase")]
 pub struct AchievementEvidence {
     kind: String,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     start_day: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     end_day: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     crop_type: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     value: Option<u32>,
 }
 

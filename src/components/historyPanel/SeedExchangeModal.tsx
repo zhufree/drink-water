@@ -177,7 +177,7 @@ export function SeedExchangeModal({
                       {t("exchange.availableProduceHelp")}
                     </p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {availableExchangeSources.map((entry) => {
                       const selected = entry.cropType === selectedSourceEntry?.cropType;
                       return (
@@ -199,7 +199,7 @@ export function SeedExchangeModal({
                       );
                     })}
                     {availableExchangeSources.length === 0 ? (
-                      <div className="col-span-3 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
+                      <div className="col-span-4 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
                         {t("exchange.noAvailableProduce")}
                       </div>
                     ) : null}
@@ -215,7 +215,7 @@ export function SeedExchangeModal({
                       {t("exchange.allSeedsHelp")}
                     </p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {CROP_DEFINITIONS.map((definition) => {
                       const option =
                         targetOptions.find((item) => item.targetSeedType === definition.seedType) ?? null;
@@ -259,7 +259,7 @@ export function SeedExchangeModal({
                       );
                     })}
                     {targetOptions.length === 0 ? (
-                      <div className="col-span-3 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
+                      <div className="col-span-4 rounded-[14px] border border-dashed border-white/10 bg-white/4 px-3 py-4 text-sm text-slate-400">
                         {t("exchange.noTargetSeeds")}
                       </div>
                     ) : null}

@@ -24,6 +24,7 @@ import {
   getSettingsSnapshot,
   getSyncMeta,
   getTodayStatus,
+  harvestAllCrops,
   harvestCrop,
   importCloudBackupPayload,
   importData,
@@ -486,6 +487,18 @@ export function useAppController() {
       await refreshAll();
       syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.cropHarvested", { day: i18n.formatShortDay(dayKey) }));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleHarvestAllCrops = async () => {
+    setMessage("");
+    try {
+      await harvestAllCrops();
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.cropsHarvested"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -1073,6 +1086,7 @@ export function useAppController() {
     handleConfirmYesterdayCatchUp,
     handlePlantSeed,
     handleHarvestCrop,
+    handleHarvestAllCrops,
     handleExchangeProduce,
     handleRedeemBackgroundReward,
     handlePreviewBackgroundChange,

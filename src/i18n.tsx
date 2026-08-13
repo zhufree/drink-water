@@ -18,6 +18,7 @@ type TranslationKey =
   | "initialSeeds.confirm"
   | "message.seedPlanted"
   | "message.cropHarvested"
+  | "message.cropsHarvested"
   | "message.exchangeSuccess"
   | "message.restStarted"
   | "message.restCancelled"
@@ -43,9 +44,19 @@ type TranslationKey =
   | "today.progress"
   | "today.target"
   | "today.expected"
+  | "today.expectedShort"
   | "today.actual"
+  | "today.actualShort"
   | "today.debt"
+  | "today.debtShort"
   | "today.remaining"
+  | "today.remainingShort"
+  | "today.chooseBeverage"
+  | "today.defaultAction"
+  | "today.adjustAction"
+  | "today.holdToConfirm"
+  | "today.holdToAdjust"
+  | "today.holdToUndo"
   | "today.quickLog"
   | "today.quickLogHelp"
   | "today.snooze"
@@ -215,6 +226,8 @@ type TranslationKey =
   | "garden.plotCount"
   | "garden.plantAction"
   | "garden.readyToHarvest"
+  | "garden.harvestAll"
+  | "garden.holdToHarvestAll"
   | "garden.growing"
   | "garden.harvestedCell"
   | "garden.noSeeds"
@@ -329,6 +342,7 @@ const enUs: TranslationTable = {
   "initialSeeds.confirm": "Got it",
   "message.seedPlanted": "Planted on {day}.",
   "message.cropHarvested": "Harvested crops from {day}.",
+  "message.cropsHarvested": "Harvested all mature crops.",
   "message.exchangeSuccess": "Exchanged for {count} {seed} seeds.",
   "message.restStarted": "Rest break started.",
   "message.restCancelled": "Rest break cancelled. No boost was granted.",
@@ -354,9 +368,19 @@ const enUs: TranslationTable = {
   "today.progress": "Progress",
   "today.target": "Target {amount}",
   "today.expected": "Should be at {amount}",
+  "today.expectedShort": "Due",
   "today.actual": "Actually drank {amount}",
+  "today.actualShort": "Drank",
   "today.debt": "Behind by {amount}",
+  "today.debtShort": "Debt",
   "today.remaining": "Remaining {amount}",
+  "today.remainingShort": "Left",
+  "today.chooseBeverage": "Choose beverage",
+  "today.defaultAction": "Default",
+  "today.adjustAction": "Adjust amount",
+  "today.holdToConfirm": "Hold to confirm",
+  "today.holdToAdjust": "Hold to log adjustment",
+  "today.holdToUndo": "Hold to undo",
   "today.quickLog": "Quick log",
   "today.quickLogHelp": "Log one cup fast, or fine-tune how much you actually drank.",
   "today.snooze": "Snooze",
@@ -526,6 +550,8 @@ const enUs: TranslationTable = {
   "garden.plotCount": "{count} plots",
   "garden.plantAction": "Plant seed",
   "garden.readyToHarvest": "Ready to harvest",
+  "garden.harvestAll": "Harvest all",
+  "garden.holdToHarvestAll": "Hold to harvest all mature crops",
   "garden.growing": "Growing {percent}%",
   "garden.harvestedCell": "Harvested",
   "garden.noSeeds": "No seeds left",
@@ -639,6 +665,7 @@ const zhCn: TranslationTable = {
   "initialSeeds.confirm": "知道了",
   "message.seedPlanted": "已在 {day} 播种。",
   "message.cropHarvested": "已收获 {day} 的作物。",
+  "message.cropsHarvested": "已收获全部成熟作物。",
   "message.exchangeSuccess": "已兑换 {count} 颗 {seed} 种子。",
   "message.restStarted": "休息已开始。",
   "message.restCancelled": "本次休息已取消，没有获得加成。",
@@ -661,9 +688,19 @@ const zhCn: TranslationTable = {
   "today.progress": "进度",
   "today.target": "目标 {amount}",
   "today.expected": "当前应喝 {amount}",
+  "today.expectedShort": "应喝",
   "today.actual": "实际已喝 {amount}",
+  "today.actualShort": "已喝",
   "today.debt": "当前欠量 {amount}",
+  "today.debtShort": "欠量",
   "today.remaining": "剩余 {amount}",
+  "today.remainingShort": "剩余",
+  "today.chooseBeverage": "选择饮品",
+  "today.defaultAction": "默认",
+  "today.adjustAction": "调整数量",
+  "today.holdToConfirm": "按住完成记录",
+  "today.holdToAdjust": "按住记录调整",
+  "today.holdToUndo": "按住撤销",
   "today.quickLog": "快速记录",
   "today.quickLogHelp": "默认一键记一杯，也可以微调本次实际喝了多少。",
   "today.snooze": "稍后提醒",
@@ -823,6 +860,8 @@ const zhCn: TranslationTable = {
   "garden.plotCount": "{count} 格",
   "garden.plantAction": "播种",
   "garden.readyToHarvest": "可以收获",
+  "garden.harvestAll": "一键收获全部",
+  "garden.holdToHarvestAll": "按住收获全部成熟作物",
   "garden.growing": "成长 {percent}%",
   "garden.harvestedCell": "已收获",
   "garden.noSeeds": "种子不足",

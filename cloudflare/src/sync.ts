@@ -464,13 +464,13 @@ export function validateAchievementReceipt(value: unknown): AchievementReceiptPa
   const evidence: AchievementEvidencePayload = {
     kind: rawEvidence.kind as AchievementEvidencePayload["kind"]
   };
-  if (rawEvidence.startDay !== undefined) {
+  if (rawEvidence.startDay !== undefined && rawEvidence.startDay !== null) {
     evidence.startDay = requireStrictDayKey(rawEvidence.startDay, "evidence.startDay");
   }
-  if (rawEvidence.endDay !== undefined) {
+  if (rawEvidence.endDay !== undefined && rawEvidence.endDay !== null) {
     evidence.endDay = requireStrictDayKey(rawEvidence.endDay, "evidence.endDay");
   }
-  if (rawEvidence.cropType !== undefined) {
+  if (rawEvidence.cropType !== undefined && rawEvidence.cropType !== null) {
     if (
       typeof rawEvidence.cropType !== "string" ||
       !rawEvidence.cropType.trim() ||
@@ -480,7 +480,7 @@ export function validateAchievementReceipt(value: unknown): AchievementReceiptPa
     }
     evidence.cropType = rawEvidence.cropType;
   }
-  if (rawEvidence.value !== undefined) {
+  if (rawEvidence.value !== undefined && rawEvidence.value !== null) {
     if (
       typeof rawEvidence.value !== "number" ||
       !Number.isSafeInteger(rawEvidence.value) ||

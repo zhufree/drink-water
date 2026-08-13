@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { X } from "lucide-react";
+import { GlassWater, X } from "lucide-react";
 import { useI18n } from "../i18n";
 import type { Settings, TodayStatus } from "../types";
 import { clamp } from "../utils";
+import { HoldToConfirmButton } from "./HoldToConfirmButton";
 import {
   calculateEffectiveHydrationMl,
   findBeverageOption,
@@ -41,7 +42,6 @@ export function TodayPanel({
   const cupStep = Math.max(10, settings.cupStepMl);
   const beverageGroups = getBeverageCategoryGroups(locale);
   const selectedBeverage = findBeverageOption(selectedBeverageId, locale);
-  const selectedBeverageRatio = formatBeverageRatio(selectedBeverage.ratio);
   const defaultCupEffectiveMl = calculateEffectiveHydrationMl(settings.cupSizeMl, selectedBeverage.id);
   const quickEffectiveMl = calculateEffectiveHydrationMl(quickAmount, selectedBeverage.id);
   const expectedWidth = widthPercent(status.expectedMl, status.targetMl);
@@ -52,7 +52,6 @@ export function TodayPanel({
     0,
     100
   );
-  const beverageLabel = locale === "zh-CN" ? "饮品" : "Beverage";
   const conversionText = locale === "zh-CN"
     ? `${quickAmount} ml 计入 ${quickEffectiveMl} ml`
     : `${quickAmount} ml counts as ${quickEffectiveMl} ml`;
@@ -114,127 +113,172 @@ export function TodayPanel({
           ) : null}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-100">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white/35 ring-4 ring-white/6" />
-            <span className="text-clarity">{t("today.target", { amount: formatMl(status.targetMl) })}</span>
-          </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-sky-300/10 bg-sky-400/8 px-3 py-2 text-sm text-slate-100">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-sky-400/80 ring-4 ring-sky-400/10" />
-            <span className="text-clarity">{t("today.expected", { amount: formatMl(status.expectedMl) })}</span>
-          </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-emerald-300/10 bg-emerald-400/8 px-3 py-2 text-sm text-slate-100">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-400 ring-4 ring-emerald-400/10" />
-            <span className="text-clarity">{t("today.actual", { amount: formatMl(status.actualIntakeMl) })}</span>
-          </span>
-          <span className="inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-rose-300/10 bg-rose-400/8 px-3 py-2 text-sm text-slate-100">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400 ring-4 ring-rose-400/10" />
-            <span className="text-clarity">{t("today.debt", { amount: formatMl(status.debtMl) })}</span>
-          </span>
-          <span className="col-span-2 inline-flex min-h-[48px] items-center gap-2 rounded-[16px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-100">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-slate-300/70 ring-4 ring-white/6" />
-            <span className="text-clarity">{t("today.remaining", { amount: formatMl(status.remainingMl) })}</span>
-          </span>
+        <div className="mt-4 grid grid-cols-4 gap-2">
+          <div className="min-w-0 rounded-[14px] border border-sky-300/10 bg-sky-400/8 px-2 py-2.5 text-center">
+            <span className="mx-auto block h-2 w-2 rounded-full bg-sky-400/80 ring-4 ring-sky-400/10" />
+            <span className="text-clarity mt-2 block truncate text-[11px] font-medium text-slate-300/72">
+              {t("today.expectedShort")}
+            </span>
+            <strong className="text-clarity mt-1 block truncate text-[15px] font-semibold leading-tight text-slate-50">
+              {formatMl(status.expectedMl)}
+            </strong>
+          </div>
+          <div className="min-w-0 rounded-[14px] border border-emerald-300/10 bg-emerald-400/8 px-2 py-2.5 text-center">
+            <span className="mx-auto block h-2 w-2 rounded-full bg-emerald-400 ring-4 ring-emerald-400/10" />
+            <span className="text-clarity mt-2 block truncate text-[11px] font-medium text-slate-300/72">
+              {t("today.actualShort")}
+            </span>
+            <strong className="text-clarity mt-1 block truncate text-[15px] font-semibold leading-tight text-slate-50">
+              {formatMl(status.actualIntakeMl)}
+            </strong>
+          </div>
+          <div className="min-w-0 rounded-[14px] border border-rose-300/10 bg-rose-400/8 px-2 py-2.5 text-center">
+            <span className="mx-auto block h-2 w-2 rounded-full bg-rose-400 ring-4 ring-rose-400/10" />
+            <span className="text-clarity mt-2 block truncate text-[11px] font-medium text-slate-300/72">
+              {t("today.debtShort")}
+            </span>
+            <strong className="text-clarity mt-1 block truncate text-[15px] font-semibold leading-tight text-slate-50">
+              {formatMl(status.debtMl)}
+            </strong>
+          </div>
+          <div className="min-w-0 rounded-[14px] border border-white/8 bg-white/4 px-2 py-2.5 text-center">
+            <span className="mx-auto block h-2 w-2 rounded-full bg-slate-300/70 ring-4 ring-white/6" />
+            <span className="text-clarity mt-2 block truncate text-[11px] font-medium text-slate-300/72">
+              {t("today.remainingShort")}
+            </span>
+            <strong className="text-clarity mt-1 block truncate text-[15px] font-semibold leading-tight text-slate-50">
+              {formatMl(status.remainingMl)}
+            </strong>
+          </div>
         </div>
       </article>
 
       <article className="panel-surface rounded-[22px] p-4">
-        <div className="mb-4">
-          <div>
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h2 className="m-0 text-lg font-semibold text-slate-50">{t("today.quickLog")}</h2>
             <p className="mt-1 text-sm text-slate-300/78">{t("today.quickLogHelp")}</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setBeveragePickerOpen(true)}
+            aria-label={`${t("today.chooseBeverage")}: ${selectedBeverage.label}`}
+            className="group flex w-[82px] shrink-0 flex-col items-center gap-1 rounded-[14px] border border-sky-200/18 bg-sky-300/10 px-2 py-2 text-center text-sky-100 transition hover:-translate-y-px hover:border-sky-200/35 hover:bg-sky-300/16"
+          >
+            <GlassWater className="h-5 w-5 text-cyan-200 transition group-hover:scale-105" strokeWidth={1.8} />
+            <span className="text-clarity text-[11px] font-semibold leading-tight">
+              {t("today.chooseBeverage")}
+            </span>
+            <span className="text-clarity max-w-full truncate text-[10px] text-slate-300/72">
+              {selectedBeverage.label}
+            </span>
+          </button>
         </div>
 
         <div className="space-y-3">
-          <div className="rounded-[18px] border border-white/8 bg-white/4 p-3">
-            <div className="mb-3 grid gap-3 sm:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-              <div className="rounded-[16px] border border-white/8 bg-white/5 px-4 py-3">
-                <span className="text-clarity text-[11px] uppercase tracking-[0.2em] text-slate-300/55">
-                  {locale === "zh-CN" ? "当前杯量" : "Current amount"}
-                </span>
-                <div className="text-clarity mt-2 text-2xl font-semibold leading-none text-slate-50">
-                  {quickAmount}
-                  <span className="ml-1 text-sm font-medium text-slate-300/80">ml</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setBeveragePickerOpen(true)}
-                className="rounded-[16px] border border-sky-200/18 bg-sky-300/10 px-4 py-3 text-left transition hover:border-sky-200/35 hover:bg-sky-300/14"
-              >
-                <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-50">
-                  <span>{beverageLabel}</span>
-                  <span>{selectedBeverage.label} · {selectedBeverageRatio}</span>
-                </div>
-                <div className="mt-2 text-sm text-slate-300/78">{selectedBeverage.description}</div>
-              </button>
-            </div>
-
-            <div className="mb-3 rounded-[14px] border border-white/8 bg-white/4 px-3 py-2 text-sm text-slate-300/82">
-              {conversionText}
-            </div>
-
-            <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
-              <button
-                onClick={() => setQuickAmount((value) => Math.max(cupStep, value - cupStep))}
-                className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
-              >
-                <span className="text-clarity">-{cupStep} ml</span>
-              </button>
-              <button
-                onClick={() => setQuickAmount(settings.cupSizeMl)}
-                className="rounded-[14px] border border-white/8 bg-white/4 px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/8"
-              >
-                <span className="text-clarity">{t("today.resetToCup")}</span>
-              </button>
-              <button
-                onClick={() => setQuickAmount((value) => value + cupStep)}
-                className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
-              >
-                <span className="text-clarity">+{cupStep} ml</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => onLog(defaultCupEffectiveMl)}
-              className="no-text-clarity rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-4 text-left text-slate-950 transition hover:brightness-105"
+          <div className="grid grid-cols-3 gap-2">
+            <HoldToConfirmButton
+              onComplete={() => onLog(defaultCupEffectiveMl)}
+              ariaLabel={`${t("today.logOneCup", { amount: formatMl(defaultCupEffectiveMl) })} · ${t("today.defaultAction")}`}
+              progressClassName="bg-gradient-to-r from-blue-600/62 via-blue-500/48 to-sky-300/28 transition-[width] duration-75 ease-linear"
+              className="no-text-clarity relative col-span-2 min-h-[82px] touch-none overflow-hidden rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-3 text-left text-slate-950 transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200"
             >
               <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-900/60">
-                Default
+                {t("today.defaultAction")}
               </span>
               <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
                 {t("today.logOneCup", { amount: formatMl(defaultCupEffectiveMl) })}
               </span>
-            </button>
-            <button
-              onClick={() => onLog(quickEffectiveMl)}
-              className="rounded-[18px] border border-white/8 bg-white/5 px-4 py-4 text-left text-slate-50 transition hover:bg-white/8"
-            >
-              <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-300/62">
-                Adjusted
+              <span className="mt-1 block text-[11px] font-medium text-slate-900/60">
+                {t("today.holdToConfirm")}
               </span>
-              <span className="text-clarity mt-2 block text-lg font-semibold leading-tight">
+            </HoldToConfirmButton>
+            <HoldToConfirmButton
+              onComplete={() => onLog(quickEffectiveMl)}
+              ariaLabel={`${t("today.logAmount", { amount: formatMl(quickEffectiveMl) })} · ${t("today.adjustAction")}`}
+              progressClassName="bg-gradient-to-r from-sky-700/70 via-cyan-500/58 to-sky-300/30 transition-[width] duration-75 ease-linear"
+              className="relative min-h-[82px] touch-none overflow-hidden rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 text-left text-slate-50 transition hover:bg-white/8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200"
+            >
+              <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.12em] text-slate-300/62">
+                {t("today.adjustAction")}
+              </span>
+              <span className="text-clarity mt-2 block text-base font-semibold leading-tight">
                 {t("today.logAmount", { amount: formatMl(quickEffectiveMl) })}
               </span>
-            </button>
+              <span className="mt-1 block text-[11px] font-medium text-slate-300/62">
+                {t("today.holdToAdjust")}
+              </span>
+            </HoldToConfirmButton>
           </div>
 
-          <button
-            onClick={onUndo}
+            <div className="rounded-[18px] border border-white/8 bg-white/4 p-3">
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <div className="min-w-0 rounded-[16px] border border-white/8 bg-white/5 px-3 py-3">
+                  <span className="text-clarity block truncate text-[11px] uppercase tracking-[0.16em] text-slate-300/55">
+                    {locale === "zh-CN" ? "当前杯量" : "Current amount"}
+                  </span>
+                  <div className="text-clarity mt-3 text-2xl font-semibold leading-none text-slate-50">
+                    {quickAmount}
+                    <span className="ml-1 text-sm font-medium text-slate-300/80">ml</span>
+                  </div>
+                </div>
+                <div className="min-w-0 rounded-[16px] border border-sky-200/14 bg-sky-300/8 px-3 py-3">
+                  <span className="text-clarity block truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-100/72">
+                    {selectedBeverage.label}
+                  </span>
+                  <div className="text-clarity mt-3 text-sm font-semibold leading-snug text-sky-50">
+                    {conversionText}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount((value) => Math.max(cupStep, value - cupStep))}
+                  className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
+                >
+                  <span className="text-clarity">-{cupStep} ml</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount(settings.cupSizeMl)}
+                  className="rounded-[14px] border border-white/8 bg-white/4 px-3 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/8"
+                >
+                  <span className="text-clarity">{t("today.resetToCup")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount((value) => value + cupStep)}
+                  className="rounded-[14px] border border-white/8 bg-white/5 px-3 py-3 text-sm font-medium text-slate-100 transition hover:bg-white/8"
+                >
+                  <span className="text-clarity">+{cupStep} ml</span>
+                </button>
+              </div>
+            </div>
+
+          <HoldToConfirmButton
+            onComplete={onUndo}
             disabled={!status.canUndoLastDrink}
-            className="w-full rounded-[16px] border border-rose-300/12 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-50 transition hover:bg-rose-400/14 disabled:cursor-not-allowed disabled:opacity-40"
+            ariaLabel={
+              status.lastLoggedAmountMl
+                ? t("today.undoAmount", { amount: formatMl(status.lastLoggedAmountMl) })
+                : t("today.undoLastLog")
+            }
+            progressClassName="bg-gradient-to-r from-rose-600/72 via-red-500/60 to-rose-300/32 transition-[width] duration-75 ease-linear"
+            className="relative w-full touch-none overflow-hidden rounded-[16px] border border-rose-300/12 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-50 transition hover:bg-rose-400/14 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <span className="text-clarity">
+            <span className="text-clarity block">
               {status.lastLoggedAmountMl
                 ? t("today.undoAmount", {
                     amount: formatMl(status.lastLoggedAmountMl)
                   })
                 : t("today.undoLastLog")}
             </span>
-          </button>
+            <span className="mt-1 block text-[11px] font-medium text-rose-100/60">
+              {t("today.holdToUndo")}
+            </span>
+          </HoldToConfirmButton>
         </div>
       </article>
 
@@ -266,7 +310,7 @@ export function TodayPanel({
               {beverageGroups.map((group) => (
                 <section key={group.id}>
                   <h4 className="m-0 text-sm font-semibold text-sky-300">{group.label}</h4>
-                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="mt-2 grid grid-cols-2 gap-2">
                     {group.options.map((option) => {
                       const active = option.id === selectedBeverage.id;
                       return (
@@ -283,12 +327,9 @@ export function TodayPanel({
                               : "border-white/10 bg-white/7 text-slate-100 hover:border-white/18 hover:bg-white/10"
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-3 text-base font-semibold">
+                          <div className="flex items-center justify-between gap-2 text-sm font-semibold">
                             <span>{option.label}</span>
                             <span>{formatBeverageRatio(option.ratio)}</span>
-                          </div>
-                          <div className="mt-2 text-sm leading-snug text-slate-300/78">
-                            {option.description}
                           </div>
                         </button>
                       );

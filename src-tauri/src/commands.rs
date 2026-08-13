@@ -320,6 +320,45 @@ fn harvest_crop(
 }
 
 #[tauri::command]
+fn harvest_all_crops(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<GardenState, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to harvest crops".to_string())?;
+        reconcile(&mut guard, now);
+        let mature_day_keys = guard
+            .garden
+            .crops
+            .iter()
+            .filter_map(|crop| {
+                let item = history_item_for_day(&guard, &crop.day_key)?;
+                (crop_growth_percent(crop, &item, now) >= 100).then(|| crop.day_key.clone())
+            })
+            .collect::<Vec<_>>();
+
+        for day_key in mature_day_keys {
+            harvest_crop_in_state(&mut guard, &day_key, now)?;
+        }
+        touch_garden_snapshot(&mut guard, now);
+        refresh_achievements(&mut guard, now);
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
 fn exchange_produce(
     state: State<'_, AppState>,
     source_crop_type: String,
