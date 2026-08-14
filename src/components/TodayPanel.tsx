@@ -180,7 +180,7 @@ export function TodayPanel({
             <HoldToConfirmButton
               onComplete={() => onLog(defaultCupEffectiveMl)}
               ariaLabel={`${t("today.logOneCup", { amount: formatMl(defaultCupEffectiveMl) })} · ${t("today.defaultAction")}`}
-              progressClassName="bg-gradient-to-r from-blue-600/62 via-blue-500/48 to-sky-300/28 transition-[width] duration-75 ease-linear"
+              progressClassName="bg-gradient-to-r from-blue-600/62 via-blue-500/48 to-sky-300/28"
               className="no-text-clarity relative col-span-2 min-h-[82px] touch-none overflow-hidden rounded-[18px] bg-gradient-to-r from-sky-300 to-emerald-300 px-4 py-3 text-left text-slate-950 transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200"
             >
               <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.2em] text-slate-900/60">
@@ -196,7 +196,7 @@ export function TodayPanel({
             <HoldToConfirmButton
               onComplete={() => onLog(quickEffectiveMl)}
               ariaLabel={`${t("today.logAmount", { amount: formatMl(quickEffectiveMl) })} · ${t("today.adjustAction")}`}
-              progressClassName="bg-gradient-to-r from-sky-700/70 via-cyan-500/58 to-sky-300/30 transition-[width] duration-75 ease-linear"
+              progressClassName="bg-gradient-to-r from-sky-700/70 via-cyan-500/58 to-sky-300/30"
               className="relative min-h-[82px] touch-none overflow-hidden rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 text-left text-slate-50 transition hover:bg-white/8 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-200"
             >
               <span className="text-clarity block text-xs font-semibold uppercase tracking-[0.12em] text-slate-300/62">
@@ -265,7 +265,7 @@ export function TodayPanel({
                 ? t("today.undoAmount", { amount: formatMl(status.lastLoggedAmountMl) })
                 : t("today.undoLastLog")
             }
-            progressClassName="bg-gradient-to-r from-rose-600/72 via-red-500/60 to-rose-300/32 transition-[width] duration-75 ease-linear"
+            progressClassName="bg-gradient-to-r from-rose-600/72 via-red-500/60 to-rose-300/32"
             className="relative w-full touch-none overflow-hidden rounded-[16px] border border-rose-300/12 bg-rose-400/10 px-4 py-3 text-sm font-medium text-rose-50 transition hover:bg-rose-400/14 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <span className="text-clarity block">

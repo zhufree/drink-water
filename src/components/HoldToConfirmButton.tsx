@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 
 const HOLD_DURATION_MS = 1200;
+const CANCEL_DURATION_MS = 120;
+
+type HoldPhase = "idle" | "holding" | "cooldown";
 
 type HoldToConfirmButtonProps = {
   onComplete: () => void;
@@ -19,17 +22,16 @@ export function HoldToConfirmButton({
   disabled = false,
   children
 }: HoldToConfirmButtonProps) {
-  const [progress, setProgress] = useState(0);
-  const frameRef = useRef<number | null>(null);
-  const startedAtRef = useRef<number | null>(null);
+  const [phase, setPhase] = useState<HoldPhase>("idle");
+  const holdTimerRef = useRef<number | null>(null);
   const holdingRef = useRef(false);
   const triggeredRef = useRef(false);
   const resetRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
+      if (holdTimerRef.current !== null) {
+        window.clearTimeout(holdTimerRef.current);
       }
       if (resetRef.current !== null) {
         window.clearTimeout(resetRef.current);
@@ -37,17 +39,20 @@ export function HoldToConfirmButton({
     };
   }, []);
 
+  const clearHoldTimer = () => {
+    if (holdTimerRef.current !== null) {
+      window.clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  };
+
   const cancel = () => {
-    if (!holdingRef.current || triggeredRef.current) {
+    if (!holdingRef.current) {
       return;
     }
     holdingRef.current = false;
-    if (frameRef.current !== null) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-    startedAtRef.current = null;
-    setProgress(0);
+    clearHoldTimer();
+    setPhase("idle");
   };
 
   const finish = () => {
@@ -55,32 +60,17 @@ export function HoldToConfirmButton({
       return;
     }
     holdingRef.current = false;
-    frameRef.current = null;
-    startedAtRef.current = null;
+    holdTimerRef.current = null;
     triggeredRef.current = true;
-    setProgress(100);
+    // The compositor animation has reached the end by now. Clear it without a
+    // reverse transition so completion cannot produce a delayed one-frame flash.
+    setPhase("cooldown");
     onComplete();
     resetRef.current = window.setTimeout(() => {
       triggeredRef.current = false;
       resetRef.current = null;
-      setProgress(0);
+      setPhase("idle");
     }, 180);
-  };
-
-  const advance = (timestamp: number) => {
-    if (startedAtRef.current === null || triggeredRef.current) {
-      return;
-    }
-    const nextProgress = Math.min(
-      ((timestamp - startedAtRef.current) / HOLD_DURATION_MS) * 100,
-      100
-    );
-    setProgress(nextProgress);
-    if (nextProgress >= 100) {
-      finish();
-      return;
-    }
-    frameRef.current = requestAnimationFrame(advance);
   };
 
   const begin = (event?: PointerEvent<HTMLButtonElement>) => {
@@ -91,12 +81,9 @@ export function HoldToConfirmButton({
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     holdingRef.current = true;
-    if (frameRef.current !== null) {
-      cancelAnimationFrame(frameRef.current);
-    }
-    startedAtRef.current = performance.now();
-    setProgress(0);
-    frameRef.current = requestAnimationFrame(advance);
+    clearHoldTimer();
+    setPhase("holding");
+    holdTimerRef.current = window.setTimeout(finish, HOLD_DURATION_MS);
   };
 
   return (
@@ -136,11 +123,24 @@ export function HoldToConfirmButton({
       }}
       onContextMenu={(event) => event.preventDefault()}
       aria-label={ariaLabel}
+      data-hold-state={phase}
       className={className}
     >
       <span
-        className={`absolute inset-y-0 left-0 ${progressClassName}`}
-        style={{ width: `${progress}%` }}
+        className={`pointer-events-none absolute inset-0 ${progressClassName}`}
+        style={{
+          transform: phase === "holding" ? "scaleX(1)" : "scaleX(0)",
+          transformOrigin: "left center",
+          transitionProperty: "transform",
+          transitionDuration:
+            phase === "holding"
+              ? `${HOLD_DURATION_MS}ms`
+              : phase === "idle"
+                ? `${CANCEL_DURATION_MS}ms`
+                : "0ms",
+          transitionTimingFunction: phase === "holding" ? "linear" : "ease-out",
+          willChange: phase === "holding" ? "transform" : undefined
+        }}
         aria-hidden="true"
       />
       <span className="relative z-10 block">{children}</span>

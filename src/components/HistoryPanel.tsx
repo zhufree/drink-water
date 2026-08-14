@@ -183,7 +183,7 @@ export function HistoryPanel({
         onComplete={onHarvestAllCrops}
         disabled={matureCropCount === 0}
         ariaLabel={t("garden.harvestAll")}
-        progressClassName="bg-gradient-to-r from-amber-500/75 via-orange-400/60 to-amber-200/32 transition-[width] duration-75 ease-linear"
+        progressClassName="bg-gradient-to-r from-amber-500/75 via-orange-400/60 to-amber-200/32"
         className="relative w-full touch-none overflow-hidden rounded-[18px] border border-amber-200/20 bg-amber-300/12 px-4 py-3 text-left text-amber-50 transition hover:bg-amber-300/18 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <span className="block text-sm font-semibold">{t("garden.harvestAll")}</span>
