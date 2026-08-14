@@ -629,6 +629,27 @@ export async function persistGardenSnapshot(
 ) {
   const updatedAt = requireIsoDateTime(snapshot.updatedAt, "updatedAt");
   const updatedByDeviceId = requireDeviceId(snapshot.updatedByDeviceId || deviceId);
+  let snapshotValue = snapshot.snapshot ?? null;
+
+  if (isRecord(snapshotValue) && !("waterBaby" in snapshotValue)) {
+    const existing = await db
+      .prepare("SELECT snapshot_json FROM garden_snapshots WHERE account_id = ?1")
+      .bind(accountId)
+      .first<{ snapshot_json: string }>();
+    if (existing) {
+      try {
+        const existingSnapshot: unknown = JSON.parse(existing.snapshot_json);
+        if (isRecord(existingSnapshot) && "waterBaby" in existingSnapshot) {
+          snapshotValue = {
+            ...snapshotValue,
+            waterBaby: existingSnapshot.waterBaby
+          };
+        }
+      } catch {
+        // A malformed existing row should not block a newer valid snapshot.
+      }
+    }
+  }
 
   await db
     .prepare(
@@ -643,7 +664,7 @@ export async function persistGardenSnapshot(
           OR (excluded.updated_at = garden_snapshots.updated_at
               AND excluded.updated_by_device_id > garden_snapshots.updated_by_device_id)`
     )
-    .bind(accountId, JSON.stringify(snapshot.snapshot ?? null), updatedAt, updatedByDeviceId)
+    .bind(accountId, JSON.stringify(snapshotValue), updatedAt, updatedByDeviceId)
     .run();
 }
 

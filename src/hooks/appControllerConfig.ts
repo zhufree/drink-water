@@ -6,7 +6,7 @@ export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.7.5";
+export const APP_VERSION = "0.8.0";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -45,6 +45,12 @@ export const defaultGardenState: GardenState = {
     cooldownEndsAt: null,
     maxDurationSeconds: 0,
     plannedBoostSeconds: 0
+  },
+  waterBaby: {
+    materials: { wood: 0, stone: 0 },
+    completedProjectIds: [],
+    lastExpeditionStartedDay: null,
+    activeExpedition: null
   }
 };
 

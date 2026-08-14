@@ -238,6 +238,54 @@ assert.deepEqual(pulled.settingsSnapshot.snapshot, {
 });
 assert.deepEqual(pulled.achievementReceipts, []);
 
+await request(env, "/api/sync/snapshots/push", {
+  method: "POST",
+  body: JSON.stringify({
+    accountId: "account-a",
+    deviceId: "device-a",
+    gardenSnapshot: {
+      snapshot: {
+        seeds: [{ seedType: "basic", count: 3 }],
+        waterBaby: {
+          materials: { wood: 4, stone: 2 },
+          completedProjectIds: ["forestBridge"],
+          lastExpeditionStartedDay: dayKey,
+          activeExpedition: null
+        }
+      },
+      updatedAt: "2026-06-08T08:03:00.000Z",
+      updatedByDeviceId: "device-a"
+    }
+  })
+});
+
+await request(env, "/api/sync/snapshots/push", {
+  method: "POST",
+  body: JSON.stringify({
+    accountId: "account-a",
+    deviceId: "device-a",
+    gardenSnapshot: {
+      snapshot: { seeds: [{ seedType: "basic", count: 4 }] },
+      updatedAt: "2026-06-08T08:04:00.000Z",
+      updatedByDeviceId: "device-a"
+    }
+  })
+});
+
+const pulledAfterLegacyGardenPush = await request(
+  env,
+  "/api/sync/snapshots?accountId=account-a&deviceId=device-a"
+);
+assert.deepEqual(pulledAfterLegacyGardenPush.gardenSnapshot.snapshot, {
+  seeds: [{ seedType: "basic", count: 4 }],
+  waterBaby: {
+    materials: { wood: 4, stone: 2 },
+    completedProjectIds: ["forestBridge"],
+    lastExpeditionStartedDay: dayKey,
+    activeExpedition: null
+  }
+});
+
 const laterEvidence = {
   kind: "daily",
   startDay: dayKey,

@@ -8,6 +8,7 @@ import { HistoryHeatmapCard } from "./historyPanel/HistoryHeatmapCard";
 import { RecentHistoryCard } from "./historyPanel/RecentHistoryCard";
 import { RestBoostCard } from "./historyPanel/RestBoostCard";
 import { SeedExchangeModal } from "./historyPanel/SeedExchangeModal";
+import { WaterBabyHomeCard } from "./historyPanel/WaterBabyHomeCard";
 import { BACKGROUND_REWARDS } from "../config/backgroundRewards";
 import {
   ADVANCED_CROP_TYPE,
@@ -32,6 +33,7 @@ type HistoryPanelProps = {
   onHarvestAllCrops: () => void;
   onExchangeProduce: (sourceCropType: string, targetSeedType: string, quantity: number) => void;
   onRedeemBackgroundReward: (rewardId: string) => void;
+  onBuildGardenProject: (projectId: string) => void;
   onStartRest: () => void;
 };
 
@@ -45,6 +47,7 @@ export function HistoryPanel({
   onHarvestAllCrops,
   onExchangeProduce,
   onRedeemBackgroundReward,
+  onBuildGardenProject,
   onStartRest
 }: HistoryPanelProps) {
   const { t } = useI18n();
@@ -197,6 +200,11 @@ export function HistoryPanel({
         restCooldownRemainingSeconds={restCooldownRemainingSeconds}
         upcomingBoostHours={upcomingBoostHours}
         onStartRest={onStartRest}
+      />
+
+      <WaterBabyHomeCard
+        gardenState={gardenState}
+        onBuildProject={onBuildGardenProject}
       />
 
       <GardenInventoryCard

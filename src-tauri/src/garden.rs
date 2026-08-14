@@ -92,7 +92,7 @@ async fn fetch_remote_drink_water_config() -> Result<DrinkWaterConfig, String> {
         .build()
         .map_err(|error| error.to_string())?
         .get(drink_water_config_url())
-        .header("User-Agent", "DrinkWater/0.7.0")
+        .header("User-Agent", "DrinkWater/0.8.0")
         .header("Accept", "application/json")
         .send()
         .await
@@ -392,6 +392,350 @@ fn total_produce(garden: &GardenState, crop_type: &str) -> u32 {
         .iter()
         .filter(|item| item.crop_type == crop_type)
         .fold(0_u32, |total, item| total.saturating_add(item.count))
+}
+
+#[derive(Clone, Copy)]
+struct GardenProjectDefinition {
+    id: &'static str,
+    route_id: &'static str,
+    wood_cost: u32,
+    stone_cost: u32,
+}
+
+fn garden_project_definition(project_id: &str) -> Option<GardenProjectDefinition> {
+    match project_id {
+        FOREST_BRIDGE_PROJECT_ID => Some(GardenProjectDefinition {
+            id: FOREST_BRIDGE_PROJECT_ID,
+            route_id: FOREST_EXPEDITION_ROUTE_ID,
+            wood_cost: 8,
+            stone_cost: 4,
+        }),
+        MOUNTAIN_STEPS_PROJECT_ID => Some(GardenProjectDefinition {
+            id: MOUNTAIN_STEPS_PROJECT_ID,
+            route_id: MOUNTAIN_EXPEDITION_ROUTE_ID,
+            wood_cost: 4,
+            stone_cost: 10,
+        }),
+        RIVERSIDE_PIER_PROJECT_ID => Some(GardenProjectDefinition {
+            id: RIVERSIDE_PIER_PROJECT_ID,
+            route_id: RIVERSIDE_EXPEDITION_ROUTE_ID,
+            wood_cost: 10,
+            stone_cost: 8,
+        }),
+        _ => None,
+    }
+}
+
+fn is_expedition_route_unlocked(garden: &GardenState, route_id: &str) -> bool {
+    if route_id == DEFAULT_EXPEDITION_ROUTE_ID {
+        return true;
+    }
+
+    garden
+        .water_baby
+        .completed_project_ids
+        .iter()
+        .filter_map(|project_id| garden_project_definition(project_id))
+        .any(|project| project.route_id == route_id)
+}
+
+fn build_garden_project_in_state(
+    garden: &mut GardenState,
+    project_id: &str,
+) -> Result<(), String> {
+    let project = garden_project_definition(project_id.trim())
+        .ok_or_else(|| "unknown garden project".to_string())?;
+    if garden
+        .water_baby
+        .completed_project_ids
+        .iter()
+        .any(|completed| completed == project.id)
+    {
+        return Err("garden project already completed".to_string());
+    }
+    if garden.water_baby.materials.wood < project.wood_cost
+        || garden.water_baby.materials.stone < project.stone_cost
+    {
+        return Err("not enough building materials".to_string());
+    }
+
+    garden.water_baby.materials.wood -= project.wood_cost;
+    garden.water_baby.materials.stone -= project.stone_cost;
+    garden
+        .water_baby
+        .completed_project_ids
+        .push(project.id.to_string());
+    Ok(())
+}
+
+fn normalize_water_baby_state(garden: &mut GardenState) {
+    garden.water_baby.materials.wood = garden
+        .water_baby
+        .materials
+        .wood
+        .min(MAX_GARDEN_MATERIAL_COUNT);
+    garden.water_baby.materials.stone = garden
+        .water_baby
+        .materials
+        .stone
+        .min(MAX_GARDEN_MATERIAL_COUNT);
+    garden
+        .water_baby
+        .completed_project_ids
+        .retain(|project_id| garden_project_definition(project_id).is_some());
+    garden.water_baby.completed_project_ids.sort();
+    garden.water_baby.completed_project_ids.dedup();
+
+    if garden
+        .water_baby
+        .last_expedition_started_day
+        .as_deref()
+        .is_some_and(|day_key| NaiveDate::parse_from_str(day_key, "%Y-%m-%d").is_err())
+    {
+        garden.water_baby.last_expedition_started_day = None;
+    }
+
+    let active_is_valid = garden
+        .water_baby
+        .active_expedition
+        .as_ref()
+        .is_none_or(|expedition| {
+            matches!(
+                expedition.route_id.as_str(),
+                DEFAULT_EXPEDITION_ROUTE_ID
+                    | FOREST_EXPEDITION_ROUTE_ID
+                    | MOUNTAIN_EXPEDITION_ROUTE_ID
+                    | RIVERSIDE_EXPEDITION_ROUTE_ID
+            ) && canonical_crop_type(&expedition.supply_crop_type).is_some()
+                && parse_local_datetime(&expedition.started_at).is_some()
+                && parse_local_datetime(&expedition.returns_at).is_some()
+                && (1..=2).contains(&expedition.rewards.len())
+                && expedition
+                    .rewards
+                    .iter()
+                    .all(|reward| validate_expedition_reward(reward).is_ok())
+        });
+    if !active_is_valid {
+        garden.water_baby.active_expedition = None;
+    }
+}
+
+fn expedition_entropy(
+    now: DateTime<Local>,
+    route_id: &str,
+    crop_type: &str,
+    reward_index: usize,
+) -> u64 {
+    let time = now
+        .timestamp_nanos_opt()
+        .unwrap_or_else(|| now.timestamp_micros())
+        .unsigned_abs();
+    route_id
+        .bytes()
+        .chain(crop_type.bytes())
+        .fold(time.saturating_add(reward_index as u64), |value, byte| {
+            value.wrapping_mul(31).wrapping_add(u64::from(byte))
+        })
+}
+
+fn expedition_seed_reward(entropy: u64, crop_tier: u8) -> ExpeditionReward {
+    let max_tier = crop_tier.saturating_add(1).min(3);
+    let candidates: Vec<SeedExchangeSeedConfig> = seed_exchange_config()
+        .seeds
+        .into_iter()
+        .filter(|seed| seed.tier <= max_tier)
+        .collect();
+    if candidates.is_empty() {
+        return ExpeditionReward::Material {
+            material_type: WOOD_MATERIAL_TYPE.to_string(),
+            count: 1,
+        };
+    }
+    let selected = &candidates[(entropy as usize) % candidates.len()];
+    ExpeditionReward::Seed {
+        seed_type: selected.seed_type.clone(),
+        count: 1,
+    }
+}
+
+fn expedition_reward(
+    now: DateTime<Local>,
+    route_id: &str,
+    crop_type: &str,
+    reward_index: usize,
+) -> ExpeditionReward {
+    let entropy = expedition_entropy(now, route_id, crop_type, reward_index);
+    let crop_tier = crop_tier(crop_type).unwrap_or(1);
+    let material_count = 1 + (entropy % 2) as u32;
+
+    match route_id {
+        FOREST_EXPEDITION_ROUTE_ID => ExpeditionReward::Material {
+            material_type: WOOD_MATERIAL_TYPE.to_string(),
+            count: material_count,
+        },
+        MOUNTAIN_EXPEDITION_ROUTE_ID => ExpeditionReward::Material {
+            material_type: STONE_MATERIAL_TYPE.to_string(),
+            count: material_count,
+        },
+        RIVERSIDE_EXPEDITION_ROUTE_ID => expedition_seed_reward(entropy, crop_tier),
+        _ => {
+            let seed_threshold = match crop_tier {
+                3 => 45,
+                2 => 25,
+                _ => 10,
+            };
+            let roll = entropy % 100;
+            if roll < seed_threshold {
+                expedition_seed_reward(entropy, crop_tier)
+            } else if roll.is_multiple_of(3) {
+                ExpeditionReward::Material {
+                    material_type: STONE_MATERIAL_TYPE.to_string(),
+                    count: material_count,
+                }
+            } else {
+                ExpeditionReward::Material {
+                    material_type: WOOD_MATERIAL_TYPE.to_string(),
+                    count: material_count,
+                }
+            }
+        }
+    }
+}
+
+fn expedition_rewards(
+    now: DateTime<Local>,
+    route_id: &str,
+    crop_type: &str,
+    count: usize,
+) -> Vec<ExpeditionReward> {
+    (0..count)
+        .map(|index| expedition_reward(now, route_id, crop_type, index))
+        .collect()
+}
+
+fn start_expedition_in_state(
+    state: &mut PersistedState,
+    route_id: &str,
+    crop_type: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    let route_id = route_id.trim();
+    let crop_type = canonical_crop_type(crop_type)
+        .ok_or_else(|| "unknown expedition supply".to_string())?;
+    let day_key = state.today.day_key.clone();
+
+    if state.garden.water_baby.active_expedition.is_some() {
+        return Err("an expedition is already active".to_string());
+    }
+    if state.garden.water_baby.last_expedition_started_day.as_deref() == Some(&day_key) {
+        return Err("an expedition already started today".to_string());
+    }
+    if !is_expedition_route_unlocked(&state.garden, route_id) {
+        return Err("expedition route is locked".to_string());
+    }
+    if u64::from(state.today.actual_intake_ml) * 2 < u64::from(state.today.target_ml) {
+        return Err("drink at least half of the daily goal first".to_string());
+    }
+    if total_produce(&state.garden, &crop_type) == 0 {
+        return Err("not enough produce for expedition".to_string());
+    }
+
+    let full_goal = state.today.actual_intake_ml >= state.today.target_ml;
+    let reward_count = if full_goal { 2 } else { 1 };
+    let duration_hours = if full_goal { 8 } else { 4 };
+    let expedition_id = format!("{}-{}", day_key, now.timestamp_millis());
+    let rewards = expedition_rewards(now, route_id, &crop_type, reward_count);
+
+    spend_produce(&mut state.garden, &crop_type, 1)?;
+    state.garden.water_baby.last_expedition_started_day = Some(day_key.clone());
+    state.garden.water_baby.active_expedition = Some(ActiveExpedition {
+        expedition_id,
+        day_key,
+        route_id: route_id.to_string(),
+        supply_crop_type: crop_type,
+        started_at: now.to_rfc3339(),
+        returns_at: (now + chrono::Duration::hours(duration_hours)).to_rfc3339(),
+        rewards,
+    });
+    Ok(())
+}
+
+fn validate_expedition_reward(reward: &ExpeditionReward) -> Result<(), String> {
+    match reward {
+        ExpeditionReward::Material {
+            material_type,
+            count,
+        } => {
+            if !matches!(material_type.as_str(), WOOD_MATERIAL_TYPE | STONE_MATERIAL_TYPE)
+                || !(1..=10).contains(count)
+            {
+                return Err("invalid expedition material reward".to_string());
+            }
+        }
+        ExpeditionReward::Seed { seed_type, count } => {
+            if canonical_seed_type(seed_type).is_none() || !(1..=10).contains(count) {
+                return Err("invalid expedition seed reward".to_string());
+            }
+        }
+    }
+    Ok(())
+}
+
+fn claim_expedition_in_state(
+    state: &mut PersistedState,
+    expedition_id: &str,
+    now: DateTime<Local>,
+) -> Result<Vec<ExpeditionReward>, String> {
+    let expedition = state
+        .garden
+        .water_baby
+        .active_expedition
+        .clone()
+        .ok_or_else(|| "there is no expedition to claim".to_string())?;
+    if expedition.expedition_id != expedition_id.trim() {
+        return Err("expedition does not match".to_string());
+    }
+    let returns_at = parse_local_datetime(&expedition.returns_at)
+        .ok_or_else(|| "invalid expedition return time".to_string())?;
+    if now < returns_at {
+        return Err("the water baby has not returned yet".to_string());
+    }
+    for reward in &expedition.rewards {
+        validate_expedition_reward(reward)?;
+    }
+
+    for reward in &expedition.rewards {
+        match reward {
+            ExpeditionReward::Material {
+                material_type,
+                count,
+            } if material_type == WOOD_MATERIAL_TYPE => {
+                state.garden.water_baby.materials.wood = state
+                    .garden
+                    .water_baby
+                    .materials
+                    .wood
+                    .saturating_add(*count)
+                    .min(MAX_GARDEN_MATERIAL_COUNT);
+            }
+            ExpeditionReward::Material { count, .. } => {
+                state.garden.water_baby.materials.stone = state
+                    .garden
+                    .water_baby
+                    .materials
+                    .stone
+                    .saturating_add(*count)
+                    .min(MAX_GARDEN_MATERIAL_COUNT);
+            }
+            ExpeditionReward::Seed { seed_type, count } => {
+                let seed_type = canonical_seed_type(seed_type)
+                    .ok_or_else(|| "invalid expedition seed reward".to_string())?;
+                add_seed(&mut state.garden, &seed_type, *count);
+            }
+        }
+    }
+    state.garden.water_baby.active_expedition = None;
+    Ok(expedition.rewards)
 }
 
 fn random_seed_reward(now: DateTime<Local>, crop_type: &str, collection_len: usize) -> u32 {
@@ -695,4 +1039,3 @@ fn cancel_rest_break_in_state(state: &mut PersistedState) -> Result<(), String> 
     state.garden.rest.planned_boost_seconds = 0;
     Ok(())
 }
-

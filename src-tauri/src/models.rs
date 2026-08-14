@@ -146,6 +146,53 @@ impl Default for RestState {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GardenMaterialInventory {
+    #[serde(default)]
+    wood: u32,
+    #[serde(default)]
+    stone: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum ExpeditionReward {
+    Material {
+        material_type: String,
+        count: u32,
+    },
+    Seed {
+        seed_type: String,
+        count: u32,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveExpedition {
+    expedition_id: String,
+    day_key: String,
+    route_id: String,
+    supply_crop_type: String,
+    started_at: String,
+    returns_at: String,
+    rewards: Vec<ExpeditionReward>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WaterBabyState {
+    #[serde(default)]
+    materials: GardenMaterialInventory,
+    #[serde(default)]
+    completed_project_ids: Vec<String>,
+    #[serde(default)]
+    last_expedition_started_day: Option<String>,
+    #[serde(default)]
+    active_expedition: Option<ActiveExpedition>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GardenState {
@@ -165,6 +212,8 @@ pub struct GardenState {
     unlocked_backgrounds: Vec<String>,
     #[serde(default)]
     rest: RestState,
+    #[serde(default)]
+    water_baby: WaterBabyState,
 }
 
 fn default_active_background() -> String {
@@ -184,6 +233,7 @@ impl Default for GardenState {
             active_background: default_active_background(),
             unlocked_backgrounds: Vec::new(),
             rest: RestState::default(),
+            water_baby: WaterBabyState::default(),
         }
     }
 }
@@ -468,6 +518,7 @@ impl PersistedState {
             self.garden.active_background = default_active_background();
         }
         self.garden.crops.retain(|crop| crop.harvested_at.is_none());
+        normalize_water_baby_state(&mut self.garden);
 
         if self.garden.rest.active {
             if let Some(ends_at) = &self.garden.rest.ends_at {

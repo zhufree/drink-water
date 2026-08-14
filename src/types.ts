@@ -119,6 +119,32 @@ export type GardenCollectionItem = {
   lastHarvestedAt?: string | null;
 };
 
+export type GardenMaterialInventory = {
+  wood: number;
+  stone: number;
+};
+
+export type ExpeditionReward =
+  | { kind: "material"; materialType: "wood" | "stone"; count: number }
+  | { kind: "seed"; seedType: string; count: number };
+
+export type ActiveExpedition = {
+  expeditionId: string;
+  dayKey: string;
+  routeId: string;
+  supplyCropType: string;
+  startedAt: string;
+  returnsAt: string;
+  rewards: ExpeditionReward[];
+};
+
+export type WaterBabyState = {
+  materials: GardenMaterialInventory;
+  completedProjectIds: string[];
+  lastExpeditionStartedDay: string | null;
+  activeExpedition: ActiveExpedition | null;
+};
+
 export type GardenState = {
   initialGrantClaimed: boolean;
   initialGrantLastAwardedAt: string | null;
@@ -130,6 +156,7 @@ export type GardenState = {
   activeBackground: string;
   unlockedBackgrounds: string[];
   rest: RestState;
+  waterBaby: WaterBabyState;
 };
 
 export type RestState = {

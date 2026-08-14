@@ -23,6 +23,9 @@ type TranslationKey =
   | "message.restStarted"
   | "message.restCancelled"
   | "message.restCompleted"
+  | "message.expeditionStarted"
+  | "message.expeditionClaimed"
+  | "message.gardenProjectBuilt"
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
@@ -244,6 +247,36 @@ type TranslationKey =
   | "garden.exchangeRule"
   | "garden.exchangeAction"
   | "garden.exchangeHub"
+  | "waterBaby.title"
+  | "waterBaby.open"
+  | "waterBaby.description"
+  | "waterBaby.stateAtHome"
+  | "waterBaby.stateExploring"
+  | "waterBaby.stateReady"
+  | "waterBaby.locked"
+  | "waterBaby.shortReady"
+  | "waterBaby.longReady"
+  | "waterBaby.usedToday"
+  | "waterBaby.prepare"
+  | "waterBaby.claim"
+  | "waterBaby.returnsAt"
+  | "waterBaby.route"
+  | "waterBaby.supply"
+  | "waterBaby.noProduce"
+  | "waterBaby.wood"
+  | "waterBaby.stone"
+  | "waterBaby.projectsTitle"
+  | "waterBaby.projectsDescription"
+  | "waterBaby.build"
+  | "waterBaby.built"
+  | "waterBaby.needs"
+  | "waterBaby.route.nearbyPath"
+  | "waterBaby.route.forestTrail"
+  | "waterBaby.route.mountainPath"
+  | "waterBaby.route.riverside"
+  | "waterBaby.project.forestBridge"
+  | "waterBaby.project.mountainSteps"
+  | "waterBaby.project.riversidePier"
   | "exchange.footerHint"
   | "exchange.description"
   | "exchange.seedTab"
@@ -347,6 +380,9 @@ const enUs: TranslationTable = {
   "message.restStarted": "Rest break started.",
   "message.restCancelled": "Rest break cancelled. No boost was granted.",
   "message.restCompleted": "Rest complete. Your crops received a growth boost.",
+  "message.expeditionStarted": "The water baby set off.",
+  "message.expeditionClaimed": "The expedition rewards are now in your inventory.",
+  "message.gardenProjectBuilt": "The garden project is complete and a new route is open.",
   "message.circleCreated": "Created circle {code}.",
   "message.circleJoined": "Joined circle {code}.",
   "message.circleSelected": "Switched to circle {code}.",
@@ -568,6 +604,36 @@ const enUs: TranslationTable = {
   "garden.exchangeRule": "Use your produce to exchange for other seeds.",
   "garden.exchangeAction": "Exchange",
   "garden.exchangeHub": "Exchange hub",
+  "waterBaby.title": "Water baby",
+  "waterBaby.open": "Open water baby · {state}",
+  "waterBaby.description": "Reach half of today's goal, pack one harvested crop, and send it on one quiet trip.",
+  "waterBaby.stateAtHome": "Resting at home",
+  "waterBaby.stateExploring": "Out exploring",
+  "waterBaby.stateReady": "Back with supplies",
+  "waterBaby.locked": "Reach 50% of today's goal to set off",
+  "waterBaby.shortReady": "A 4-hour short trip is ready",
+  "waterBaby.longReady": "Goal met: an 8-hour trip brings two rewards",
+  "waterBaby.usedToday": "Today's trip is complete. It can leave again tomorrow.",
+  "waterBaby.prepare": "Prepare trip",
+  "waterBaby.claim": "Collect supplies",
+  "waterBaby.returnsAt": "Returns around {time}",
+  "waterBaby.route": "Route",
+  "waterBaby.supply": "Travel food",
+  "waterBaby.noProduce": "Harvest a crop before preparing a trip.",
+  "waterBaby.wood": "Wood",
+  "waterBaby.stone": "Stone",
+  "waterBaby.projectsTitle": "Home repairs",
+  "waterBaby.projectsDescription": "Use expedition materials for one-time projects that open new routes.",
+  "waterBaby.build": "Build",
+  "waterBaby.built": "Completed",
+  "waterBaby.needs": "Needs {wood} wood · {stone} stone",
+  "waterBaby.route.nearbyPath": "Nearby path",
+  "waterBaby.route.forestTrail": "Forest trail",
+  "waterBaby.route.mountainPath": "Mountain path",
+  "waterBaby.route.riverside": "Riverside",
+  "waterBaby.project.forestBridge": "Forest bridge",
+  "waterBaby.project.mountainSteps": "Mountain steps",
+  "waterBaby.project.riversidePier": "Riverside pier",
   "exchange.footerHint": "Select a produce source and a seed target first.",
   "exchange.description": "This modal contains both seed exchanges and background rewards. Background titles, descriptions, and costs are config-driven.",
   "exchange.seedTab": "Seed exchange",
@@ -895,6 +961,39 @@ const zhCn: TranslationTable = {
 };
 
 Object.assign(zhCn, {
+  "message.expeditionStarted": "水宝宝已经出发。",
+  "message.expeditionClaimed": "带回来的物资已经放进库存。",
+  "message.gardenProjectBuilt": "修缮完成，新的探险路线已开放。",
+  "waterBaby.title": "水宝宝",
+  "waterBaby.open": "打开水宝宝 · {state}",
+  "waterBaby.description": "今日进度达到一半后，准备一份收获作物，让它安静地出门一次。",
+  "waterBaby.stateAtHome": "正在家里休息",
+  "waterBaby.stateExploring": "正在外出探索",
+  "waterBaby.stateReady": "已经带着物资回来",
+  "waterBaby.locked": "今日目标达到 50% 后可以出发",
+  "waterBaby.shortReady": "已可进行 4 小时短途探索",
+  "waterBaby.longReady": "今日已达标：8 小时远途可带回两份奖励",
+  "waterBaby.usedToday": "今天已经出发过了，明天可以再次准备。",
+  "waterBaby.prepare": "准备出发",
+  "waterBaby.claim": "领取物资",
+  "waterBaby.returnsAt": "预计 {time} 左右回来",
+  "waterBaby.route": "路线",
+  "waterBaby.supply": "旅行便当",
+  "waterBaby.noProduce": "先收获一份作物，才能准备旅行便当。",
+  "waterBaby.wood": "木头",
+  "waterBaby.stone": "石头",
+  "waterBaby.projectsTitle": "家园修缮",
+  "waterBaby.projectsDescription": "使用探险材料完成一次性项目，永久开放新的路线。",
+  "waterBaby.build": "开始修建",
+  "waterBaby.built": "已完成",
+  "waterBaby.needs": "需要木头 {wood} · 石头 {stone}",
+  "waterBaby.route.nearbyPath": "附近小路",
+  "waterBaby.route.forestTrail": "林间小径",
+  "waterBaby.route.mountainPath": "山脚小路",
+  "waterBaby.route.riverside": "河岸",
+  "waterBaby.project.forestBridge": "林间木桥",
+  "waterBaby.project.mountainSteps": "山脚石阶",
+  "waterBaby.project.riversidePier": "河畔渡口",
   "garden.exchangeHub": "兑换中心",
   "exchange.footerHint": "请先选择上面的作物和下面的种子。",
   "exchange.description": "这里同时包含种子兑换和背景兑换。背景的标题、描述和资源需求都由配置驱动。",

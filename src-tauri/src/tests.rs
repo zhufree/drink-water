@@ -431,6 +431,220 @@ mod tests {
     }
 
     #[test]
+    fn legacy_garden_state_receives_an_empty_water_baby_state() {
+        let settings = Settings::default();
+        let mut value = serde_json::json!({
+            "settings": settings,
+            "today": DailyRecord::new(local_dt(2026, 8, 14, 9, 0), &Settings::default()),
+            "history": [],
+            "garden": GardenState::default(),
+            "syncMeta": {}
+        });
+        value["garden"].as_object_mut().unwrap().remove("waterBaby");
+
+        let parsed = serde_json::from_value::<PersistedState>(value).unwrap();
+
+        assert_eq!(parsed.garden.water_baby.materials.wood, 0);
+        assert_eq!(parsed.garden.water_baby.materials.stone, 0);
+        assert!(parsed.garden.water_baby.completed_project_ids.is_empty());
+        assert!(parsed.garden.water_baby.active_expedition.is_none());
+    }
+
+    #[test]
+    fn garden_normalization_caps_materials_and_keeps_only_known_projects() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 14, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+        state.garden.water_baby.materials.wood = MAX_GARDEN_MATERIAL_COUNT + 100;
+        state.garden.water_baby.materials.stone = MAX_GARDEN_MATERIAL_COUNT + 100;
+        state.garden.water_baby.completed_project_ids = vec![
+            FOREST_BRIDGE_PROJECT_ID.to_string(),
+            "unknownProject".to_string(),
+            FOREST_BRIDGE_PROJECT_ID.to_string(),
+        ];
+
+        state.normalize_garden();
+
+        assert_eq!(state.garden.water_baby.materials.wood, MAX_GARDEN_MATERIAL_COUNT);
+        assert_eq!(state.garden.water_baby.materials.stone, MAX_GARDEN_MATERIAL_COUNT);
+        assert_eq!(
+            state.garden.water_baby.completed_project_ids,
+            vec![FOREST_BRIDGE_PROJECT_ID.to_string()]
+        );
+    }
+
+    #[test]
+    fn expedition_requires_half_of_the_daily_goal_and_spends_one_crop() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 14, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+        add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
+        state.today.actual_intake_ml = 999;
+
+        assert!(start_expedition_in_state(
+            &mut state,
+            DEFAULT_EXPEDITION_ROUTE_ID,
+            POTATO_CROP_TYPE,
+            now,
+        )
+        .is_err());
+
+        state.today.actual_intake_ml = 1000;
+        start_expedition_in_state(
+            &mut state,
+            DEFAULT_EXPEDITION_ROUTE_ID,
+            POTATO_CROP_TYPE,
+            now,
+        )
+        .unwrap();
+
+        assert_eq!(total_produce(&state.garden, POTATO_CROP_TYPE), 1);
+        let expedition = state.garden.water_baby.active_expedition.as_ref().unwrap();
+        assert_eq!(expedition.day_key, "2026-08-14");
+        assert_eq!(expedition.route_id, DEFAULT_EXPEDITION_ROUTE_ID);
+        assert_eq!(expedition.rewards.len(), 1);
+        assert_eq!(
+            parse_local_datetime(&expedition.returns_at).unwrap(),
+            now + chrono::Duration::hours(4)
+        );
+    }
+
+    #[test]
+    fn full_goal_expedition_has_two_rewards_and_only_starts_once_per_day() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 14, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+        state.today.actual_intake_ml = state.today.target_ml;
+        add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
+
+        start_expedition_in_state(
+            &mut state,
+            DEFAULT_EXPEDITION_ROUTE_ID,
+            POTATO_CROP_TYPE,
+            now,
+        )
+        .unwrap();
+
+        let expedition = state.garden.water_baby.active_expedition.take().unwrap();
+        assert_eq!(expedition.rewards.len(), 2);
+        assert_eq!(
+            parse_local_datetime(&expedition.returns_at).unwrap(),
+            now + chrono::Duration::hours(8)
+        );
+        assert!(start_expedition_in_state(
+            &mut state,
+            DEFAULT_EXPEDITION_ROUTE_ID,
+            POTATO_CROP_TYPE,
+            now + chrono::Duration::hours(9),
+        )
+        .is_err());
+        assert_eq!(total_produce(&state.garden, POTATO_CROP_TYPE), 1);
+    }
+
+    #[test]
+    fn expedition_reward_can_only_be_claimed_after_return_and_never_twice() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 14, 9, 0);
+        let mut state = PersistedState {
+            settings: settings.clone(),
+            today: DailyRecord::new(now, &settings),
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+        };
+        state.garden.water_baby.active_expedition = Some(ActiveExpedition {
+            expedition_id: "expedition-1".to_string(),
+            day_key: "2026-08-14".to_string(),
+            route_id: DEFAULT_EXPEDITION_ROUTE_ID.to_string(),
+            supply_crop_type: POTATO_CROP_TYPE.to_string(),
+            started_at: now.to_rfc3339(),
+            returns_at: (now + chrono::Duration::hours(4)).to_rfc3339(),
+            rewards: vec![
+                ExpeditionReward::Material {
+                    material_type: WOOD_MATERIAL_TYPE.to_string(),
+                    count: 2,
+                },
+                ExpeditionReward::Seed {
+                    seed_type: POTATO_SEED_TYPE.to_string(),
+                    count: 1,
+                },
+            ],
+        });
+        let initial_seed_count = seed_count(&state.garden, POTATO_SEED_TYPE);
+
+        assert!(claim_expedition_in_state(
+            &mut state,
+            "expedition-1",
+            now + chrono::Duration::hours(3),
+        )
+        .is_err());
+        claim_expedition_in_state(
+            &mut state,
+            "expedition-1",
+            now + chrono::Duration::hours(4),
+        )
+        .unwrap();
+
+        assert_eq!(state.garden.water_baby.materials.wood, 2);
+        assert_eq!(seed_count(&state.garden, POTATO_SEED_TYPE), initial_seed_count + 1);
+        assert!(state.garden.water_baby.active_expedition.is_none());
+        assert!(claim_expedition_in_state(
+            &mut state,
+            "expedition-1",
+            now + chrono::Duration::hours(5),
+        )
+        .is_err());
+        assert_eq!(state.garden.water_baby.materials.wood, 2);
+        assert_eq!(seed_count(&state.garden, POTATO_SEED_TYPE), initial_seed_count + 1);
+    }
+
+    #[test]
+    fn building_a_project_atomically_spends_materials_and_unlocks_its_route() {
+        let mut garden = GardenState::default();
+        garden.water_baby.materials.wood = 8;
+        garden.water_baby.materials.stone = 3;
+
+        assert!(build_garden_project_in_state(&mut garden, FOREST_BRIDGE_PROJECT_ID).is_err());
+        assert_eq!(garden.water_baby.materials.wood, 8);
+        assert_eq!(garden.water_baby.materials.stone, 3);
+
+        garden.water_baby.materials.stone = 4;
+        build_garden_project_in_state(&mut garden, FOREST_BRIDGE_PROJECT_ID).unwrap();
+
+        assert_eq!(garden.water_baby.materials.wood, 0);
+        assert_eq!(garden.water_baby.materials.stone, 0);
+        assert!(garden
+            .water_baby
+            .completed_project_ids
+            .iter()
+            .any(|project_id| project_id == FOREST_BRIDGE_PROJECT_ID));
+        assert!(is_expedition_route_unlocked(&garden, FOREST_EXPEDITION_ROUTE_ID));
+        assert!(build_garden_project_in_state(&mut garden, FOREST_BRIDGE_PROJECT_ID).is_err());
+    }
+
+    #[test]
     fn persisted_state_parser_accepts_utf8_bom() {
         let settings = Settings::default();
         let state = PersistedState {
@@ -517,6 +731,7 @@ mod tests {
                 active_background: DEFAULT_BACKGROUND_ID.to_string(),
                 unlocked_backgrounds: Vec::new(),
                 rest: RestState::default(),
+                water_baby: WaterBabyState::default(),
             },
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),

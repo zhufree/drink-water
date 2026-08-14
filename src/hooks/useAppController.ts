@@ -8,7 +8,9 @@ import {
   applyRemoteAchievementReceipts,
   applyRemoteSnapshots,
   applyRemoteSettingsSnapshot,
+  buildGardenProject,
   cancelRestBreak,
+  claimExpedition,
   completeRestBreak,
   exchangeProduce,
   exportCloudBackupPayload,
@@ -37,6 +39,7 @@ import {
   saveSettings,
   setSyncAccount,
   setActiveBackground,
+  startExpedition,
   startRestBreak,
   toggleAutostart,
   undoLastDrink
@@ -548,6 +551,42 @@ export function useAppController() {
       await refreshAll();
       syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.backgroundSelected"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleStartExpedition = async (routeId: string, cropType: string) => {
+    setMessage("");
+    try {
+      await startExpedition(routeId, cropType);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.expeditionStarted"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleClaimExpedition = async (expeditionId: string) => {
+    setMessage("");
+    try {
+      await claimExpedition(expeditionId);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.expeditionClaimed"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleBuildGardenProject = async (projectId: string) => {
+    setMessage("");
+    try {
+      await buildGardenProject(projectId);
+      await refreshAll();
+      syncAfterLocalWrite({ garden: true });
+      setMessage(i18n.t("message.gardenProjectBuilt"));
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -1091,6 +1130,9 @@ export function useAppController() {
     handleRedeemBackgroundReward,
     handlePreviewBackgroundChange,
     handleActiveBackgroundChange,
+    handleStartExpedition,
+    handleClaimExpedition,
+    handleBuildGardenProject,
     handleStartRestBreak,
     handleCancelRestBreak,
     handleCreateCircle,

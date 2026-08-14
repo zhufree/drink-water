@@ -54,6 +54,9 @@ export default function App() {
     controller.i18n.t("message.restCompleted"),
     controller.i18n.t("message.backgroundSynced"),
     controller.i18n.t("message.backgroundSelected"),
+    controller.i18n.t("message.expeditionStarted"),
+    controller.i18n.t("message.expeditionClaimed"),
+    controller.i18n.t("message.gardenProjectBuilt"),
     controller.i18n.t("message.circleMemberRemoved"),
     controller.i18n.t("message.circleLeft"),
     controller.i18n.t("message.circleDisbanded"),
@@ -188,10 +191,17 @@ export default function App() {
                 <TodayPanel
                   settings={controller.settings}
                   status={controller.status}
+                  gardenState={controller.gardenState}
                   quickAmount={controller.quickAmount}
                   setQuickAmount={controller.setQuickAmount}
                   onLog={(amountMl) => void controller.handleLog(amountMl)}
                   onUndo={() => void controller.handleUndoLastDrink()}
+                  onStartExpedition={(routeId, cropType) =>
+                    void controller.handleStartExpedition(routeId, cropType)
+                  }
+                  onClaimExpedition={(expeditionId) =>
+                    void controller.handleClaimExpedition(expeditionId)
+                  }
                 />
               ) : null}
 
@@ -211,6 +221,9 @@ export default function App() {
                   }
                   onRedeemBackgroundReward={(rewardId) =>
                     void controller.handleRedeemBackgroundReward(rewardId)
+                  }
+                  onBuildGardenProject={(projectId) =>
+                    void controller.handleBuildGardenProject(projectId)
                   }
                   onStartRest={() => void controller.handleStartRestBreak()}
                 />

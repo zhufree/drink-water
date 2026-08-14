@@ -70,6 +70,15 @@ export const redeemBackgroundReward = (rewardId: string) =>
 export const setActiveBackground = (backgroundId: string) =>
   invoke<GardenState>("set_active_background", { backgroundId });
 
+export const startExpedition = (routeId: string, cropType: string) =>
+  invoke<GardenState>("start_expedition", { routeId, cropType });
+
+export const claimExpedition = (expeditionId: string) =>
+  invoke<GardenState>("claim_expedition", { expeditionId });
+
+export const buildGardenProject = (projectId: string) =>
+  invoke<GardenState>("build_garden_project", { projectId });
+
 export const startRestBreak = () => invoke<GardenState>("start_rest_break");
 
 export const cancelRestBreak = () => invoke<GardenState>("cancel_rest_break");

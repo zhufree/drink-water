@@ -1,12 +1,12 @@
 {
   "name": "drink-water",
   "private": true,
-  "version": "0.7.6",
+  "version": "0.8.0",
   "packageManager": "pnpm@9.15.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node --test src/syncRetry.test.mjs src/achievements/achievementCatalog.test.mjs cloudflare/src/snapshots-combined.test.mjs cloudflare/src/achievement-receipts.test.mjs",
+    "test": "node --test src/syncRetry.test.mjs src/achievements/achievementCatalog.test.mjs src/config/waterBaby.test.mjs cloudflare/src/snapshots-combined.test.mjs cloudflare/src/achievement-receipts.test.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",

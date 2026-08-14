@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { GlassWater, X } from "lucide-react";
 import { useI18n } from "../i18n";
-import type { Settings, TodayStatus } from "../types";
+import type { GardenState, Settings, TodayStatus } from "../types";
 import { clamp } from "../utils";
 import { HoldToConfirmButton } from "./HoldToConfirmButton";
+import { shouldShowWaterBabyEntry } from "../config/waterBaby";
+import { WaterBabyDialog } from "./waterBaby/WaterBabyDialog";
+import { WaterBabyProgressButton } from "./waterBaby/WaterBabyProgressButton";
 import {
   calculateEffectiveHydrationMl,
   findBeverageOption,
@@ -14,10 +17,13 @@ import {
 type TodayPanelProps = {
   settings: Settings;
   status: TodayStatus;
+  gardenState: GardenState;
   quickAmount: number;
   setQuickAmount: (updater: number | ((value: number) => number)) => void;
   onLog: (amountMl: number) => void;
   onUndo: () => void;
+  onStartExpedition: (routeId: string, cropType: string) => void;
+  onClaimExpedition: (expeditionId: string) => void;
 };
 
 function widthPercent(value: number, target: number) {
@@ -31,14 +37,23 @@ function widthPercent(value: number, target: number) {
 export function TodayPanel({
   settings,
   status,
+  gardenState,
   quickAmount,
   setQuickAmount,
   onLog,
-  onUndo
+  onUndo,
+  onStartExpedition,
+  onClaimExpedition
 }: TodayPanelProps) {
   const { t, formatMl, locale } = useI18n();
   const [selectedBeverageId, setSelectedBeverageId] = useState("water");
   const [beveragePickerOpen, setBeveragePickerOpen] = useState(false);
+  const [waterBabyDialogOpen, setWaterBabyDialogOpen] = useState(false);
+  const waterBabyButtonRef = useRef<HTMLButtonElement>(null);
+  const closeWaterBabyDialog = useCallback(() => {
+    setWaterBabyDialogOpen(false);
+    window.requestAnimationFrame(() => waterBabyButtonRef.current?.focus());
+  }, []);
   const cupStep = Math.max(10, settings.cupStepMl);
   const beverageGroups = getBeverageCategoryGroups(locale);
   const selectedBeverage = findBeverageOption(selectedBeverageId, locale);
@@ -51,6 +66,15 @@ export function TodayPanel({
     Math.round(widthPercent(status.actualIntakeMl, status.targetMl)),
     0,
     100
+  );
+  const activeExpedition = gardenState.waterBaby.activeExpedition;
+  const showWaterBabyEntry = shouldShowWaterBabyEntry(
+    status.actualIntakeMl,
+    status.targetMl,
+    Boolean(activeExpedition)
+  );
+  const expeditionReturned = Boolean(
+    activeExpedition && new Date(activeExpedition.returnsAt).getTime() <= Date.now()
   );
   const conversionText = locale === "zh-CN"
     ? `${quickAmount} ml 计入 ${quickEffectiveMl} ml`
@@ -71,21 +95,38 @@ export function TodayPanel({
             </div>
             <div
               className="relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-full border border-sky-100/25 bg-slate-950/28 shadow-[inset_0_0_18px_rgba(255,255,255,0.16),0_12px_28px_rgba(15,23,42,0.28)]"
-              aria-label={`${t("today.progress")} ${progressPercent}%`}
             >
+              <span
+                className="sr-only"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={progressPercent}
+                aria-label={`${t("today.progress")} ${progressPercent}%`}
+              />
               <div
                 className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-sky-500 via-cyan-300 to-sky-200 transition-[height] duration-500 ease-out"
                 style={{ height: `${progressPercent}%` }}
               />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_32%_22%,rgba(255,255,255,0.48),transparent_24%),radial-gradient(circle_at_65%_78%,rgba(12,74,110,0.26),transparent_35%)]" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-clarity text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-100/78">
-                  {t("today.progress")}
-                </span>
-                <strong className="text-clarity mt-1 text-[28px] font-bold leading-none text-white drop-shadow-[0_2px_5px_rgba(8,47,73,0.48)]">
-                  {progressPercent}%
-                </strong>
-              </div>
+              {showWaterBabyEntry ? (
+                <WaterBabyProgressButton
+                  buttonRef={waterBabyButtonRef}
+                  expedition={activeExpedition}
+                  progressPercent={progressPercent}
+                  returned={expeditionReturned}
+                  onClick={() => setWaterBabyDialogOpen(true)}
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <span className="text-clarity text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-100/78">
+                    {t("today.progress")}
+                  </span>
+                  <strong className="text-clarity mt-1 text-[28px] font-bold leading-none text-white drop-shadow-[0_2px_5px_rgba(8,47,73,0.48)]">
+                    {progressPercent}%
+                  </strong>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -281,6 +322,15 @@ export function TodayPanel({
           </HoldToConfirmButton>
         </div>
       </article>
+
+      <WaterBabyDialog
+        open={waterBabyDialogOpen}
+        status={status}
+        gardenState={gardenState}
+        onClose={closeWaterBabyDialog}
+        onStartExpedition={onStartExpedition}
+        onClaimExpedition={onClaimExpedition}
+      />
 
       {beveragePickerOpen ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/72 p-4 backdrop-blur-sm">

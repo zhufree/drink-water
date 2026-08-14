@@ -31,6 +31,8 @@ type GardenState = {
 | `activeBackground` | 当前正在使用的背景 id。默认值为 `default`。 |
 | `unlockedBackgrounds` | 已解锁背景 id 列表。背景兑换成功后写入这里。 |
 
+完整农场快照现在还可能包含 `waterBaby`。兑换中心不读取或修改该字段，但小程序若反序列化后重新上传完整 `GardenState`，应保留未知字段。当前 Worker 会在旧客户端上传的快照完全缺少 `waterBaby` 时保留云端已有值，作为过渡兼容保护；这不代表消费方可以长期省略新字段支持。
+
 ### 1.2 配置入口
 
 桌面端通过 `get_drink_water_config` 获取运行时配置。小程序端也建议从服务端拉取同等配置，避免把兑换规则写死在客户端。

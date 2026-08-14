@@ -50,6 +50,16 @@ const REST_SHORT_BOOST_SECONDS: u32 = 60 * 60;
 const REST_MEDIUM_BOOST_SECONDS: u32 = 2 * 60 * 60;
 const REST_LONG_BOOST_SECONDS: u32 = 3 * 60 * 60;
 const DEFAULT_BACKGROUND_ID: &str = "default";
+const DEFAULT_EXPEDITION_ROUTE_ID: &str = "nearbyPath";
+const FOREST_EXPEDITION_ROUTE_ID: &str = "forestTrail";
+const MOUNTAIN_EXPEDITION_ROUTE_ID: &str = "mountainPath";
+const RIVERSIDE_EXPEDITION_ROUTE_ID: &str = "riverside";
+const FOREST_BRIDGE_PROJECT_ID: &str = "forestBridge";
+const MOUNTAIN_STEPS_PROJECT_ID: &str = "mountainSteps";
+const RIVERSIDE_PIER_PROJECT_ID: &str = "riversidePier";
+const WOOD_MATERIAL_TYPE: &str = "wood";
+const STONE_MATERIAL_TYPE: &str = "stone";
+const MAX_GARDEN_MATERIAL_COUNT: u32 = 9_999;
 #[cfg(test)]
 const CAT_COLLAGE_BACKGROUND_ID: &str = "catCollage";
 

@@ -442,6 +442,79 @@ fn set_active_background(
 }
 
 #[tauri::command]
+fn start_expedition(
+    state: State<'_, AppState>,
+    route_id: String,
+    crop_type: String,
+) -> Result<GardenState, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to start expedition".to_string())?;
+        reconcile(&mut guard, now);
+        start_expedition_in_state(&mut guard, &route_id, &crop_type, now)?;
+        touch_garden_snapshot(&mut guard, now);
+    }
+
+    state.save()?;
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn claim_expedition(
+    state: State<'_, AppState>,
+    expedition_id: String,
+) -> Result<GardenState, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to claim expedition".to_string())?;
+        reconcile(&mut guard, now);
+        claim_expedition_in_state(&mut guard, &expedition_id, now)?;
+        touch_garden_snapshot(&mut guard, now);
+    }
+
+    state.save()?;
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
+fn build_garden_project(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<GardenState, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to build garden project".to_string())?;
+        reconcile(&mut guard, now);
+        build_garden_project_in_state(&mut guard.garden, &project_id)?;
+        touch_garden_snapshot(&mut guard, now);
+    }
+
+    state.save()?;
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read garden state".to_string())?;
+    Ok(guard.garden.clone())
+}
+
+#[tauri::command]
 fn start_rest_break(state: State<'_, AppState>) -> Result<GardenState, String> {
     let now = Local::now();
     {
