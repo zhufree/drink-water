@@ -51,7 +51,7 @@ export const GARDEN_PROJECTS: GardenProjectDefinition[] = [
 ];
 
 export function getExpeditionTier(actualIntakeMl: number, targetMl: number): ExpeditionTier {
-  if (targetMl <= 0 || actualIntakeMl * 2 < targetMl) {
+  if (targetMl <= 0 || actualIntakeMl <= 0) {
     return "locked";
   }
   return actualIntakeMl >= targetMl ? "long" : "short";

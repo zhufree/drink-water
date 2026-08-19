@@ -207,6 +207,35 @@ export function SettingsPanel({
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="panel-surface rounded-[22px] p-4">
           <div className="mb-4">
+            <strong className="text-sm font-semibold text-slate-50">
+              {t("settings.sedentaryTitle")}
+            </strong>
+            <p className="mt-1 text-xs text-slate-300/60">
+              {t("settings.sedentaryHelp")}
+            </p>
+          </div>
+          <label className="flex flex-col gap-2 rounded-[18px] bg-white/5 p-3">
+            <span className="text-xs uppercase tracking-[0.16em] text-slate-300/60">
+              {t("settings.sedentaryReminder")}
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={5}
+              value={draftSettings.sedentaryReminderMinutes}
+              onChange={(event) =>
+                setDraftSettings((current) => ({
+                  ...current,
+                  sedentaryReminderMinutes: Number(event.target.value)
+                }))
+              }
+              className="rounded-[14px] border border-white/12 bg-white/6 px-3 py-2 text-slate-50 outline-none"
+            />
+          </label>
+        </div>
+
+        <div className="panel-surface rounded-[22px] p-4">
+          <div className="mb-4">
             <strong className="text-sm font-semibold text-slate-50">{t("settings.language")}</strong>
             <p className="mt-1 text-xs text-slate-300/60">
               {t("settings.startHour")} / {t("settings.endHour")}

@@ -7,6 +7,7 @@ import { AchievementShowcase } from "./components/leaderboardPanel/AchievementSh
 import { PrimaryTabs } from "./components/PrimaryTabs";
 import { RestOverlay } from "./components/RestOverlay";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { SedentaryToggleButton } from "./components/SedentaryToggleButton";
 import { StartupCatchUpModal } from "./components/StartupCatchUpModal";
 import { Toast, type ToastTone } from "./components/Toast";
 import { TodayPanel } from "./components/TodayPanel";
@@ -57,6 +58,8 @@ export default function App() {
     controller.i18n.t("message.expeditionStarted"),
     controller.i18n.t("message.expeditionClaimed"),
     controller.i18n.t("message.gardenProjectBuilt"),
+    controller.i18n.t("message.sedentarySeated"),
+    controller.i18n.t("message.sedentaryStanding"),
     controller.i18n.t("message.circleMemberRemoved"),
     controller.i18n.t("message.circleLeft"),
     controller.i18n.t("message.circleDisbanded"),
@@ -181,7 +184,7 @@ export default function App() {
               <Toast message={controller.message} tone={toastTone} />
             ) : null}
 
-            <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+            <div className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-20 pr-1">
               <PrimaryTabs
                 activeTab={controller.activeTab}
                 onChange={controller.handleTabChange}
@@ -322,6 +325,11 @@ export default function App() {
                 />
               ) : null}
             </div>
+
+            <SedentaryToggleButton
+              status={controller.sedentaryStatus}
+              onToggle={() => void controller.handleToggleSedentaryState()}
+            />
           </div>
         </main>
       )}

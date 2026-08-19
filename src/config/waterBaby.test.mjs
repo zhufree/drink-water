@@ -11,8 +11,8 @@ import {
 } from "./waterBaby.ts";
 
 test("expedition tier is capped by daily goal progress", () => {
-  assert.equal(getExpeditionTier(999, 2000), "locked");
-  assert.equal(getExpeditionTier(1000, 2000), "short");
+  assert.equal(getExpeditionTier(0, 2000), "locked");
+  assert.equal(getExpeditionTier(1, 2000), "short");
   assert.equal(getExpeditionTier(1999, 2000), "short");
   assert.equal(getExpeditionTier(2000, 2000), "long");
   assert.equal(getExpeditionTier(4000, 2000), "long");
@@ -49,8 +49,8 @@ test("a project is buildable only once and only with enough materials", () => {
 });
 
 test("the progress bubble reveals the water baby once exploration is available", () => {
-  assert.equal(shouldShowWaterBabyEntry(999, 2000, false), false);
-  assert.equal(shouldShowWaterBabyEntry(1000, 2000, false), true);
+  assert.equal(shouldShowWaterBabyEntry(0, 2000, false), false);
+  assert.equal(shouldShowWaterBabyEntry(1, 2000, false), true);
   assert.equal(shouldShowWaterBabyEntry(2000, 2000, false), true);
 });
 

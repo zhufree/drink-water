@@ -60,6 +60,7 @@ const RIVERSIDE_PIER_PROJECT_ID: &str = "riversidePier";
 const WOOD_MATERIAL_TYPE: &str = "wood";
 const STONE_MATERIAL_TYPE: &str = "stone";
 const MAX_GARDEN_MATERIAL_COUNT: u32 = 9_999;
+const SIT_PROMPT_INTERVAL_MINUTES: i64 = 5;
 #[cfg(test)]
 const CAT_COLLAGE_BACKGROUND_ID: &str = "catCollage";
 
@@ -77,6 +78,10 @@ fn default_panel_opacity_percent() -> u8 {
 
 fn default_panel_blur_px() -> u8 {
     8
+}
+
+fn default_sedentary_reminder_minutes() -> u32 {
+    20
 }
 
 fn default_empty_string() -> String {
@@ -116,6 +121,8 @@ pub struct Settings {
     autostart_enabled: bool,
     #[serde(default = "default_locale")]
     locale: String,
+    #[serde(default = "default_sedentary_reminder_minutes")]
+    sedentary_reminder_minutes: u32,
 }
 
 impl Default for Settings {
@@ -136,6 +143,7 @@ impl Default for Settings {
             notifications_enabled: true,
             autostart_enabled: false,
             locale: default_locale(),
+            sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }
     }
 }
@@ -147,6 +155,7 @@ impl Settings {
         self.cup_step_ml = self.cup_step_ml.max(10);
         self.panel_opacity_percent = self.panel_opacity_percent.clamp(10, 92);
         self.panel_blur_px = self.panel_blur_px.clamp(0, 24);
+        self.sedentary_reminder_minutes = self.sedentary_reminder_minutes.clamp(1, 240);
         self.device_id = self.device_id.trim().chars().take(128).collect();
         self.display_name = self.display_name.trim().chars().take(32).collect();
         self.active_circle_code = self

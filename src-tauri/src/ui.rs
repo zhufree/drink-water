@@ -54,9 +54,12 @@ fn tray_menu_copy(locale: &str) -> (&'static str, &'static str) {
     }
 }
 
+#[derive(Clone, Copy)]
 enum NotificationKind {
     DrinkNow,
     SnoozeReady,
+    SedentaryStandUp,
+    SedentaryAskSitting,
 }
 
 fn notification_copy(locale: &str, kind: NotificationKind) -> (&'static str, &'static str) {
@@ -71,6 +74,14 @@ fn notification_copy(locale: &str, kind: NotificationKind) -> (&'static str, &'s
             "Reminder again",
             "Your snooze has ended. This is a good time to catch up on that cup.",
         ),
+        (true, NotificationKind::SedentaryStandUp) => (
+            "Time to stand up",
+            "You have been seated for a while. Stand up and move for a minute.",
+        ),
+        (true, NotificationKind::SedentaryAskSitting) => (
+            "Are you seated again?",
+            "If you sat back down, tap the bottom button so I can time the next break.",
+        ),
         (false, NotificationKind::DrinkNow) => (
             "该喝水了",
             "新的喝水提醒已经开始了，记得按时补一杯水。",
@@ -78,6 +89,14 @@ fn notification_copy(locale: &str, kind: NotificationKind) -> (&'static str, &'s
         (false, NotificationKind::SnoozeReady) => (
             "再次提醒你",
             "稍后提醒时间到了，现在可以顺手把这杯水补上。",
+        ),
+        (false, NotificationKind::SedentaryStandUp) => (
+            "该起来活动了",
+            "你已经坐了一段时间，站起来活动一分钟吧。",
+        ),
+        (false, NotificationKind::SedentaryAskSitting) => (
+            "是不是又坐下了？",
+            "如果已经坐回去了，点一下底部按钮，我会重新计时。",
         ),
     }
 }
@@ -88,12 +107,16 @@ fn start_scheduler(app: AppHandle) {
             if let Some(state) = app.try_state::<AppState>() {
                 let mut should_notify = false;
                 let mut should_snooze_notify = false;
+                let mut sedentary_notification = None;
                 let mut notifications_enabled = false;
+                let mut locale = default_locale();
 
                 if let Ok(mut guard) = state.data.lock() {
                     let before_snooze = guard.today.snooze_until.clone();
                     let changed = reconcile(&mut guard, Local::now());
+                    sedentary_notification = reconcile_sedentary(&mut guard, Local::now());
                     notifications_enabled = guard.settings.notifications_enabled;
+                    locale = guard.settings.locale.clone();
                     should_snooze_notify = guard.today.pending_slot_index.is_some()
                         && before_snooze.is_some()
                         && guard.today.snooze_until.is_none()
@@ -116,10 +139,17 @@ fn start_scheduler(app: AppHandle) {
                     }
                 }
 
+                if let Some(kind) = sedentary_notification {
+                    let copy = notification_copy(&locale, kind);
+                    if notifications_enabled {
+                        maybe_send_notification(&app, copy.0, copy.1);
+                    }
+                }
+
                 let _ = state.save();
-                if should_notify && notifications_enabled {
-                    emit_state_updated(&app);
-                } else if should_snooze_notify && notifications_enabled {
+                if (should_notify || should_snooze_notify || sedentary_notification.is_some())
+                    && notifications_enabled
+                {
                     emit_state_updated(&app);
                 }
             }
@@ -194,6 +224,8 @@ pub fn run() {
             get_settings,
             save_settings,
             get_today_status,
+            get_sedentary_status,
+            toggle_sedentary_state,
             log_drink,
             undo_last_drink,
             log_yesterday_drink,

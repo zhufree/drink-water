@@ -633,8 +633,8 @@ fn start_expedition_in_state(
     if !is_expedition_route_unlocked(&state.garden, route_id) {
         return Err("expedition route is locked".to_string());
     }
-    if u64::from(state.today.actual_intake_ml) * 2 < u64::from(state.today.target_ml) {
-        return Err("drink at least half of the daily goal first".to_string());
+    if state.today.actual_intake_ml == 0 {
+        return Err("drink once before starting an expedition".to_string());
     }
     if total_produce(&state.garden, &crop_type) == 0 {
         return Err("not enough produce for expedition".to_string());
@@ -718,7 +718,10 @@ fn claim_expedition_in_state(
                     .saturating_add(*count)
                     .min(MAX_GARDEN_MATERIAL_COUNT);
             }
-            ExpeditionReward::Material { count, .. } => {
+            ExpeditionReward::Material {
+                material_type,
+                count,
+            } if material_type == STONE_MATERIAL_TYPE => {
                 state.garden.water_baby.materials.stone = state
                     .garden
                     .water_baby
@@ -726,6 +729,9 @@ fn claim_expedition_in_state(
                     .stone
                     .saturating_add(*count)
                     .min(MAX_GARDEN_MATERIAL_COUNT);
+            }
+            ExpeditionReward::Material { .. } => {
+                return Err("invalid expedition material reward".to_string());
             }
             ExpeditionReward::Seed { seed_type, count } => {
                 let seed_type = canonical_seed_type(seed_type)

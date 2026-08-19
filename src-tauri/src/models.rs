@@ -82,6 +82,32 @@ pub struct TodayStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SedentaryStatus {
+    seated: bool,
+    seated_since: Option<String>,
+    stood_up_at: Option<String>,
+    next_reminder_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SedentaryState {
+    #[serde(default)]
+    seated: bool,
+    #[serde(default)]
+    seated_since: Option<String>,
+    #[serde(default)]
+    stood_up_at: Option<String>,
+    #[serde(default)]
+    last_stand_reminder_at: Option<String>,
+    #[serde(default)]
+    last_sit_prompt_at: Option<String>,
+    #[serde(default)]
+    updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SeedInventoryItem {
     seed_type: String,
     count: u32,
@@ -159,10 +185,12 @@ pub struct GardenMaterialInventory {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ExpeditionReward {
     Material {
+        #[serde(rename = "materialType", alias = "material_type")]
         material_type: String,
         count: u32,
     },
     Seed {
+        #[serde(rename = "seedType", alias = "seed_type")]
         seed_type: String,
         count: u32,
     },
@@ -347,6 +375,8 @@ pub struct SettingsSnapshot {
     cup_size_ml: u32,
     cup_step_ml: u32,
     reminder_interval_minutes: u32,
+    #[serde(default = "default_sedentary_reminder_minutes")]
+    sedentary_reminder_minutes: u32,
     active_start_hour: u8,
     active_end_hour: u8,
     locale: String,
@@ -433,6 +463,8 @@ struct PersistedState {
     sync_meta: SyncMeta,
     #[serde(default)]
     achievements: Vec<AchievementReceipt>,
+    #[serde(default)]
+    sedentary: SedentaryState,
 }
 
 impl PersistedState {
@@ -447,6 +479,7 @@ impl PersistedState {
             history: Vec::new(),
             garden: GardenState::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         }
     }
 
@@ -535,6 +568,43 @@ impl PersistedState {
     fn normalize_sync_meta(&mut self) {
         self.sync_meta.normalize(&self.settings.device_id);
     }
+
+    fn normalize_sedentary(&mut self) {
+        if self.sedentary.seated {
+            if self
+                .sedentary
+                .seated_since
+                .as_deref()
+                .and_then(parse_local_datetime)
+                .is_none()
+            {
+                self.sedentary.seated_since = Some(Local::now().to_rfc3339());
+            }
+            self.sedentary.stood_up_at = None;
+            self.sedentary.last_sit_prompt_at = None;
+        } else {
+            self.sedentary.seated_since = None;
+            self.sedentary.last_stand_reminder_at = None;
+            if self
+                .sedentary
+                .stood_up_at
+                .as_deref()
+                .and_then(parse_local_datetime)
+                .is_none()
+            {
+                self.sedentary.stood_up_at = None;
+            }
+            if self
+                .sedentary
+                .last_sit_prompt_at
+                .as_deref()
+                .and_then(parse_local_datetime)
+                .is_none()
+            {
+                self.sedentary.last_sit_prompt_at = None;
+            }
+        }
+    }
 }
 
 impl DailyRecord {
@@ -608,6 +678,7 @@ impl AppState {
             parsed.normalize_history();
             parsed.normalize_garden();
             parsed.normalize_sync_meta();
+            parsed.normalize_sedentary();
             refresh_achievements(&mut parsed, Local::now());
             parsed
         } else {

@@ -26,6 +26,8 @@ type TranslationKey =
   | "message.expeditionStarted"
   | "message.expeditionClaimed"
   | "message.gardenProjectBuilt"
+  | "message.sedentarySeated"
+  | "message.sedentaryStanding"
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
@@ -79,6 +81,10 @@ type TranslationKey =
   | "rest.overlayBoost"
   | "rest.overlayBoostValue"
   | "rest.cancel"
+  | "sedentary.sit"
+  | "sedentary.stand"
+  | "sedentary.sitAria"
+  | "sedentary.standAria"
   | "settings.title"
   | "settings.description"
   | "settings.dailyTarget"
@@ -86,6 +92,9 @@ type TranslationKey =
   | "settings.cupStep"
   | "settings.interval"
   | "settings.intervalHelp"
+  | "settings.sedentaryTitle"
+  | "settings.sedentaryReminder"
+  | "settings.sedentaryHelp"
   | "settings.startHour"
   | "settings.endHour"
   | "settings.panelOpacity"
@@ -383,6 +392,8 @@ const enUs: TranslationTable = {
   "message.expeditionStarted": "The water baby set off.",
   "message.expeditionClaimed": "The expedition rewards are now in your inventory.",
   "message.gardenProjectBuilt": "The garden project is complete and a new route is open.",
+  "message.sedentarySeated": "Sitting timer started.",
+  "message.sedentaryStanding": "Standing break recorded.",
   "message.circleCreated": "Created circle {code}.",
   "message.circleJoined": "Joined circle {code}.",
   "message.circleSelected": "Switched to circle {code}.",
@@ -436,6 +447,10 @@ const enUs: TranslationTable = {
   "rest.overlayBoost": "This break will grant",
   "rest.overlayBoostValue": "{hours} hours",
   "rest.cancel": "End early",
+  "sedentary.sit": "Sit",
+  "sedentary.stand": "Up",
+  "sedentary.sitAria": "Start sitting timer",
+  "sedentary.standAria": "Mark as standing",
   "settings.title": "General settings",
   "settings.description": "Reminder pacing is calculated automatically from the target, cup size, and active hours.",
   "settings.dailyTarget": "Daily target (ml)",
@@ -443,6 +458,9 @@ const enUs: TranslationTable = {
   "settings.cupStep": "Cup adjustment step (ml)",
   "settings.interval": "Reminder interval (minutes)",
   "settings.intervalHelp": "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
+  "settings.sedentaryTitle": "Sitting reminder",
+  "settings.sedentaryReminder": "Stand after (minutes)",
+  "settings.sedentaryHelp": "After you mark yourself standing, the app asks every 5 minutes whether you sat down again.",
   "settings.startHour": "Start hour",
   "settings.endHour": "End hour",
   "settings.panelOpacity": "Panel opacity",
@@ -490,7 +508,7 @@ const enUs: TranslationTable = {
   "settings.syncHelpBackupTitle": "New device or more than 7 days",
   "settings.syncHelpBackupDescription": "Recent sync only covers the last 7 days. For migration or a long gap, upload a cloud backup on the old device, then restore it on the new one.",
   "settings.syncHelpPreferencesTitle": "Settings preferences",
-  "settings.syncHelpPreferencesDescription": "Daily target, cup size, reminder hours, and language pull with recent sync. Window appearance, launch at startup, and notification permission stay device-specific.",
+  "settings.syncHelpPreferencesDescription": "Daily target, cup size, reminder hours, sitting reminder, and language pull with recent sync. Window appearance, launch at startup, and notification permission stay device-specific.",
   "settings.syncSettings": "Sync settings",
   "settings.save": "Save settings",
   "settings.saving": "Saving...",
@@ -610,7 +628,7 @@ const enUs: TranslationTable = {
   "waterBaby.stateAtHome": "Resting at home",
   "waterBaby.stateExploring": "Out exploring",
   "waterBaby.stateReady": "Back with supplies",
-  "waterBaby.locked": "Reach 50% of today's goal to set off",
+  "waterBaby.locked": "Drink once today to set off",
   "waterBaby.shortReady": "A 4-hour short trip is ready",
   "waterBaby.longReady": "Goal met: an 8-hour trip brings two rewards",
   "waterBaby.usedToday": "Today's trip is complete. It can leave again tomorrow.",
@@ -736,6 +754,8 @@ const zhCn: TranslationTable = {
   "message.restStarted": "休息已开始。",
   "message.restCancelled": "本次休息已取消，没有获得加成。",
   "message.restCompleted": "休息完成，作物获得成长加速。",
+  "message.sedentarySeated": "已开始记录坐下时间。",
+  "message.sedentaryStanding": "已记录起身状态。",
   "message.circleCreated": "已创建圈子 {code}。",
   "message.circleJoined": "已加入圈子 {code}。",
   "message.circleSelected": "已切换到圈子 {code}。",
@@ -785,6 +805,10 @@ const zhCn: TranslationTable = {
   "rest.overlayBoost": "本次成长加速",
   "rest.overlayBoostValue": "{hours} 小时",
   "rest.cancel": "提前结束",
+  "sedentary.sit": "坐下",
+  "sedentary.stand": "起来",
+  "sedentary.sitAria": "开始记录坐下时间",
+  "sedentary.standAria": "标记为已经起身",
   "settings.title": "常规设置",
   "settings.description": "提醒节奏会根据目标量、单杯容量和提醒时间自动计算。",
   "settings.dailyTarget": "每日目标 (ml)",
@@ -792,6 +816,9 @@ const zhCn: TranslationTable = {
   "settings.cupStep": "杯量调整步进 (ml)",
   "settings.interval": "提醒间隔 (分钟)",
   "settings.intervalHelp": "自动计算：每天 {drinksPerDay} 杯，约每 {minutes} 分钟提醒一次",
+  "settings.sedentaryTitle": "久坐提醒",
+  "settings.sedentaryReminder": "坐下多久后提醒 (分钟)",
+  "settings.sedentaryHelp": "标记起身后，如果忘记再次点坐下，应用会每 5 分钟问一次是不是已经坐下。",
   "settings.startHour": "开始提醒时间",
   "settings.endHour": "结束提醒时间",
   "settings.language": "界面语言",
@@ -831,7 +858,7 @@ const zhCn: TranslationTable = {
   "settings.syncHelpBackupTitle": "新设备或超过 7 天没同步",
   "settings.syncHelpBackupDescription": "近期同步只保留最近 7 天。换新设备或很久没打开时，先在旧设备上传云备份，再在新设备从云端恢复。",
   "settings.syncHelpPreferencesTitle": "设置偏好",
-  "settings.syncHelpPreferencesDescription": "每日目标、杯量、提醒时间和语言会随近期同步一起拉取。桌面窗口效果、开机启动和通知权限仍然按设备单独保存。",
+  "settings.syncHelpPreferencesDescription": "每日目标、杯量、提醒时间、久坐提醒和语言会随近期同步一起拉取。桌面窗口效果、开机启动和通知权限仍然按设备单独保存。",
   "settings.syncSettings": "同步设置",
   "settings.save": "保存设置",
   "settings.saving": "正在保存...",
@@ -970,7 +997,7 @@ Object.assign(zhCn, {
   "waterBaby.stateAtHome": "正在家里休息",
   "waterBaby.stateExploring": "正在外出探索",
   "waterBaby.stateReady": "已经带着物资回来",
-  "waterBaby.locked": "今日目标达到 50% 后可以出发",
+  "waterBaby.locked": "今天喝第一口水后就可以出发",
   "waterBaby.shortReady": "已可进行 4 小时短途探索",
   "waterBaby.longReady": "今日已达标：8 小时远途可带回两份奖励",
   "waterBaby.usedToday": "今天已经出发过了，明天可以再次准备。",

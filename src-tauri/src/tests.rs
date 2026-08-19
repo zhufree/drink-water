@@ -51,6 +51,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         let changed = reconcile(&mut state, local_dt(2026, 5, 19, 11, 0));
@@ -78,10 +79,96 @@ mod tests {
             notifications_enabled: true,
             autostart_enabled: false,
             locale: default_locale(),
+            sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }
         .sanitize();
 
         assert_eq!(settings.reminder_interval_minutes, 97);
+    }
+
+    #[test]
+    fn sedentary_toggle_records_sitting_and_standing_times() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 19, 9, 0);
+        let mut state = PersistedState {
+            today: DailyRecord::new(now, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+
+        toggle_sedentary_state_in_state(&mut state, now);
+        let seated_status = to_sedentary_status(&state.settings, &state.sedentary);
+        let seated_since = now.to_rfc3339();
+        let seated_reminder_at = (now + chrono::Duration::minutes(20)).to_rfc3339();
+
+        assert!(seated_status.seated);
+        assert_eq!(seated_status.seated_since.as_deref(), Some(seated_since.as_str()));
+        assert_eq!(
+            seated_status.next_reminder_at.as_deref(),
+            Some(seated_reminder_at.as_str())
+        );
+
+        let stood_at = now + chrono::Duration::minutes(3);
+        toggle_sedentary_state_in_state(&mut state, stood_at);
+        let standing_status = to_sedentary_status(&state.settings, &state.sedentary);
+        let stood_at_text = stood_at.to_rfc3339();
+        let sit_prompt_at = (stood_at + chrono::Duration::minutes(5)).to_rfc3339();
+
+        assert!(!standing_status.seated);
+        assert_eq!(
+            standing_status.stood_up_at.as_deref(),
+            Some(stood_at_text.as_str())
+        );
+        assert_eq!(
+            standing_status.next_reminder_at.as_deref(),
+            Some(sit_prompt_at.as_str())
+        );
+    }
+
+    #[test]
+    fn sedentary_reconcile_reminds_to_stand_then_prompts_after_standing() {
+        let mut settings = Settings::default();
+        settings.sedentary_reminder_minutes = 20;
+        let now = local_dt(2026, 8, 19, 9, 0);
+        let mut state = PersistedState {
+            today: DailyRecord::new(now, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState {
+                seated: true,
+                seated_since: Some(now.to_rfc3339()),
+                stood_up_at: None,
+                last_stand_reminder_at: None,
+                last_sit_prompt_at: None,
+                updated_at: None,
+            },
+        };
+
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(19)).is_none());
+        assert!(matches!(
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(20)),
+            Some(NotificationKind::SedentaryStandUp)
+        ));
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(21)).is_none());
+
+        toggle_sedentary_state_in_state(&mut state, now + chrono::Duration::minutes(25));
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(29)).is_none());
+        assert!(matches!(
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(30)),
+            Some(NotificationKind::SedentaryAskSitting)
+        ));
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(34)).is_none());
+        assert!(matches!(
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(35)),
+            Some(NotificationKind::SedentaryAskSitting)
+        ));
     }
 
     #[test]
@@ -118,6 +205,7 @@ mod tests {
             notifications_enabled: true,
             autostart_enabled: true,
             locale: "zh-CN".to_string(),
+            sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }
         .sanitize();
         let mut state = PersistedState {
@@ -127,6 +215,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         let remote = SettingsSnapshotRecord {
             snapshot: SettingsSnapshot {
@@ -134,6 +223,7 @@ mod tests {
                 cup_size_ml: 400,
                 cup_step_ml: 100,
                 reminder_interval_minutes: 120,
+                sedentary_reminder_minutes: 25,
                 active_start_hour: 8,
                 active_end_hour: 21,
                 locale: "en-US".to_string(),
@@ -150,6 +240,7 @@ mod tests {
         assert_eq!(state.settings.active_start_hour, 8);
         assert_eq!(state.settings.active_end_hour, 21);
         assert_eq!(state.settings.locale, "en-US");
+        assert_eq!(state.settings.sedentary_reminder_minutes, 25);
         assert_eq!(state.today.target_ml, 2600);
         assert_eq!(state.today.cup_size_ml, 400);
         assert_eq!(state.today.active_start_hour, 8);
@@ -184,6 +275,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         state.today.updated_at = "2026-05-20T10:30:00+08:00".to_string();
@@ -245,6 +337,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         state.today.pending_slot_index = Some(3);
@@ -276,6 +369,7 @@ mod tests {
             notifications_enabled: true,
             autostart_enabled: false,
             locale: default_locale(),
+            sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         };
 
         assert_eq!(expected_intake_ml(&settings, local_dt(2026, 5, 19, 8, 30)), 0);
@@ -320,6 +414,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         let saved = state.today.last_log_undo.clone().unwrap();
@@ -384,6 +479,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         apply_yesterday_catch_up(&mut state, local_dt(2026, 5, 20, 9, 30), 250).unwrap();
@@ -408,6 +504,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         let mut value = serde_json::to_value(state).unwrap();
         value.as_object_mut().unwrap().remove("garden");
@@ -461,6 +558,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         state.garden.water_baby.materials.wood = MAX_GARDEN_MATERIAL_COUNT + 100;
         state.garden.water_baby.materials.stone = MAX_GARDEN_MATERIAL_COUNT + 100;
@@ -481,7 +579,7 @@ mod tests {
     }
 
     #[test]
-    fn expedition_requires_half_of_the_daily_goal_and_spends_one_crop() {
+    fn expedition_requires_first_drink_and_spends_one_crop() {
         let settings = Settings::default();
         let now = local_dt(2026, 8, 14, 9, 0);
         let mut state = PersistedState {
@@ -491,9 +589,10 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
-        state.today.actual_intake_ml = 999;
+        state.today.actual_intake_ml = 0;
 
         assert!(start_expedition_in_state(
             &mut state,
@@ -503,7 +602,7 @@ mod tests {
         )
         .is_err());
 
-        state.today.actual_intake_ml = 1000;
+        state.today.actual_intake_ml = 1;
         start_expedition_in_state(
             &mut state,
             DEFAULT_EXPEDITION_ROUTE_ID,
@@ -534,6 +633,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         state.today.actual_intake_ml = state.today.target_ml;
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
@@ -573,6 +673,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         state.garden.water_baby.active_expedition = Some(ActiveExpedition {
             expedition_id: "expedition-1".to_string(),
@@ -585,6 +686,10 @@ mod tests {
                 ExpeditionReward::Material {
                     material_type: WOOD_MATERIAL_TYPE.to_string(),
                     count: 2,
+                },
+                ExpeditionReward::Material {
+                    material_type: STONE_MATERIAL_TYPE.to_string(),
+                    count: 3,
                 },
                 ExpeditionReward::Seed {
                     seed_type: POTATO_SEED_TYPE.to_string(),
@@ -608,6 +713,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(state.garden.water_baby.materials.wood, 2);
+        assert_eq!(state.garden.water_baby.materials.stone, 3);
         assert_eq!(seed_count(&state.garden, POTATO_SEED_TYPE), initial_seed_count + 1);
         assert!(state.garden.water_baby.active_expedition.is_none());
         assert!(claim_expedition_in_state(
@@ -617,7 +723,40 @@ mod tests {
         )
         .is_err());
         assert_eq!(state.garden.water_baby.materials.wood, 2);
+        assert_eq!(state.garden.water_baby.materials.stone, 3);
         assert_eq!(seed_count(&state.garden, POTATO_SEED_TYPE), initial_seed_count + 1);
+    }
+
+    #[test]
+    fn expedition_reward_json_uses_frontend_field_names_and_reads_legacy_names() {
+        let reward = ExpeditionReward::Material {
+            material_type: WOOD_MATERIAL_TYPE.to_string(),
+            count: 2,
+        };
+
+        assert_eq!(
+            serde_json::to_value(&reward).unwrap(),
+            serde_json::json!({
+                "kind": "material",
+                "materialType": WOOD_MATERIAL_TYPE,
+                "count": 2
+            })
+        );
+
+        let parsed: ExpeditionReward = serde_json::from_value(serde_json::json!({
+            "kind": "seed",
+            "seed_type": POTATO_SEED_TYPE,
+            "count": 1
+        }))
+        .unwrap();
+
+        assert!(matches!(
+            parsed,
+            ExpeditionReward::Seed {
+                seed_type,
+                count: 1
+            } if seed_type == POTATO_SEED_TYPE
+        ));
     }
 
     #[test]
@@ -654,6 +793,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         let content = format!("\u{feff}{}", serde_json::to_string(&state).unwrap());
 
@@ -735,6 +875,7 @@ mod tests {
             },
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         state.normalize_garden();
@@ -756,6 +897,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         plant_seed_in_state(
@@ -804,6 +946,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         plant_seed_in_state(&mut state, "2026-05-19", BASIC_SEED_TYPE, now).unwrap();
@@ -838,6 +981,7 @@ mod tests {
                 garden: GardenState::default(),
                 sync_meta: SyncMeta::default(),
                 achievements: Vec::new(),
+                sedentary: SedentaryState::default(),
             };
 
             plant_seed_in_state(
@@ -868,6 +1012,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         assert!(exchange_produce_in_state(&mut state, POTATO_CROP_TYPE, BELL_PEPPER_SEED_TYPE, 1).is_err());
@@ -905,6 +1050,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 4);
@@ -941,6 +1087,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 2);
@@ -973,6 +1120,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         add_produce(&mut state.garden, BELL_PEPPER_CROP_TYPE, 6);
@@ -1009,6 +1157,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 6);
@@ -1055,6 +1204,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         state.garden.active_background = CAT_COLLAGE_BACKGROUND_ID.to_string();
@@ -1089,6 +1239,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
         add_seed(&mut state.garden, BASIC_SEED_TYPE, 1);
 
@@ -1184,6 +1335,7 @@ mod tests {
             garden,
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         let receipts = evaluate_achievement_receipts(&state, now);
@@ -1216,6 +1368,7 @@ mod tests {
             garden: GardenState::default(),
             sync_meta: SyncMeta::default(),
             achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
         };
 
         assert!(!evaluate_achievement_receipts(&state, now)

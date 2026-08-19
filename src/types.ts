@@ -16,6 +16,7 @@ export type Settings = {
   notificationsEnabled: boolean;
   autostartEnabled: boolean;
   locale: Locale;
+  sedentaryReminderMinutes: number;
 };
 
 export type SettingsSnapshot = Pick<
@@ -24,6 +25,7 @@ export type SettingsSnapshot = Pick<
   | "cupSizeMl"
   | "cupStepMl"
   | "reminderIntervalMinutes"
+  | "sedentaryReminderMinutes"
   | "activeStartHour"
   | "activeEndHour"
   | "locale"
@@ -44,6 +46,13 @@ export type TodayStatus = {
   missedReminderSlots: number;
   canUndoLastDrink: boolean;
   lastLoggedAmountMl: number | null;
+};
+
+export type SedentaryStatus = {
+  seated: boolean;
+  seatedSince: string | null;
+  stoodUpAt: string | null;
+  nextReminderAt: string | null;
 };
 
 export type HistoryItem = {

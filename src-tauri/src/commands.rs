@@ -51,6 +51,39 @@ fn get_today_status(app: AppHandle, state: State<'_, AppState>) -> Result<TodayS
 }
 
 #[tauri::command]
+fn get_sedentary_status(state: State<'_, AppState>) -> Result<SedentaryStatus, String> {
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read sedentary status".to_string())?;
+    Ok(to_sedentary_status(&guard.settings, &guard.sedentary))
+}
+
+#[tauri::command]
+fn toggle_sedentary_state(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<SedentaryStatus, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to update sedentary status".to_string())?;
+        toggle_sedentary_state_in_state(&mut guard, now);
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read sedentary status".to_string())?;
+    Ok(to_sedentary_status(&guard.settings, &guard.sedentary))
+}
+
+#[tauri::command]
 fn log_drink(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -1127,6 +1160,7 @@ fn account_settings_snapshot_changed(left: &Settings, right: &Settings) -> bool 
         || left.cup_size_ml != right.cup_size_ml
         || left.cup_step_ml != right.cup_step_ml
         || left.reminder_interval_minutes != right.reminder_interval_minutes
+        || left.sedentary_reminder_minutes != right.sedentary_reminder_minutes
         || left.active_start_hour != right.active_start_hour
         || left.active_end_hour != right.active_end_hour
         || left.locale != right.locale
@@ -1146,6 +1180,7 @@ fn build_settings_snapshot(settings: &Settings) -> SettingsSnapshot {
         cup_size_ml: settings.cup_size_ml,
         cup_step_ml: settings.cup_step_ml,
         reminder_interval_minutes: settings.reminder_interval_minutes,
+        sedentary_reminder_minutes: settings.sedentary_reminder_minutes,
         active_start_hour: settings.active_start_hour,
         active_end_hour: settings.active_end_hour,
         locale: settings.locale.clone(),
@@ -1272,6 +1307,7 @@ fn apply_settings_snapshot(state: &mut PersistedState, remote: SettingsSnapshotR
         active_circle_code: state.settings.active_circle_code.clone(),
         active_circle_name: state.settings.active_circle_name.clone(),
         reminder_interval_minutes: remote.snapshot.reminder_interval_minutes,
+        sedentary_reminder_minutes: remote.snapshot.sedentary_reminder_minutes,
         active_start_hour: remote.snapshot.active_start_hour,
         active_end_hour: remote.snapshot.active_end_hour,
         notifications_enabled: state.settings.notifications_enabled,

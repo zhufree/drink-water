@@ -8,6 +8,7 @@ import type {
   GardenState,
   Settings,
   SettingsSnapshotRecord,
+  SedentaryStatus,
   SyncMeta,
   TodayStatus,
   HistoryItem
@@ -26,6 +27,12 @@ export const saveSettings = (settings: Settings) =>
   invoke<Settings>("save_settings", { settings });
 
 export const getTodayStatus = () => invoke<TodayStatus>("get_today_status");
+
+export const getSedentaryStatus = () =>
+  invoke<SedentaryStatus>("get_sedentary_status");
+
+export const toggleSedentaryState = () =>
+  invoke<SedentaryStatus>("toggle_sedentary_state");
 
 export const logDrink = (amountMl: number) =>
   invoke<TodayStatus>("log_drink", { amountMl });

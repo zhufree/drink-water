@@ -22,6 +22,7 @@ import {
   getGardenState,
   getHistory,
   getRecentDailySnapshots,
+  getSedentaryStatus,
   getSettings,
   getSettingsSnapshot,
   getSyncMeta,
@@ -41,6 +42,7 @@ import {
   setActiveBackground,
   startExpedition,
   startRestBreak,
+  toggleSedentaryState,
   toggleAutostart,
   undoLastDrink
 } from "../api";
@@ -74,6 +76,7 @@ import type {
   Locale,
   NotificationPermissionState,
   Settings,
+  SedentaryStatus,
   DailySnapshotRecord,
   GardenSnapshotRecord,
   SettingsSnapshotRecord,
@@ -124,6 +127,12 @@ const defaultSyncMeta: SyncMeta = {
 export { APP_VERSION, COPYRIGHT, RELEASE_URL };
 
 const INITIAL_SEED_GRANT_DISMISS_PREFIX = "drinkWater.initialSeedGrantDismissed.";
+const defaultSedentaryStatus: SedentaryStatus = {
+  seated: false,
+  seatedSince: null,
+  stoodUpAt: null,
+  nextReminderAt: null
+};
 
 function isInitialSeedGrantNoticeDismissed(awardedAt: string) {
   try {
@@ -146,6 +155,8 @@ export function useAppController() {
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [draftSettings, setDraftSettings] = useState<Settings>(defaultSettings);
   const [status, setStatus] = useState<TodayStatus | null>(null);
+  const [sedentaryStatus, setSedentaryStatus] =
+    useState<SedentaryStatus>(defaultSedentaryStatus);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [gardenState, setGardenState] = useState(defaultGardenState);
   const [achievementReceipts, setAchievementReceipts] = useState<AchievementReceipt[]>([]);
@@ -209,9 +220,18 @@ export function useAppController() {
       console.warn("[config] failed to load runtime config, using bundled config", error);
     }
 
-    const [nextSettings, nextStatus, nextHistory, nextGardenState, nextAchievementState, nextSyncMeta] = await Promise.all([
+    const [
+      nextSettings,
+      nextStatus,
+      nextSedentaryStatus,
+      nextHistory,
+      nextGardenState,
+      nextAchievementState,
+      nextSyncMeta
+    ] = await Promise.all([
       getSettings(),
       getTodayStatus(),
+      getSedentaryStatus(),
       getHistory(56),
       getGardenState(),
       getAchievementState(),
@@ -224,6 +244,7 @@ export function useAppController() {
       current === settings.cupSizeMl ? nextSettings.cupSizeMl : current
     );
     setStatus(nextStatus);
+    setSedentaryStatus(nextSedentaryStatus);
     setHistory(nextHistory);
     setGardenState(nextGardenState);
     setAchievementReceipts(nextAchievementState.receipts);
@@ -575,6 +596,21 @@ export function useAppController() {
       await refreshAll();
       syncAfterLocalWrite({ garden: true });
       setMessage(i18n.t("message.expeditionClaimed"));
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleToggleSedentaryState = async () => {
+    setMessage("");
+    try {
+      const nextStatus = await toggleSedentaryState();
+      setSedentaryStatus(nextStatus);
+      setMessage(
+        nextStatus.seated
+          ? i18n.t("message.sedentarySeated")
+          : i18n.t("message.sedentaryStanding")
+      );
     } catch (error) {
       setMessage(extractErrorMessage(error));
     }
@@ -1068,6 +1104,7 @@ export function useAppController() {
     settings,
     draftSettings,
     status,
+    sedentaryStatus,
     history,
     gardenState,
     achievementReceipts,
@@ -1132,6 +1169,7 @@ export function useAppController() {
     handleActiveBackgroundChange,
     handleStartExpedition,
     handleClaimExpedition,
+    handleToggleSedentaryState,
     handleBuildGardenProject,
     handleStartRestBreak,
     handleCancelRestBreak,
