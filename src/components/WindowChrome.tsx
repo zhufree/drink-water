@@ -1,7 +1,6 @@
 import { Minus, RefreshCw, Settings, UsersRound, X } from "lucide-react";
 import { useI18n } from "../i18n";
-
-type TabKey = "today" | "history" | "leaderboard" | "settings";
+import type { TabKey } from "../hooks/appControllerConfig";
 
 type WindowChromeProps = {
   activeTab: TabKey;

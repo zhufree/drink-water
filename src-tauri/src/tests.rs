@@ -148,6 +148,11 @@ mod tests {
                 last_stand_reminder_at: None,
                 last_sit_prompt_at: None,
                 updated_at: None,
+                activity_day_key: day_key(now),
+                activity_events: vec![SedentaryActivityEvent {
+                    kind: SedentaryActivityKind::Seated,
+                    at: now.to_rfc3339(),
+                }],
             },
         };
 
@@ -156,19 +161,67 @@ mod tests {
             reconcile_sedentary(&mut state, now + chrono::Duration::minutes(20)),
             Some(NotificationKind::SedentaryStandUp)
         ));
+        let first_repeat_at = (now + chrono::Duration::minutes(25)).to_rfc3339();
+        assert_eq!(
+            to_sedentary_status(&state.settings, &state.sedentary)
+                .next_reminder_at
+                .as_deref(),
+            Some(first_repeat_at.as_str())
+        );
         assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(21)).is_none());
+        assert!(matches!(
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(25)),
+            Some(NotificationKind::SedentaryStandUp)
+        ));
+        let second_repeat_at = (now + chrono::Duration::minutes(30)).to_rfc3339();
+        assert_eq!(
+            to_sedentary_status(&state.settings, &state.sedentary)
+                .next_reminder_at
+                .as_deref(),
+            Some(second_repeat_at.as_str())
+        );
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(26)).is_none());
 
-        toggle_sedentary_state_in_state(&mut state, now + chrono::Duration::minutes(25));
+        toggle_sedentary_state_in_state(&mut state, now + chrono::Duration::minutes(26));
         assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(29)).is_none());
         assert!(matches!(
-            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(30)),
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(31)),
             Some(NotificationKind::SedentaryAskSitting)
         ));
-        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(34)).is_none());
+        assert!(reconcile_sedentary(&mut state, now + chrono::Duration::minutes(35)).is_none());
         assert!(matches!(
-            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(35)),
+            reconcile_sedentary(&mut state, now + chrono::Duration::minutes(36)),
             Some(NotificationKind::SedentaryAskSitting)
         ));
+    }
+
+    #[test]
+    fn sedentary_activity_keeps_only_the_current_day() {
+        let settings = Settings::default();
+        let first_day = local_dt(2026, 8, 19, 23, 55);
+        let next_day = local_dt(2026, 8, 20, 0, 1);
+        let mut state = PersistedState {
+            today: DailyRecord::new(first_day, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+
+        toggle_sedentary_state_in_state(&mut state, first_day);
+        assert_eq!(state.sedentary.activity_events.len(), 1);
+
+        reconcile_sedentary(&mut state, next_day);
+        assert_eq!(state.sedentary.activity_day_key, day_key(next_day));
+        assert_eq!(state.sedentary.activity_events.len(), 1);
+        assert_eq!(
+            state.sedentary.activity_events[0].kind,
+            SedentaryActivityKind::Seated
+        );
+        let next_day_text = next_day.to_rfc3339();
+        assert_eq!(state.sedentary.seated_since.as_deref(), Some(next_day_text.as_str()));
     }
 
     #[test]

@@ -5,6 +5,7 @@ Drink Water 是一个基于 Tauri 2、React、TypeScript 与 Rust 的桌面饮�
 ## 当前能力
 
 - 按每日目标、杯量和活跃时段派生提醒间隔；支持通知、稍后提醒、托盘和开机自启。
+- 久坐提醒会在首次超时后每 5 分钟继续提示，活动页按时间轴记录当天坐下与起身阶段。
 - 记录白水、茶、咖啡等饮品，并按饮品系数折算有效补水量；支持撤销最近一次记录和补记昨天。
 - 展示历史、热力图与欠水情况；本地历史最长保留 90 天。
 - 农场玩法：种植、收获、作物图鉴、种子/背景兑换、休息加速，以及水宝宝每日探险和固定家园修缮。
@@ -27,6 +28,7 @@ docs/                同步、更新检查和小程序消费方规格
 关键现役文档：
 
 - [同步数据系统实现说明](docs/sync-system.md)
+- [久坐提醒与活动时间轴](docs/sedentary-activity.md)
 - [小程序兑换中心功能说明](docs/mini-program-exchange-center-spec.md)
 - [Cloudflare 更新检查维护](docs/cloudflare-update-check.md)
 - [水宝宝远行与家园修缮 MVP](docs/ideas/water-baby-expedition-mvp.md)

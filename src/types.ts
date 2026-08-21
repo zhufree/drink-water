@@ -53,6 +53,13 @@ export type SedentaryStatus = {
   seatedSince: string | null;
   stoodUpAt: string | null;
   nextReminderAt: string | null;
+  activityDayKey: string;
+  activityEvents: SedentaryActivityEvent[];
+};
+
+export type SedentaryActivityEvent = {
+  kind: "seated" | "standing";
+  at: string;
 };
 
 export type HistoryItem = {

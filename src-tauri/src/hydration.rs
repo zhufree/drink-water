@@ -77,6 +77,8 @@ fn to_sedentary_status(settings: &Settings, sedentary: &SedentaryState) -> Seden
         seated_since: sedentary.seated_since.clone(),
         stood_up_at: sedentary.stood_up_at.clone(),
         next_reminder_at: next_sedentary_reminder_time(settings, sedentary),
+        activity_day_key: sedentary.activity_day_key.clone(),
+        activity_events: sedentary.activity_events.clone(),
     }
 }
 
@@ -85,14 +87,22 @@ fn next_sedentary_reminder_time(
     sedentary: &SedentaryState,
 ) -> Option<String> {
     if sedentary.seated {
-        return sedentary
-            .seated_since
+        let reminder_anchor = sedentary
+            .last_stand_reminder_at
             .as_deref()
             .and_then(parse_local_datetime)
-            .map(|value| {
-                (value + chrono::Duration::minutes(i64::from(settings.sedentary_reminder_minutes)))
-                    .to_rfc3339()
-            });
+            .map(|value| (value, SIT_PROMPT_INTERVAL_MINUTES))
+            .or_else(|| {
+                sedentary
+                    .seated_since
+                    .as_deref()
+                    .and_then(parse_local_datetime)
+                    .map(|value| (value, i64::from(settings.sedentary_reminder_minutes)))
+            })?;
+
+        return Some(
+            (reminder_anchor.0 + chrono::Duration::minutes(reminder_anchor.1)).to_rfc3339(),
+        );
     }
 
     let prompt_anchor = sedentary
@@ -109,7 +119,59 @@ fn next_sedentary_reminder_time(
     Some((prompt_anchor + chrono::Duration::minutes(SIT_PROMPT_INTERVAL_MINUTES)).to_rfc3339())
 }
 
+fn reconcile_sedentary_activity_day(
+    sedentary: &mut SedentaryState,
+    now: DateTime<Local>,
+) -> bool {
+    let current_day = day_key(now);
+    if sedentary.activity_day_key == current_day {
+        return false;
+    }
+
+    let previous_day = std::mem::replace(&mut sedentary.activity_day_key, current_day);
+    sedentary.activity_events.clear();
+
+    if previous_day.is_empty() {
+        if sedentary.seated {
+            if let Some(seated_since) = sedentary
+                .seated_since
+                .as_deref()
+                .and_then(parse_local_datetime)
+                .filter(|value| day_key(*value) == sedentary.activity_day_key)
+            {
+                sedentary.activity_events.push(SedentaryActivityEvent {
+                    kind: SedentaryActivityKind::Seated,
+                    at: seated_since.to_rfc3339(),
+                });
+            }
+        }
+        return true;
+    }
+
+    let now_text = now.to_rfc3339();
+    let kind = if sedentary.seated {
+        sedentary.seated_since = Some(now_text.clone());
+        sedentary.stood_up_at = None;
+        sedentary.last_stand_reminder_at = None;
+        sedentary.last_sit_prompt_at = None;
+        SedentaryActivityKind::Seated
+    } else {
+        sedentary.seated_since = None;
+        sedentary.stood_up_at = Some(now_text.clone());
+        sedentary.last_stand_reminder_at = None;
+        sedentary.last_sit_prompt_at = None;
+        SedentaryActivityKind::Standing
+    };
+    sedentary.activity_events.push(SedentaryActivityEvent {
+        kind,
+        at: now_text.clone(),
+    });
+    sedentary.updated_at = Some(now_text);
+    true
+}
+
 fn toggle_sedentary_state_in_state(state: &mut PersistedState, now: DateTime<Local>) {
+    reconcile_sedentary_activity_day(&mut state.sedentary, now);
     let now_text = now.to_rfc3339();
     if state.sedentary.seated {
         state.sedentary.seated = false;
@@ -124,6 +186,14 @@ fn toggle_sedentary_state_in_state(state: &mut PersistedState, now: DateTime<Loc
         state.sedentary.last_stand_reminder_at = None;
         state.sedentary.last_sit_prompt_at = None;
     }
+    state.sedentary.activity_events.push(SedentaryActivityEvent {
+        kind: if state.sedentary.seated {
+            SedentaryActivityKind::Seated
+        } else {
+            SedentaryActivityKind::Standing
+        },
+        at: now_text.clone(),
+    });
     state.sedentary.updated_at = Some(now_text);
 }
 
@@ -131,15 +201,26 @@ fn reconcile_sedentary(
     state: &mut PersistedState,
     now: DateTime<Local>,
 ) -> Option<NotificationKind> {
+    reconcile_sedentary_activity_day(&mut state.sedentary, now);
+
     if state.sedentary.seated {
         let seated_since = state
             .sedentary
             .seated_since
             .as_deref()
             .and_then(parse_local_datetime)?;
-        let due_at =
-            seated_since + chrono::Duration::minutes(i64::from(state.settings.sedentary_reminder_minutes));
-        if now >= due_at && state.sedentary.last_stand_reminder_at.is_none() {
+        let (reminder_anchor, reminder_interval) = state
+            .sedentary
+            .last_stand_reminder_at
+            .as_deref()
+            .and_then(parse_local_datetime)
+            .map(|value| (value, SIT_PROMPT_INTERVAL_MINUTES))
+            .unwrap_or((
+                seated_since,
+                i64::from(state.settings.sedentary_reminder_minutes),
+            ));
+        let due_at = reminder_anchor + chrono::Duration::minutes(reminder_interval);
+        if now >= due_at {
             let now_text = now.to_rfc3339();
             state.sedentary.last_stand_reminder_at = Some(now_text.clone());
             state.sedentary.updated_at = Some(now_text);

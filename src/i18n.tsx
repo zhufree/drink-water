@@ -42,8 +42,29 @@ type TranslationKey =
   | "window.activeDrinkers"
   | "tabs.navigation"
   | "tabs.today"
+  | "tabs.activity"
   | "tabs.history"
   | "tabs.leaderboard"
+  | "activity.todayOnly"
+  | "activity.title"
+  | "activity.description"
+  | "activity.sittingNow"
+  | "activity.standingNow"
+  | "activity.totalSitting"
+  | "activity.totalStanding"
+  | "activity.longestSitting"
+  | "activity.timelineTitle"
+  | "activity.emptyTitle"
+  | "activity.emptyDescription"
+  | "activity.satDown"
+  | "activity.stoodUp"
+  | "activity.sittingPhase"
+  | "activity.standingPhase"
+  | "activity.longSitting"
+  | "activity.now"
+  | "activity.lessThanMinute"
+  | "activity.minutes"
+  | "activity.hoursMinutes"
   | "today.title"
   | "today.nextReminder"
   | "today.progress"
@@ -408,8 +429,29 @@ const enUs: TranslationTable = {
   "window.activeDrinkers": "{count} people are drinking too",
   "tabs.navigation": "Switch sections",
   "tabs.today": "Today",
+  "tabs.activity": "Activity",
   "tabs.history": "History",
   "tabs.leaderboard": "Leaderboard",
+  "activity.todayOnly": "TODAY ONLY",
+  "activity.title": "Activity timeline",
+  "activity.description": "Your sitting and standing periods reset at the start of each day.",
+  "activity.sittingNow": "Sitting",
+  "activity.standingNow": "Standing",
+  "activity.totalSitting": "Total sitting",
+  "activity.totalStanding": "Total standing",
+  "activity.longestSitting": "Longest sitting",
+  "activity.timelineTitle": "Today's transitions",
+  "activity.emptyTitle": "No activity recorded yet",
+  "activity.emptyDescription": "Use the bottom Sit or Up button to create the first point on today's timeline.",
+  "activity.satDown": "Sat down",
+  "activity.stoodUp": "Stood up",
+  "activity.sittingPhase": "Sitting period",
+  "activity.standingPhase": "Standing period",
+  "activity.longSitting": "Long sitting",
+  "activity.now": "Now",
+  "activity.lessThanMinute": "< 1 min",
+  "activity.minutes": "{minutes} min",
+  "activity.hoursMinutes": "{hours} hr {minutes} min",
   "today.title": "Today's hydration",
   "today.nextReminder": "Next reminder",
   "today.progress": "Progress",
@@ -460,7 +502,7 @@ const enUs: TranslationTable = {
   "settings.intervalHelp": "Auto-calculated: {drinksPerDay} drinks per day, about every {minutes} minutes",
   "settings.sedentaryTitle": "Sitting reminder",
   "settings.sedentaryReminder": "Stand after (minutes)",
-  "settings.sedentaryHelp": "After you mark yourself standing, the app asks every 5 minutes whether you sat down again.",
+  "settings.sedentaryHelp": "After the first alert, the app reminds you to stand every 5 minutes until you mark yourself Up. While standing, it also asks every 5 minutes whether you sat down again.",
   "settings.startHour": "Start hour",
   "settings.endHour": "End hour",
   "settings.panelOpacity": "Panel opacity",
@@ -767,8 +809,29 @@ const zhCn: TranslationTable = {
   "window.activeDrinkers": "{count} 人也在喝水",
   "tabs.navigation": "页面切换",
   "tabs.today": "今日",
+  "tabs.activity": "活动",
   "tabs.history": "历史",
   "tabs.leaderboard": "排行榜",
+  "activity.todayOnly": "仅保留今日",
+  "activity.title": "活动时间轴",
+  "activity.description": "记录今天坐下与起身的时间段，次日自动清空并重新计时。",
+  "activity.sittingNow": "正在坐着",
+  "activity.standingNow": "已经起身",
+  "activity.totalSitting": "累计坐下",
+  "activity.totalStanding": "累计起身",
+  "activity.longestSitting": "最长久坐",
+  "activity.timelineTitle": "今日状态节点",
+  "activity.emptyTitle": "今天还没有活动记录",
+  "activity.emptyDescription": "使用底部的“坐下”或“起来”按钮，创建今天的第一个时间节点。",
+  "activity.satDown": "坐下",
+  "activity.stoodUp": "起身",
+  "activity.sittingPhase": "坐下阶段",
+  "activity.standingPhase": "起身阶段",
+  "activity.longSitting": "久坐",
+  "activity.now": "现在",
+  "activity.lessThanMinute": "不足 1 分钟",
+  "activity.minutes": "{minutes} 分钟",
+  "activity.hoursMinutes": "{hours} 小时 {minutes} 分钟",
   "today.title": "今日饮水",
   "today.nextReminder": "下次提醒",
   "today.progress": "进度",
@@ -818,7 +881,7 @@ const zhCn: TranslationTable = {
   "settings.intervalHelp": "自动计算：每天 {drinksPerDay} 杯，约每 {minutes} 分钟提醒一次",
   "settings.sedentaryTitle": "久坐提醒",
   "settings.sedentaryReminder": "坐下多久后提醒 (分钟)",
-  "settings.sedentaryHelp": "标记起身后，如果忘记再次点坐下，应用会每 5 分钟问一次是不是已经坐下。",
+  "settings.sedentaryHelp": "首次久坐提醒后，如果还未标记“起来”，应用会每 5 分钟再次提醒；起身期间也会每 5 分钟询问是否已坐下。",
   "settings.startHour": "开始提醒时间",
   "settings.endHour": "结束提醒时间",
   "settings.language": "界面语言",

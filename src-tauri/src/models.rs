@@ -87,6 +87,22 @@ pub struct SedentaryStatus {
     seated_since: Option<String>,
     stood_up_at: Option<String>,
     next_reminder_at: Option<String>,
+    activity_day_key: String,
+    activity_events: Vec<SedentaryActivityEvent>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SedentaryActivityKind {
+    Seated,
+    Standing,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SedentaryActivityEvent {
+    kind: SedentaryActivityKind,
+    at: String,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -104,6 +120,10 @@ pub struct SedentaryState {
     last_sit_prompt_at: Option<String>,
     #[serde(default)]
     updated_at: Option<String>,
+    #[serde(default)]
+    activity_day_key: String,
+    #[serde(default)]
+    activity_events: Vec<SedentaryActivityEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -570,6 +590,7 @@ impl PersistedState {
     }
 
     fn normalize_sedentary(&mut self) {
+        let now = Local::now();
         if self.sedentary.seated {
             if self
                 .sedentary
@@ -578,7 +599,7 @@ impl PersistedState {
                 .and_then(parse_local_datetime)
                 .is_none()
             {
-                self.sedentary.seated_since = Some(Local::now().to_rfc3339());
+                self.sedentary.seated_since = Some(now.to_rfc3339());
             }
             self.sedentary.stood_up_at = None;
             self.sedentary.last_sit_prompt_at = None;
@@ -604,6 +625,7 @@ impl PersistedState {
                 self.sedentary.last_sit_prompt_at = None;
             }
         }
+        reconcile_sedentary_activity_day(&mut self.sedentary, now);
     }
 }
 

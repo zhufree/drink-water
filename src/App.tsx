@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { ActivityPanel } from "./components/ActivityPanel";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { FirstRunOnboardingModal } from "./components/FirstRunOnboardingModal";
 import { InitialSeedGrantModal } from "./components/InitialSeedGrantModal";
@@ -206,6 +207,10 @@ export default function App() {
                     void controller.handleClaimExpedition(expeditionId)
                   }
                 />
+              ) : null}
+
+              {controller.activeTab === "activity" ? (
+                <ActivityPanel status={controller.sedentaryStatus} />
               ) : null}
 
               {controller.activeTab === "history" ? (

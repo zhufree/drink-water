@@ -1,7 +1,7 @@
 import { SEED_EXCHANGE_CONFIG } from "../config/seedExchange";
 import type { GardenState, Locale, Settings } from "../types";
 
-export type TabKey = "today" | "history" | "leaderboard" | "settings";
+export type TabKey = "today" | "activity" | "history" | "leaderboard" | "settings";
 export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";

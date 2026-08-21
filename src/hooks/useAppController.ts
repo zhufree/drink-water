@@ -131,7 +131,9 @@ const defaultSedentaryStatus: SedentaryStatus = {
   seated: false,
   seatedSince: null,
   stoodUpAt: null,
-  nextReminderAt: null
+  nextReminderAt: null,
+  activityDayKey: "",
+  activityEvents: []
 };
 
 function isInitialSeedGrantNoticeDismissed(awardedAt: string) {
