@@ -332,6 +332,27 @@ export function SettingsPanel({
                 className="h-4 w-4"
               />
             </label>
+            <label className="flex items-start justify-between gap-3 rounded-[18px] bg-white/5 px-3 py-3">
+              <span className="min-w-0">
+                <span className="block text-sm text-slate-200">
+                  {t("settings.desktopPetAutoShow")}
+                </span>
+                <small className="mt-1 block text-xs leading-5 text-slate-300/60">
+                  {t("settings.desktopPetAutoShowHelp")}
+                </small>
+              </span>
+              <input
+                type="checkbox"
+                checked={draftSettings.desktopPetAutoShow}
+                onChange={(event) =>
+                  setDraftSettings((current) => ({
+                    ...current,
+                    desktopPetAutoShow: event.target.checked
+                  }))
+                }
+                className="mt-0.5 h-4 w-4 shrink-0"
+              />
+            </label>
             <div className="rounded-[18px] bg-white/5 px-3 py-3">
               <strong className="text-sm font-semibold text-slate-50">
                 {t("settings.permissionTitle")}

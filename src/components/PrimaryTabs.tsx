@@ -11,13 +11,12 @@ export function PrimaryTabs({ activeTab, onChange }: PrimaryTabsProps) {
 
   const tabs = [
     { key: "today", label: t("tabs.today") },
-    { key: "activity", label: t("tabs.activity") },
     { key: "history", label: t("tabs.history") },
     { key: "leaderboard", label: t("tabs.leaderboard") }
   ] as const;
 
   return (
-    <nav aria-label={t("tabs.navigation")} className="mb-3 grid grid-cols-4 gap-2">
+    <nav aria-label={t("tabs.navigation")} className="mb-3 grid grid-cols-3 gap-2">
       {tabs.map((tab) => (
         <button
           type="button"

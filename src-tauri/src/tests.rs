@@ -78,6 +78,7 @@ mod tests {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: false,
+            desktop_pet_auto_show: default_desktop_pet_auto_show(),
             locale: default_locale(),
             sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }
@@ -153,6 +154,7 @@ mod tests {
                     kind: SedentaryActivityKind::Seated,
                     at: now.to_rfc3339(),
                 }],
+                activity_history: Vec::new(),
             },
         };
 
@@ -196,7 +198,7 @@ mod tests {
     }
 
     #[test]
-    fn sedentary_activity_keeps_only_the_current_day() {
+    fn sedentary_activity_archives_the_previous_day() {
         let settings = Settings::default();
         let first_day = local_dt(2026, 8, 19, 23, 55);
         let next_day = local_dt(2026, 8, 20, 0, 1);
@@ -216,12 +218,177 @@ mod tests {
         reconcile_sedentary(&mut state, next_day);
         assert_eq!(state.sedentary.activity_day_key, day_key(next_day));
         assert_eq!(state.sedentary.activity_events.len(), 1);
+        assert_eq!(state.sedentary.activity_history.len(), 1);
+        assert_eq!(state.sedentary.activity_history[0].day_key, day_key(first_day));
+        assert_eq!(state.sedentary.activity_history[0].activity_events.len(), 1);
         assert_eq!(
             state.sedentary.activity_events[0].kind,
             SedentaryActivityKind::Seated
         );
         let next_day_text = next_day.to_rfc3339();
         assert_eq!(state.sedentary.seated_since.as_deref(), Some(next_day_text.as_str()));
+    }
+
+    #[test]
+    fn sedentary_activity_keeps_seven_days_including_today() {
+        let settings = Settings::default();
+        let first_day = local_dt(2026, 8, 12, 9, 0);
+        let mut state = PersistedState {
+            today: DailyRecord::new(first_day, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+
+        toggle_sedentary_state_in_state(&mut state, first_day);
+        for offset in 1..8 {
+            reconcile_sedentary(
+                &mut state,
+                first_day + chrono::Duration::days(offset),
+            );
+        }
+
+        assert_eq!(state.sedentary.activity_history.len(), 6);
+        assert_eq!(state.sedentary.activity_day_key, "2026-08-19");
+        assert!(state
+            .sedentary
+            .activity_history
+            .iter()
+            .all(|item| item.day_key >= "2026-08-13".to_string()));
+    }
+
+    #[test]
+    fn manual_activity_event_is_inserted_into_a_past_day_in_time_order() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 19, 12, 0);
+        let mut state = PersistedState {
+            today: DailyRecord::new(now, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Standing,
+            &local_dt(2026, 8, 18, 10, 0).to_rfc3339(),
+            now,
+        )
+        .unwrap();
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Seated,
+            &local_dt(2026, 8, 18, 9, 0).to_rfc3339(),
+            now,
+        )
+        .unwrap();
+
+        let day = state
+            .sedentary
+            .activity_history
+            .iter()
+            .find(|item| item.day_key == "2026-08-18")
+            .unwrap();
+        assert_eq!(day.activity_events.len(), 2);
+        assert_eq!(day.activity_events[0].kind, SedentaryActivityKind::Seated);
+        assert_eq!(day.activity_events[1].kind, SedentaryActivityKind::Standing);
+    }
+
+    #[test]
+    fn manual_activity_event_can_be_edited_and_resorts_the_day() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 19, 12, 0);
+        let mut state = PersistedState {
+            today: DailyRecord::new(now, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+        let original_at = local_dt(2026, 8, 18, 10, 0).to_rfc3339();
+
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Standing,
+            &original_at,
+            now,
+        )
+        .unwrap();
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Seated,
+            &local_dt(2026, 8, 18, 9, 0).to_rfc3339(),
+            now,
+        )
+        .unwrap();
+
+        edit_sedentary_activity_event_in_state(
+            &mut state,
+            &original_at,
+            SedentaryActivityKind::Seated,
+            &local_dt(2026, 8, 18, 8, 30).to_rfc3339(),
+            now,
+        )
+        .unwrap();
+
+        let day = state
+            .sedentary
+            .activity_history
+            .iter()
+            .find(|item| item.day_key == "2026-08-18")
+            .unwrap();
+        assert_eq!(day.activity_events.len(), 2);
+        assert_eq!(day.activity_events[0].kind, SedentaryActivityKind::Seated);
+        assert_eq!(
+            day.activity_events[0].at,
+            local_dt(2026, 8, 18, 8, 30).to_rfc3339()
+        );
+    }
+
+    #[test]
+    fn deleting_the_latest_current_day_event_restores_the_previous_live_state() {
+        let settings = Settings::default();
+        let now = local_dt(2026, 8, 19, 12, 0);
+        let seated_at = local_dt(2026, 8, 19, 9, 0).to_rfc3339();
+        let standing_at = local_dt(2026, 8, 19, 10, 0).to_rfc3339();
+        let mut state = PersistedState {
+            today: DailyRecord::new(now, &settings),
+            settings,
+            history: Vec::new(),
+            garden: GardenState::default(),
+            sync_meta: SyncMeta::default(),
+            achievements: Vec::new(),
+            sedentary: SedentaryState::default(),
+        };
+
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Seated,
+            &seated_at,
+            now,
+        )
+        .unwrap();
+        add_sedentary_activity_event_in_state(
+            &mut state,
+            SedentaryActivityKind::Standing,
+            &standing_at,
+            now,
+        )
+        .unwrap();
+        delete_sedentary_activity_event_in_state(&mut state, &standing_at, now).unwrap();
+
+        assert_eq!(state.sedentary.activity_events.len(), 1);
+        assert!(state.sedentary.seated);
+        assert_eq!(state.sedentary.seated_since.as_deref(), Some(seated_at.as_str()));
+        assert_eq!(state.sedentary.stood_up_at, None);
     }
 
     #[test]
@@ -241,6 +408,19 @@ mod tests {
     }
 
     #[test]
+    fn desktop_pet_auto_show_defaults_on_for_legacy_settings() {
+        let mut legacy_settings = serde_json::to_value(Settings::default()).unwrap();
+        legacy_settings
+            .as_object_mut()
+            .unwrap()
+            .remove("desktopPetAutoShow");
+
+        let parsed = serde_json::from_value::<Settings>(legacy_settings).unwrap();
+        assert!(Settings::default().desktop_pet_auto_show);
+        assert!(parsed.desktop_pet_auto_show);
+    }
+
+    #[test]
     fn remote_settings_snapshot_updates_account_settings_only() {
         let local_settings = Settings {
             daily_target_ml: 2000,
@@ -257,6 +437,7 @@ mod tests {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: true,
+            desktop_pet_auto_show: false,
             locale: "zh-CN".to_string(),
             sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }
@@ -303,6 +484,7 @@ mod tests {
         assert_eq!(state.settings.active_circle_code, "ABC123");
         assert_eq!(state.settings.notifications_enabled, true);
         assert_eq!(state.settings.autostart_enabled, true);
+        assert_eq!(state.settings.desktop_pet_auto_show, false);
         assert_eq!(state.settings.panel_opacity_percent, 82);
         assert_eq!(state.settings.panel_blur_px, 8);
         assert_eq!(
@@ -421,6 +603,7 @@ mod tests {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: false,
+            desktop_pet_auto_show: default_desktop_pet_auto_show(),
             locale: default_locale(),
             sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         };
@@ -632,7 +815,7 @@ mod tests {
     }
 
     #[test]
-    fn expedition_requires_first_drink_and_spends_one_crop() {
+    fn expedition_requires_twenty_percent_progress_and_spends_one_crop() {
         let settings = Settings::default();
         let now = local_dt(2026, 8, 14, 9, 0);
         let mut state = PersistedState {
@@ -645,7 +828,7 @@ mod tests {
             sedentary: SedentaryState::default(),
         };
         add_produce(&mut state.garden, POTATO_CROP_TYPE, 2);
-        state.today.actual_intake_ml = 0;
+        state.today.actual_intake_ml = 399;
 
         assert!(start_expedition_in_state(
             &mut state,
@@ -655,7 +838,7 @@ mod tests {
         )
         .is_err());
 
-        state.today.actual_intake_ml = 1;
+        state.today.actual_intake_ml = 400;
         start_expedition_in_state(
             &mut state,
             DEFAULT_EXPEDITION_ROUTE_ID,

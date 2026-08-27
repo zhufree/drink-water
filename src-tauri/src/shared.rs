@@ -84,6 +84,10 @@ fn default_sedentary_reminder_minutes() -> u32 {
     20
 }
 
+fn default_desktop_pet_auto_show() -> bool {
+    true
+}
+
 fn default_empty_string() -> String {
     String::new()
 }
@@ -119,6 +123,8 @@ pub struct Settings {
     active_end_hour: u8,
     notifications_enabled: bool,
     autostart_enabled: bool,
+    #[serde(default = "default_desktop_pet_auto_show")]
+    desktop_pet_auto_show: bool,
     #[serde(default = "default_locale")]
     locale: String,
     #[serde(default = "default_sedentary_reminder_minutes")]
@@ -142,6 +148,7 @@ impl Default for Settings {
             active_end_hour: 22,
             notifications_enabled: true,
             autostart_enabled: false,
+            desktop_pet_auto_show: default_desktop_pet_auto_show(),
             locale: default_locale(),
             sedentary_reminder_minutes: default_sedentary_reminder_minutes(),
         }

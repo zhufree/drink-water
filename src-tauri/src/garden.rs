@@ -633,8 +633,10 @@ fn start_expedition_in_state(
     if !is_expedition_route_unlocked(&state.garden, route_id) {
         return Err("expedition route is locked".to_string());
     }
-    if state.today.actual_intake_ml == 0 {
-        return Err("drink once before starting an expedition".to_string());
+    if state.today.target_ml == 0
+        || u64::from(state.today.actual_intake_ml) * 5 < u64::from(state.today.target_ml)
+    {
+        return Err("reach 20% of the daily goal before starting an expedition".to_string());
     }
     if total_produce(&state.garden, &crop_type) == 0 {
         return Err("not enough produce for expedition".to_string());

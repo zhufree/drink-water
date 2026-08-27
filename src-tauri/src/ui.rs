@@ -14,6 +14,38 @@
         .build()
 }
 
+fn ensure_pet_window(app: &AppHandle) -> Result<tauri::WebviewWindow, tauri::Error> {
+    if let Some(window) = app.get_webview_window("pet") {
+        return Ok(window);
+    }
+
+    let window = WebviewWindowBuilder::new(app, "pet", WebviewUrl::App("index.html".into()))
+        .title("Water Baby")
+        .inner_size(164.0, 202.0)
+        .min_inner_size(164.0, 202.0)
+        .max_inner_size(164.0, 202.0)
+        .resizable(false)
+        .decorations(false)
+        .transparent(true)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .shadow(false)
+        .visible(false)
+        .focused(false)
+        .build()?;
+
+    if let Some(monitor) = window.primary_monitor()? {
+        let monitor_position = monitor.position();
+        let monitor_size = monitor.size();
+        let window_size = window.outer_size()?;
+        let x = monitor_position.x + monitor_size.width as i32 - window_size.width as i32 - 24;
+        let y = monitor_position.y + monitor_size.height as i32 - window_size.height as i32 - 72;
+        window.set_position(tauri::PhysicalPosition::new(x, y))?;
+    }
+
+    Ok(window)
+}
+
 fn toggle_main_window(app: &AppHandle) {
     if let Ok(window) = ensure_window(app) {
         if window.is_visible().unwrap_or(false) {
@@ -33,6 +65,27 @@ fn show_main_window(app: &AppHandle) {
     }
 }
 
+fn toggle_pet_window(app: &AppHandle) {
+    if let Ok(window) = ensure_pet_window(app) {
+        if window.is_visible().unwrap_or(false) {
+            let _ = window.hide();
+        } else {
+            let _ = window.show();
+        }
+    }
+}
+
+fn show_pet_window(app: &AppHandle) {
+    if let Ok(window) = ensure_pet_window(app) {
+        let _ = window.show();
+    }
+}
+
+#[tauri::command]
+fn show_main_window_command(app: AppHandle) {
+    show_main_window(&app);
+}
+
 fn emit_state_updated(app: &AppHandle) {
     let _ = app.emit(STATE_EVENT, ());
 }
@@ -46,11 +99,11 @@ fn maybe_send_notification(app: &AppHandle, title: &str, body: &str) {
         .show();
 }
 
-fn tray_menu_copy(locale: &str) -> (&'static str, &'static str) {
+fn tray_menu_copy(locale: &str) -> (&'static str, &'static str, &'static str) {
     if normalize_locale(locale) == "en-US" {
-        ("Open Drink Water", "Quit")
+        ("Open Drink Water", "Show / hide Water Baby", "Quit")
     } else {
-        ("打开 Drink Water", "退出程序")
+        ("打开 Drink Water", "显示 / 隐藏水宝宝桌宠", "退出程序")
     }
 }
 
@@ -173,16 +226,24 @@ pub fn run() {
         ))
         .setup(|app| {
             let state = AppState::load(&app.handle())?;
-            let autostart_enabled = state
+            let (autostart_enabled, desktop_pet_auto_show) = state
                 .data
                 .lock()
-                .map(|guard| guard.settings.autostart_enabled)
-                .unwrap_or(false);
+                .map(|guard| {
+                    (
+                        guard.settings.autostart_enabled,
+                        guard.settings.desktop_pet_auto_show,
+                    )
+                })
+                .unwrap_or((false, default_desktop_pet_auto_show()));
             if autostart_enabled {
                 let _ = app.handle().autolaunch().enable();
             }
             app.manage(state);
             show_main_window(&app.handle());
+            if desktop_pet_auto_show {
+                show_pet_window(&app.handle());
+            }
 
             let app_handle = app.handle().clone();
             let locale = app
@@ -191,10 +252,11 @@ pub fn run() {
                 .lock()
                 .map(|guard| guard.settings.locale.clone())
                 .unwrap_or_else(|_| default_locale());
-            let (open_label, quit_label) = tray_menu_copy(&locale);
+            let (open_label, pet_label, quit_label) = tray_menu_copy(&locale);
             let open_item = MenuItem::with_id(app, "open", open_label, true, None::<&str>)?;
+            let pet_item = MenuItem::with_id(app, "pet", pet_label, true, None::<&str>)?;
             let quit_item = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
-            let tray_menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+            let tray_menu = Menu::with_items(app, &[&open_item, &pet_item, &quit_item])?;
             TrayIconBuilder::new()
                 .icon(tauri::include_image!("icons/icon.png"))
                 .tooltip("Drink Water")
@@ -212,6 +274,7 @@ pub fn run() {
                 })
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "open" => show_main_window(app),
+                    "pet" => toggle_pet_window(app),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -226,6 +289,10 @@ pub fn run() {
             get_today_status,
             get_sedentary_status,
             toggle_sedentary_state,
+            add_sedentary_activity_event,
+            edit_sedentary_activity_event,
+            delete_sedentary_activity_event,
+            show_main_window_command,
             log_drink,
             undo_last_drink,
             log_yesterday_drink,

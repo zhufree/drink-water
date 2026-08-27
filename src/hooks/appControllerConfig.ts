@@ -1,12 +1,12 @@
 import { SEED_EXCHANGE_CONFIG } from "../config/seedExchange";
 import type { GardenState, Locale, Settings } from "../types";
 
-export type TabKey = "today" | "activity" | "history" | "leaderboard" | "settings";
+export type TabKey = "today" | "history" | "leaderboard" | "settings";
 export type CirclesLoadState = "loading" | "ready" | "error";
 export type CloudIdentityState = "loading" | "ready" | "error";
 export type NicknameSaveState = "idle" | "success" | "error";
 
-export const APP_VERSION = "0.8.1";
+export const APP_VERSION = "0.8.6";
 export const RELEASE_URL = "https://github.com/zhufree/drink-water/releases";
 export const COPYRIGHT = "Copyright (c) 2026 zhufree";
 
@@ -25,6 +25,7 @@ export const defaultSettings: Settings = {
   activeEndHour: 22,
   notificationsEnabled: true,
   autostartEnabled: false,
+  desktopPetAutoShow: true,
   locale: "zh-CN",
   sedentaryReminderMinutes: 20
 };

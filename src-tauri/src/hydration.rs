@@ -79,7 +79,73 @@ fn to_sedentary_status(settings: &Settings, sedentary: &SedentaryState) -> Seden
         next_reminder_at: next_sedentary_reminder_time(settings, sedentary),
         activity_day_key: sedentary.activity_day_key.clone(),
         activity_events: sedentary.activity_events.clone(),
+        activity_history: sedentary.activity_history.clone(),
     }
+}
+
+const SEDENTARY_ACTIVITY_RETENTION_DAYS: i64 = 7;
+
+fn sort_sedentary_activity_events(events: &mut [SedentaryActivityEvent]) {
+    events.sort_by(|left, right| {
+        parse_local_datetime(&left.at)
+            .cmp(&parse_local_datetime(&right.at))
+            .then_with(|| left.at.cmp(&right.at))
+    });
+}
+
+fn sync_current_sedentary_from_activity_events(sedentary: &mut SedentaryState) {
+    sedentary.last_stand_reminder_at = None;
+    sedentary.last_sit_prompt_at = None;
+
+    match sedentary.activity_events.last() {
+        Some(latest) if latest.kind == SedentaryActivityKind::Seated => {
+            sedentary.seated = true;
+            sedentary.seated_since = Some(latest.at.clone());
+            sedentary.stood_up_at = None;
+        }
+        Some(latest) => {
+            sedentary.seated = false;
+            sedentary.seated_since = None;
+            sedentary.stood_up_at = Some(latest.at.clone());
+        }
+        None => {
+            sedentary.seated = false;
+            sedentary.seated_since = None;
+            sedentary.stood_up_at = None;
+        }
+    }
+}
+
+fn prune_sedentary_activity_history(sedentary: &mut SedentaryState, now: DateTime<Local>) {
+    let current_day = now.date_naive();
+    let oldest_day = current_day - chrono::Duration::days(SEDENTARY_ACTIVITY_RETENTION_DAYS - 1);
+    sedentary.activity_history.retain(|item| {
+        NaiveDate::parse_from_str(&item.day_key, "%Y-%m-%d")
+            .is_ok_and(|day| day >= oldest_day && day < current_day)
+    });
+    sedentary
+        .activity_history
+        .sort_by(|left, right| right.day_key.cmp(&left.day_key));
+    sedentary
+        .activity_history
+        .truncate((SEDENTARY_ACTIVITY_RETENTION_DAYS - 1) as usize);
+}
+
+fn archive_current_sedentary_activity_day(sedentary: &mut SedentaryState) {
+    if sedentary.activity_day_key.is_empty() {
+        return;
+    }
+
+    let day_key = sedentary.activity_day_key.clone();
+    let mut activity_events = sedentary.activity_events.clone();
+    sort_sedentary_activity_events(&mut activity_events);
+    sedentary
+        .activity_history
+        .retain(|item| item.day_key != day_key);
+    sedentary.activity_history.push(SedentaryActivityDay {
+        day_key,
+        activity_events,
+    });
 }
 
 fn next_sedentary_reminder_time(
@@ -125,11 +191,18 @@ fn reconcile_sedentary_activity_day(
 ) -> bool {
     let current_day = day_key(now);
     if sedentary.activity_day_key == current_day {
+        sort_sedentary_activity_events(&mut sedentary.activity_events);
+        prune_sedentary_activity_history(sedentary, now);
         return false;
     }
 
-    let previous_day = std::mem::replace(&mut sedentary.activity_day_key, current_day);
+    let previous_day = sedentary.activity_day_key.clone();
+    if !previous_day.is_empty() {
+        archive_current_sedentary_activity_day(sedentary);
+    }
+    sedentary.activity_day_key = current_day;
     sedentary.activity_events.clear();
+    prune_sedentary_activity_history(sedentary, now);
 
     if previous_day.is_empty() {
         if sedentary.seated {
@@ -168,6 +241,135 @@ fn reconcile_sedentary_activity_day(
     });
     sedentary.updated_at = Some(now_text);
     true
+}
+
+fn add_sedentary_activity_event_in_state(
+    state: &mut PersistedState,
+    kind: SedentaryActivityKind,
+    at: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    reconcile_sedentary_activity_day(&mut state.sedentary, now);
+
+    let event_at = parse_local_datetime(at)
+        .ok_or_else(|| "invalid activity event time".to_string())?;
+    if event_at > now {
+        return Err("activity event cannot be in the future".to_string());
+    }
+
+    let event_day = event_at.date_naive();
+    let current_day = now.date_naive();
+    let oldest_day = current_day - chrono::Duration::days(SEDENTARY_ACTIVITY_RETENTION_DAYS - 1);
+    if event_day < oldest_day || event_day > current_day {
+        return Err("activity event must be within the latest 7 days".to_string());
+    }
+
+    let day_key = event_day.format("%Y-%m-%d").to_string();
+    let normalized_at = event_at.to_rfc3339();
+    let event = SedentaryActivityEvent {
+        kind,
+        at: normalized_at.clone(),
+    };
+
+    if day_key == state.sedentary.activity_day_key {
+        state
+            .sedentary
+            .activity_events
+            .retain(|item| item.at != normalized_at);
+        state.sedentary.activity_events.push(event);
+        sort_sedentary_activity_events(&mut state.sedentary.activity_events);
+        sync_current_sedentary_from_activity_events(&mut state.sedentary);
+    } else {
+        let activity_day = if let Some(existing) = state
+            .sedentary
+            .activity_history
+            .iter_mut()
+            .find(|item| item.day_key == day_key)
+        {
+            existing
+        } else {
+            state.sedentary.activity_history.push(SedentaryActivityDay {
+                day_key: day_key.clone(),
+                activity_events: Vec::new(),
+            });
+            state.sedentary.activity_history.last_mut().expect("activity day exists")
+        };
+        activity_day
+            .activity_events
+            .retain(|item| item.at != normalized_at);
+        activity_day.activity_events.push(event);
+        sort_sedentary_activity_events(&mut activity_day.activity_events);
+    }
+
+    prune_sedentary_activity_history(&mut state.sedentary, now);
+    state.sedentary.updated_at = Some(now.to_rfc3339());
+    Ok(())
+}
+
+fn delete_sedentary_activity_event_in_state(
+    state: &mut PersistedState,
+    at: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    reconcile_sedentary_activity_day(&mut state.sedentary, now);
+
+    let event_at = parse_local_datetime(at)
+        .ok_or_else(|| "invalid activity event time".to_string())?;
+    let normalized_at = event_at.to_rfc3339();
+    let event_day_key = event_at.date_naive().format("%Y-%m-%d").to_string();
+    let removed = if event_day_key == state.sedentary.activity_day_key {
+        let original_len = state.sedentary.activity_events.len();
+        state
+            .sedentary
+            .activity_events
+            .retain(|item| item.at != normalized_at);
+        let removed = state.sedentary.activity_events.len() != original_len;
+        if removed {
+            sync_current_sedentary_from_activity_events(&mut state.sedentary);
+        }
+        removed
+    } else if let Some(day) = state
+        .sedentary
+        .activity_history
+        .iter_mut()
+        .find(|item| item.day_key == event_day_key)
+    {
+        let original_len = day.activity_events.len();
+        day.activity_events.retain(|item| item.at != normalized_at);
+        day.activity_events.len() != original_len
+    } else {
+        false
+    };
+
+    if !removed {
+        return Err("activity event was not found".to_string());
+    }
+
+    state.sedentary.updated_at = Some(now.to_rfc3339());
+    Ok(())
+}
+
+fn edit_sedentary_activity_event_in_state(
+    state: &mut PersistedState,
+    original_at: &str,
+    kind: SedentaryActivityKind,
+    at: &str,
+    now: DateTime<Local>,
+) -> Result<(), String> {
+    let event_at = parse_local_datetime(at)
+        .ok_or_else(|| "invalid activity event time".to_string())?;
+    if event_at > now {
+        return Err("activity event cannot be in the future".to_string());
+    }
+
+    let current_day = now.date_naive();
+    let oldest_day = current_day - chrono::Duration::days(SEDENTARY_ACTIVITY_RETENTION_DAYS - 1);
+    if event_at.date_naive() < oldest_day || event_at.date_naive() > current_day {
+        return Err("activity event must be within the latest 7 days".to_string());
+    }
+
+    delete_sedentary_activity_event_in_state(state, original_at, now)?;
+    add_sedentary_activity_event_in_state(state, kind, at, now)
 }
 
 fn toggle_sedentary_state_in_state(state: &mut PersistedState, now: DateTime<Local>) {

@@ -89,6 +89,7 @@ pub struct SedentaryStatus {
     next_reminder_at: Option<String>,
     activity_day_key: String,
     activity_events: Vec<SedentaryActivityEvent>,
+    activity_history: Vec<SedentaryActivityDay>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -103,6 +104,13 @@ pub enum SedentaryActivityKind {
 pub struct SedentaryActivityEvent {
     kind: SedentaryActivityKind,
     at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SedentaryActivityDay {
+    day_key: String,
+    activity_events: Vec<SedentaryActivityEvent>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -124,6 +132,8 @@ pub struct SedentaryState {
     activity_day_key: String,
     #[serde(default)]
     activity_events: Vec<SedentaryActivityEvent>,
+    #[serde(default)]
+    activity_history: Vec<SedentaryActivityDay>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

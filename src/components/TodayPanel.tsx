@@ -14,7 +14,7 @@ import {
   getBeverageCategoryGroups
 } from "../beverages";
 
-type TodayPanelProps = {
+export type TodayPanelProps = {
   settings: Settings;
   status: TodayStatus;
   gardenState: GardenState;

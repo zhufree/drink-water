@@ -28,6 +28,9 @@ type TranslationKey =
   | "message.gardenProjectBuilt"
   | "message.sedentarySeated"
   | "message.sedentaryStanding"
+  | "message.activityEventAdded"
+  | "message.activityEventEdited"
+  | "message.activityEventDeleted"
   | "message.circleCreated"
   | "message.circleJoined"
   | "message.circleSelected"
@@ -42,10 +45,13 @@ type TranslationKey =
   | "window.activeDrinkers"
   | "tabs.navigation"
   | "tabs.today"
-  | "tabs.activity"
   | "tabs.history"
   | "tabs.leaderboard"
-  | "activity.todayOnly"
+  | "todaySections.navigation"
+  | "todaySections.water"
+  | "todaySections.activity"
+  | "activity.today"
+  | "activity.savedDay"
   | "activity.title"
   | "activity.description"
   | "activity.sittingNow"
@@ -58,13 +64,29 @@ type TranslationKey =
   | "activity.emptyDescription"
   | "activity.satDown"
   | "activity.stoodUp"
+  | "activity.sleep"
   | "activity.sittingPhase"
   | "activity.standingPhase"
+  | "activity.sleepingPhase"
   | "activity.longSitting"
   | "activity.now"
   | "activity.lessThanMinute"
   | "activity.minutes"
   | "activity.hoursMinutes"
+  | "activity.addNode"
+  | "activity.cancelAdd"
+  | "activity.nodeType"
+  | "activity.nodeTime"
+  | "activity.invalidTime"
+  | "activity.saveNode"
+  | "activity.savingNode"
+  | "activity.editNode"
+  | "activity.deleteNode"
+  | "activity.deleteConfirm"
+  | "activity.dayEnd"
+  | "activity.dateNavigation"
+  | "activity.previousDay"
+  | "activity.nextDay"
   | "today.title"
   | "today.nextReminder"
   | "today.progress"
@@ -129,6 +151,8 @@ type TranslationKey =
   | "settings.language"
   | "settings.notifications"
   | "settings.autostart"
+  | "settings.desktopPetAutoShow"
+  | "settings.desktopPetAutoShowHelp"
   | "settings.permissionTitle"
   | "settings.permissionStatus"
   | "settings.permissionGranted"
@@ -415,6 +439,9 @@ const enUs: TranslationTable = {
   "message.gardenProjectBuilt": "The garden project is complete and a new route is open.",
   "message.sedentarySeated": "Sitting timer started.",
   "message.sedentaryStanding": "Standing break recorded.",
+  "message.activityEventAdded": "Activity point added.",
+  "message.activityEventEdited": "Activity point updated.",
+  "message.activityEventDeleted": "Activity point deleted.",
   "message.circleCreated": "Created circle {code}.",
   "message.circleJoined": "Joined circle {code}.",
   "message.circleSelected": "Switched to circle {code}.",
@@ -429,29 +456,48 @@ const enUs: TranslationTable = {
   "window.activeDrinkers": "{count} people are drinking too",
   "tabs.navigation": "Switch sections",
   "tabs.today": "Today",
-  "tabs.activity": "Activity",
   "tabs.history": "History",
   "tabs.leaderboard": "Leaderboard",
-  "activity.todayOnly": "TODAY ONLY",
+  "todaySections.navigation": "Choose today's record type",
+  "todaySections.water": "Water",
+  "todaySections.activity": "Activity",
+  "activity.today": "TODAY",
+  "activity.savedDay": "SAVED DAY",
   "activity.title": "Activity timeline",
-  "activity.description": "Your sitting and standing periods reset at the start of each day.",
+  "activity.description": "Review sitting and standing periods from the latest 7 days, or add a missed point.",
   "activity.sittingNow": "Sitting",
   "activity.standingNow": "Standing",
   "activity.totalSitting": "Total sitting",
   "activity.totalStanding": "Total standing",
   "activity.longestSitting": "Longest sitting",
-  "activity.timelineTitle": "Today's transitions",
-  "activity.emptyTitle": "No activity recorded yet",
-  "activity.emptyDescription": "Use the bottom Sit or Up button to create the first point on today's timeline.",
+  "activity.timelineTitle": "Status points",
+  "activity.emptyTitle": "No activity recorded for this day",
+  "activity.emptyDescription": "Add a point here, or use the bottom Sit or Up button while tracking today.",
   "activity.satDown": "Sat down",
   "activity.stoodUp": "Stood up",
+  "activity.sleep": "Sleep",
   "activity.sittingPhase": "Sitting period",
   "activity.standingPhase": "Standing period",
+  "activity.sleepingPhase": "Sleep period",
   "activity.longSitting": "Long sitting",
   "activity.now": "Now",
   "activity.lessThanMinute": "< 1 min",
   "activity.minutes": "{minutes} min",
   "activity.hoursMinutes": "{hours} hr {minutes} min",
+  "activity.addNode": "Add point",
+  "activity.cancelAdd": "Cancel",
+  "activity.nodeType": "Status",
+  "activity.nodeTime": "Time",
+  "activity.invalidTime": "Choose a valid time that is not in the future.",
+  "activity.saveNode": "Save point",
+  "activity.savingNode": "Saving...",
+  "activity.editNode": "Edit point",
+  "activity.deleteNode": "Delete point",
+  "activity.deleteConfirm": "Delete this activity point?",
+  "activity.dayEnd": "End of day",
+  "activity.dateNavigation": "Browse activity dates",
+  "activity.previousDay": "Previous",
+  "activity.nextDay": "Next",
   "today.title": "Today's hydration",
   "today.nextReminder": "Next reminder",
   "today.progress": "Progress",
@@ -516,6 +562,8 @@ const enUs: TranslationTable = {
   "settings.language": "Interface language",
   "settings.notifications": "System notifications",
   "settings.autostart": "Launch at startup",
+  "settings.desktopPetAutoShow": "Show Water Baby when the app starts",
+  "settings.desktopPetAutoShowHelp": "Starts the desktop pet automatically the next time you open the app. You can still show or hide it from the tray menu.",
   "settings.permissionTitle": "Notification permission",
   "settings.permissionStatus": "Current status: {status}",
   "settings.permissionGranted": "Granted",
@@ -666,11 +714,11 @@ const enUs: TranslationTable = {
   "garden.exchangeHub": "Exchange hub",
   "waterBaby.title": "Water baby",
   "waterBaby.open": "Open water baby · {state}",
-  "waterBaby.description": "Reach half of today's goal, pack one harvested crop, and send it on one quiet trip.",
+  "waterBaby.description": "Reach 20% of today's goal, pack one harvested crop, and send it on one quiet trip.",
   "waterBaby.stateAtHome": "Resting at home",
   "waterBaby.stateExploring": "Out exploring",
   "waterBaby.stateReady": "Back with supplies",
-  "waterBaby.locked": "Drink once today to set off",
+  "waterBaby.locked": "Reach 20% of today's goal to set off",
   "waterBaby.shortReady": "A 4-hour short trip is ready",
   "waterBaby.longReady": "Goal met: an 8-hour trip brings two rewards",
   "waterBaby.usedToday": "Today's trip is complete. It can leave again tomorrow.",
@@ -798,6 +846,9 @@ const zhCn: TranslationTable = {
   "message.restCompleted": "休息完成，作物获得成长加速。",
   "message.sedentarySeated": "已开始记录坐下时间。",
   "message.sedentaryStanding": "已记录起身状态。",
+  "message.activityEventAdded": "已添加活动节点。",
+  "message.activityEventEdited": "已更新活动节点。",
+  "message.activityEventDeleted": "已删除活动节点。",
   "message.circleCreated": "已创建圈子 {code}。",
   "message.circleJoined": "已加入圈子 {code}。",
   "message.circleSelected": "已切换到圈子 {code}。",
@@ -809,29 +860,48 @@ const zhCn: TranslationTable = {
   "window.activeDrinkers": "{count} 人也在喝水",
   "tabs.navigation": "页面切换",
   "tabs.today": "今日",
-  "tabs.activity": "活动",
   "tabs.history": "历史",
   "tabs.leaderboard": "排行榜",
-  "activity.todayOnly": "仅保留今日",
+  "todaySections.navigation": "选择今日记录类型",
+  "todaySections.water": "喝水",
+  "todaySections.activity": "活动",
+  "activity.today": "今天",
+  "activity.savedDay": "历史记录",
   "activity.title": "活动时间轴",
-  "activity.description": "记录今天坐下与起身的时间段，次日自动清空并重新计时。",
+  "activity.description": "可查看最近 7 天的坐下与起身时间段，也可以补记遗漏的节点。",
   "activity.sittingNow": "正在坐着",
   "activity.standingNow": "已经起身",
   "activity.totalSitting": "累计坐下",
   "activity.totalStanding": "累计起身",
   "activity.longestSitting": "最长久坐",
-  "activity.timelineTitle": "今日状态节点",
-  "activity.emptyTitle": "今天还没有活动记录",
-  "activity.emptyDescription": "使用底部的“坐下”或“起来”按钮，创建今天的第一个时间节点。",
+  "activity.timelineTitle": "状态节点",
+  "activity.emptyTitle": "这一天还没有活动记录",
+  "activity.emptyDescription": "可以在这里补记节点；记录今天时，也可以使用底部的“坐下”或“起来”按钮。",
   "activity.satDown": "坐下",
   "activity.stoodUp": "起身",
+  "activity.sleep": "睡眠",
   "activity.sittingPhase": "坐下阶段",
   "activity.standingPhase": "起身阶段",
+  "activity.sleepingPhase": "睡眠阶段",
   "activity.longSitting": "久坐",
   "activity.now": "现在",
   "activity.lessThanMinute": "不足 1 分钟",
   "activity.minutes": "{minutes} 分钟",
   "activity.hoursMinutes": "{hours} 小时 {minutes} 分钟",
+  "activity.addNode": "添加节点",
+  "activity.cancelAdd": "取消",
+  "activity.nodeType": "活动状态",
+  "activity.nodeTime": "发生时间",
+  "activity.invalidTime": "请选择有效且不晚于当前时刻的时间。",
+  "activity.saveNode": "保存节点",
+  "activity.savingNode": "正在保存…",
+  "activity.editNode": "编辑节点",
+  "activity.deleteNode": "删除节点",
+  "activity.deleteConfirm": "确定删除这个活动节点吗？",
+  "activity.dayEnd": "当天结束",
+  "activity.dateNavigation": "切换活动日期",
+  "activity.previousDay": "前一天",
+  "activity.nextDay": "后一天",
   "today.title": "今日饮水",
   "today.nextReminder": "下次提醒",
   "today.progress": "进度",
@@ -887,6 +957,8 @@ const zhCn: TranslationTable = {
   "settings.language": "界面语言",
   "settings.notifications": "系统通知",
   "settings.autostart": "开机自启",
+  "settings.desktopPetAutoShow": "启动 App 时显示水宝宝桌宠",
+  "settings.desktopPetAutoShowHelp": "保存后将在下次打开 App 时自动显示；仍可随时通过托盘菜单显示或隐藏桌宠。",
   "settings.permissionTitle": "通知权限",
   "settings.permissionStatus": "当前状态：{status}",
   "settings.permissionGranted": "已允许",
@@ -1056,11 +1128,11 @@ Object.assign(zhCn, {
   "message.gardenProjectBuilt": "修缮完成，新的探险路线已开放。",
   "waterBaby.title": "水宝宝",
   "waterBaby.open": "打开水宝宝 · {state}",
-  "waterBaby.description": "今日进度达到一半后，准备一份收获作物，让它安静地出门一次。",
+  "waterBaby.description": "今日进度达到 20% 后，准备一份收获作物，让它安静地出门一次。",
   "waterBaby.stateAtHome": "正在家里休息",
   "waterBaby.stateExploring": "正在外出探索",
   "waterBaby.stateReady": "已经带着物资回来",
-  "waterBaby.locked": "今天喝第一口水后就可以出发",
+  "waterBaby.locked": "今天喝到目标的 20% 后就可以出发",
   "waterBaby.shortReady": "已可进行 4 小时短途探索",
   "waterBaby.longReady": "今日已达标：8 小时远途可带回两份奖励",
   "waterBaby.usedToday": "今天已经出发过了，明天可以再次准备。",

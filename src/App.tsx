@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { ActivityPanel } from "./components/ActivityPanel";
 import { HistoryPanel } from "./components/HistoryPanel";
 import { FirstRunOnboardingModal } from "./components/FirstRunOnboardingModal";
 import { InitialSeedGrantModal } from "./components/InitialSeedGrantModal";
@@ -11,7 +10,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { SedentaryToggleButton } from "./components/SedentaryToggleButton";
 import { StartupCatchUpModal } from "./components/StartupCatchUpModal";
 import { Toast, type ToastTone } from "./components/Toast";
-import { TodayPanel } from "./components/TodayPanel";
+import { TodayDashboard } from "./components/TodayDashboard";
 import { WindowChrome } from "./components/WindowChrome";
 import { I18nProvider } from "./i18n";
 import {
@@ -61,6 +60,7 @@ export default function App() {
     controller.i18n.t("message.gardenProjectBuilt"),
     controller.i18n.t("message.sedentarySeated"),
     controller.i18n.t("message.sedentaryStanding"),
+    controller.i18n.t("message.activityEventAdded"),
     controller.i18n.t("message.circleMemberRemoved"),
     controller.i18n.t("message.circleLeft"),
     controller.i18n.t("message.circleDisbanded"),
@@ -192,25 +192,25 @@ export default function App() {
               />
 
               {controller.activeTab === "today" ? (
-                <TodayPanel
-                  settings={controller.settings}
-                  status={controller.status}
-                  gardenState={controller.gardenState}
-                  quickAmount={controller.quickAmount}
-                  setQuickAmount={controller.setQuickAmount}
-                  onLog={(amountMl) => void controller.handleLog(amountMl)}
-                  onUndo={() => void controller.handleUndoLastDrink()}
-                  onStartExpedition={(routeId, cropType) =>
-                    void controller.handleStartExpedition(routeId, cropType)
-                  }
-                  onClaimExpedition={(expeditionId) =>
-                    void controller.handleClaimExpedition(expeditionId)
-                  }
+                <TodayDashboard
+                  water={{
+                    settings: controller.settings,
+                    status: controller.status,
+                    gardenState: controller.gardenState,
+                    quickAmount: controller.quickAmount,
+                    setQuickAmount: controller.setQuickAmount,
+                    onLog: (amountMl) => void controller.handleLog(amountMl),
+                    onUndo: () => void controller.handleUndoLastDrink(),
+                    onStartExpedition: (routeId, cropType) =>
+                      void controller.handleStartExpedition(routeId, cropType),
+                    onClaimExpedition: (expeditionId) =>
+                      void controller.handleClaimExpedition(expeditionId)
+                  }}
+                  sedentaryStatus={controller.sedentaryStatus}
+                  onAddActivityEvent={controller.handleAddSedentaryActivityEvent}
+                  onEditActivityEvent={controller.handleEditSedentaryActivityEvent}
+                  onDeleteActivityEvent={controller.handleDeleteSedentaryActivityEvent}
                 />
-              ) : null}
-
-              {controller.activeTab === "activity" ? (
-                <ActivityPanel status={controller.sedentaryStatus} />
               ) : null}
 
               {controller.activeTab === "history" ? (

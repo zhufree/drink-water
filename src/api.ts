@@ -9,6 +9,7 @@ import type {
   Settings,
   SettingsSnapshotRecord,
   SedentaryStatus,
+  SedentaryActivityEvent,
   SyncMeta,
   TodayStatus,
   HistoryItem
@@ -33,6 +34,20 @@ export const getSedentaryStatus = () =>
 
 export const toggleSedentaryState = () =>
   invoke<SedentaryStatus>("toggle_sedentary_state");
+
+export const addSedentaryActivityEvent = (
+  kind: SedentaryActivityEvent["kind"],
+  at: string
+) => invoke<SedentaryStatus>("add_sedentary_activity_event", { kind, at });
+
+export const editSedentaryActivityEvent = (
+  originalAt: string,
+  kind: SedentaryActivityEvent["kind"],
+  at: string
+) => invoke<SedentaryStatus>("edit_sedentary_activity_event", { originalAt, kind, at });
+
+export const deleteSedentaryActivityEvent = (at: string) =>
+  invoke<SedentaryStatus>("delete_sedentary_activity_event", { at });
 
 export const logDrink = (amountMl: number) =>
   invoke<TodayStatus>("log_drink", { amountMl });

@@ -33,6 +33,19 @@
     color: #f8f5ee;
   }
 
+  html.pet-mode,
+  body.pet-mode {
+    min-width: 0;
+    min-height: 0;
+    background: transparent;
+  }
+
+  html.pet-mode,
+  body.pet-mode,
+  body.pet-mode #root {
+    background: transparent;
+  }
+
   button,
   input {
     font: inherit;
@@ -260,5 +273,54 @@
   .app-scroll::-webkit-scrollbar-thumb {
     border-radius: 999px;
     background: rgba(114, 208, 255, 0.28);
+  }
+
+  .desktop-pet {
+    background: transparent;
+    cursor: grab;
+  }
+
+  .desktop-pet:active {
+    cursor: grabbing;
+  }
+
+  .desktop-pet button {
+    cursor: pointer;
+  }
+
+  .pet-baby {
+    transform-origin: 50% 92%;
+    animation: pet-breathe 3.8s ease-in-out infinite;
+  }
+
+  .pet-baby--alert {
+    animation: pet-alert 1.8s ease-in-out infinite;
+  }
+}
+
+@keyframes pet-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.015, 0.985);
+  }
+}
+
+@keyframes pet-alert {
+  0%,
+  100% {
+    transform: rotate(-1.5deg) translateY(0);
+  }
+  50% {
+    transform: rotate(1.5deg) translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-baby,
+  .pet-baby--alert {
+    animation: none;
   }
 }

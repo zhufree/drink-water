@@ -6,12 +6,15 @@ import {
 } from "@tauri-apps/plugin-notification";
 import {
   applyRemoteAchievementReceipts,
+  addSedentaryActivityEvent,
   applyRemoteSnapshots,
   applyRemoteSettingsSnapshot,
   buildGardenProject,
   cancelRestBreak,
   claimExpedition,
   completeRestBreak,
+  deleteSedentaryActivityEvent,
+  editSedentaryActivityEvent,
   exchangeProduce,
   exportCloudBackupPayload,
   exportData,
@@ -133,7 +136,8 @@ const defaultSedentaryStatus: SedentaryStatus = {
   stoodUpAt: null,
   nextReminderAt: null,
   activityDayKey: "",
-  activityEvents: []
+  activityEvents: [],
+  activityHistory: []
 };
 
 function isInitialSeedGrantNoticeDismissed(awardedAt: string) {
@@ -615,6 +619,52 @@ export function useAppController() {
       );
     } catch (error) {
       setMessage(extractErrorMessage(error));
+    }
+  };
+
+  const handleAddSedentaryActivityEvent = async (
+    kind: "seated" | "standing",
+    at: string
+  ) => {
+    setMessage("");
+    try {
+      const nextStatus = await addSedentaryActivityEvent(kind, at);
+      setSedentaryStatus(nextStatus);
+      setMessage(i18n.t("message.activityEventAdded"));
+      return true;
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+      return false;
+    }
+  };
+
+  const handleEditSedentaryActivityEvent = async (
+    originalAt: string,
+    kind: "seated" | "standing",
+    at: string
+  ) => {
+    setMessage("");
+    try {
+      const nextStatus = await editSedentaryActivityEvent(originalAt, kind, at);
+      setSedentaryStatus(nextStatus);
+      setMessage(i18n.t("message.activityEventEdited"));
+      return true;
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+      return false;
+    }
+  };
+
+  const handleDeleteSedentaryActivityEvent = async (at: string) => {
+    setMessage("");
+    try {
+      const nextStatus = await deleteSedentaryActivityEvent(at);
+      setSedentaryStatus(nextStatus);
+      setMessage(i18n.t("message.activityEventDeleted"));
+      return true;
+    } catch (error) {
+      setMessage(extractErrorMessage(error));
+      return false;
     }
   };
 
@@ -1172,6 +1222,9 @@ export function useAppController() {
     handleStartExpedition,
     handleClaimExpedition,
     handleToggleSedentaryState,
+    handleAddSedentaryActivityEvent,
+    handleEditSedentaryActivityEvent,
+    handleDeleteSedentaryActivityEvent,
     handleBuildGardenProject,
     handleStartRestBreak,
     handleCancelRestBreak,

@@ -15,6 +15,7 @@ export type Settings = {
   activeEndHour: number;
   notificationsEnabled: boolean;
   autostartEnabled: boolean;
+  desktopPetAutoShow: boolean;
   locale: Locale;
   sedentaryReminderMinutes: number;
 };
@@ -55,11 +56,17 @@ export type SedentaryStatus = {
   nextReminderAt: string | null;
   activityDayKey: string;
   activityEvents: SedentaryActivityEvent[];
+  activityHistory: SedentaryActivityDay[];
 };
 
 export type SedentaryActivityEvent = {
   kind: "seated" | "standing";
   at: string;
+};
+
+export type SedentaryActivityDay = {
+  dayKey: string;
+  activityEvents: SedentaryActivityEvent[];
 };
 
 export type HistoryItem = {

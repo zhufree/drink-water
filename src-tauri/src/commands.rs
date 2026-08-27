@@ -84,6 +84,84 @@ fn toggle_sedentary_state(
 }
 
 #[tauri::command]
+fn add_sedentary_activity_event(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    kind: SedentaryActivityKind,
+    at: String,
+) -> Result<SedentaryStatus, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to add activity event".to_string())?;
+        add_sedentary_activity_event_in_state(&mut guard, kind, &at, now)?;
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read sedentary status".to_string())?;
+    Ok(to_sedentary_status(&guard.settings, &guard.sedentary))
+}
+
+#[tauri::command]
+fn edit_sedentary_activity_event(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    original_at: String,
+    kind: SedentaryActivityKind,
+    at: String,
+) -> Result<SedentaryStatus, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to edit activity event".to_string())?;
+        edit_sedentary_activity_event_in_state(&mut guard, &original_at, kind, &at, now)?;
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read sedentary status".to_string())?;
+    Ok(to_sedentary_status(&guard.settings, &guard.sedentary))
+}
+
+#[tauri::command]
+fn delete_sedentary_activity_event(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    at: String,
+) -> Result<SedentaryStatus, String> {
+    let now = Local::now();
+    {
+        let mut guard = state
+            .data
+            .lock()
+            .map_err(|_| "failed to delete activity event".to_string())?;
+        delete_sedentary_activity_event_in_state(&mut guard, &at, now)?;
+    }
+
+    state.save()?;
+    emit_state_updated(&app);
+
+    let guard = state
+        .data
+        .lock()
+        .map_err(|_| "failed to read sedentary status".to_string())?;
+    Ok(to_sedentary_status(&guard.settings, &guard.sedentary))
+}
+
+#[tauri::command]
 fn log_drink(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -1312,6 +1390,7 @@ fn apply_settings_snapshot(state: &mut PersistedState, remote: SettingsSnapshotR
         active_end_hour: remote.snapshot.active_end_hour,
         notifications_enabled: state.settings.notifications_enabled,
         autostart_enabled: state.settings.autostart_enabled,
+        desktop_pet_auto_show: state.settings.desktop_pet_auto_show,
         locale: remote.snapshot.locale,
     }
     .sanitize();
