@@ -843,6 +843,7 @@ name = "drink-water"
 version = "0.8.7"
 dependencies = [
  "chrono",
+ "rand",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

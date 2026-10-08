@@ -11,6 +11,9 @@ type HoldToConfirmButtonProps = {
   className: string;
   progressClassName: string;
   disabled?: boolean;
+  cooldownMs?: number;
+  title?: string;
+  onDrag?: () => void;
   children: ReactNode;
 };
 
@@ -20,6 +23,9 @@ export function HoldToConfirmButton({
   className,
   progressClassName,
   disabled = false,
+  cooldownMs = 180,
+  title,
+  onDrag,
   children
 }: HoldToConfirmButtonProps) {
   const [phase, setPhase] = useState<HoldPhase>("idle");
@@ -27,6 +33,7 @@ export function HoldToConfirmButton({
   const holdingRef = useRef(false);
   const triggeredRef = useRef(false);
   const resetRef = useRef<number | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -70,7 +77,7 @@ export function HoldToConfirmButton({
       triggeredRef.current = false;
       resetRef.current = null;
       setPhase("idle");
-    }, 180);
+    }, cooldownMs);
   };
 
   const begin = (event?: PointerEvent<HTMLButtonElement>) => {
@@ -78,6 +85,7 @@ export function HoldToConfirmButton({
       return;
     }
     if (event) {
+      pointerStartRef.current = { x: event.clientX, y: event.clientY };
       event.currentTarget.setPointerCapture(event.pointerId);
     }
     holdingRef.current = true;
@@ -91,10 +99,12 @@ export function HoldToConfirmButton({
       type="button"
       disabled={disabled}
       onPointerDown={(event) => {
+        if (event.button !== 0 || !event.isPrimary) return;
         event.preventDefault();
         begin(event);
       }}
       onPointerUp={(event) => {
+        pointerStartRef.current = null;
         event.preventDefault();
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId);
@@ -102,10 +112,22 @@ export function HoldToConfirmButton({
         cancel();
       }}
       onPointerCancel={(event) => {
+        pointerStartRef.current = null;
         if (event.currentTarget.hasPointerCapture(event.pointerId)) {
           event.currentTarget.releasePointerCapture(event.pointerId);
         }
         cancel();
+      }}
+      onPointerMove={(event) => {
+        const start = pointerStartRef.current;
+        if (!onDrag || !holdingRef.current || !start) return;
+        if (Math.hypot(event.clientX - start.x, event.clientY - start.y) < 8) return;
+        pointerStartRef.current = null;
+        cancel();
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+        onDrag();
       }}
       onLostPointerCapture={cancel}
       onBlur={cancel}
@@ -123,6 +145,7 @@ export function HoldToConfirmButton({
       }}
       onContextMenu={(event) => event.preventDefault()}
       aria-label={ariaLabel}
+      title={title}
       data-hold-state={phase}
       className={className}
     >

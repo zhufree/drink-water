@@ -1205,11 +1205,14 @@ mod tests {
     }
 
     #[test]
-    fn harvest_seed_reward_is_always_between_one_and_two() {
+    fn harvest_seed_reward_varies_between_one_and_two() {
         let settings = Settings::default();
         let now = local_dt(2026, 5, 20, 9, 0);
+        let mut seen = [false; 2];
 
-        for minute in 0..6 {
+        // Whole-minute timestamps reproduce the old clock-parity bug.
+        // 256 trials make an accidental single-outcome run negligible (2^-255).
+        for minute in 0..256 {
             let mut state = PersistedState {
                 settings: settings.clone(),
                 today: DailyRecord::new(now, &settings),
@@ -1234,7 +1237,9 @@ mod tests {
             let basic_seed_count = seed_count(&state.garden, BASIC_SEED_TYPE);
             let rewarded = basic_seed_count.saturating_sub(INITIAL_SEED_GRANT_COUNT - 1);
             assert!((1..=2).contains(&rewarded));
+            seen[(rewarded - 1) as usize] = true;
         }
+        assert_eq!(seen, [true, true], "harvests must not always return the same seed count");
     }
 
     #[test]

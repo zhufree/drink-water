@@ -746,15 +746,9 @@ fn claim_expedition_in_state(
     Ok(expedition.rewards)
 }
 
-fn random_seed_reward(now: DateTime<Local>, crop_type: &str, collection_len: usize) -> u32 {
-    let entropy = now
-        .timestamp_nanos_opt()
-        .unwrap_or_else(|| now.timestamp_micros())
-        .unsigned_abs();
-    let crop_bias = crop_type
-        .bytes()
-        .fold(0_u64, |acc, value| acc.saturating_add(u64::from(value)));
-    ((entropy + crop_bias + collection_len as u64) % 2 + 1) as u32
+fn random_seed_reward() -> u32 {
+    // Clock precision can keep timestamp parity constant (especially on Windows).
+    rand::random_range(1..=2)
 }
 
 fn history_item_for_day(state: &PersistedState, day_key: &str) -> Option<HistoryItem> {
@@ -867,7 +861,7 @@ fn harvest_crop_in_state(
     let harvested_at = now.to_rfc3339();
     state.garden.crops.remove(crop_index);
     add_produce(&mut state.garden, &crop_type, 1);
-    let rewarded_seeds = random_seed_reward(now, &crop_type, state.garden.collection.len());
+    let rewarded_seeds = random_seed_reward();
 
     if let Some(item) = state
         .garden

@@ -5,12 +5,14 @@ type WaterBabyAvatarProps = {
   state: "home" | "exploring" | "ready";
   className?: string;
   fillPercent?: number;
+  holdFeedback?: boolean;
 };
 
 export function WaterBabyAvatar({
   state,
   className = "h-[54px] w-[46px]",
-  fillPercent
+  fillPercent,
+  holdFeedback = false
 }: WaterBabyAvatarProps) {
   const id = useId().replace(/:/g, "");
   const hasHydrationFill = typeof fillPercent === "number";
@@ -33,6 +35,12 @@ export function WaterBabyAvatar({
             <stop offset="58%" stopColor="#38bdf8" />
             <stop offset="100%" stopColor="#0284c7" />
           </linearGradient>
+          {holdFeedback ? (
+            <linearGradient id={`water-hold-${id}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#e0f7ff" stopOpacity="0.95" />
+              <stop offset="100%" stopColor="#a5e3ff" stopOpacity="0.65" />
+            </linearGradient>
+          ) : null}
         </defs>
         <path
           d="M32 3C25 16 10 30 10 47c0 13 9.8 23 22 23s22-10 22-23C54 30 39 16 32 3Z"
@@ -53,6 +61,15 @@ export function WaterBabyAvatar({
             <path
               d={`M8 ${waterTop + 1.5} Q20 ${waterTop - 1.5} 32 ${waterTop + 1.5} T56 ${waterTop + 1.5} V76 H8Z`}
               className="fill-white/16 transition-all duration-700 ease-out"
+            />
+          </g>
+        ) : null}
+        {holdFeedback ? (
+          <g clipPath={`url(#water-baby-${id})`}>
+            <rect
+              x="8" y="3" width="48" height="69"
+              fill={`url(#water-hold-${id})`}
+              className="pet-hold-fill"
             />
           </g>
         ) : null}

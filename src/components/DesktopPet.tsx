@@ -7,11 +7,13 @@ import {
   getSedentaryStatus,
   getSettings,
   getTodayStatus,
+  logDrink,
   toggleSedentaryState
 } from "../api";
 import type { Locale, SedentaryStatus, Settings, TodayStatus } from "../types";
 import { clamp } from "../utils";
 import { WaterBabyAvatar } from "./waterBaby/WaterBabyAvatar";
+import { HoldToConfirmButton } from "./HoldToConfirmButton";
 
 const petWindow = getCurrentWindow();
 
@@ -21,6 +23,9 @@ const copy = {
     sitting: "已坐",
     standing: "已起身",
     standNow: "该起身啦",
+    standUrgent: "久坐超时",
+    holdToDrink: "长按记一杯水",
+    drinkError: "记水失败，请重试",
     tapToStand: "点击记录起身",
     tapToSit: "点击开始坐下计时",
     open: "打开主窗口",
@@ -33,6 +38,9 @@ const copy = {
     sitting: "Seated",
     standing: "Up for",
     standNow: "Time to stand",
+    standUrgent: "Stand up now",
+    holdToDrink: "Hold to log one cup",
+    drinkError: "Could not log water. Try again",
     tapToStand: "Tap to mark standing",
     tapToSit: "Tap to start sitting timer",
     open: "Open main window",
@@ -67,6 +75,8 @@ export function DesktopPet() {
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [loggingDrink, setLoggingDrink] = useState(false);
+  const [drinkFailed, setDrinkFailed] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -124,16 +134,33 @@ export function DesktopPet() {
   const activeDuration = elapsedMs(activeAnchor ?? null, now);
   const reminderDuration = Math.max(1, settings?.sedentaryReminderMinutes ?? 20) * 60_000;
   const breakDue = Boolean(sedentary?.seated && activeDuration >= reminderDuration);
+  const breakOverdue = Boolean(sedentary?.seated && activeDuration > 2 * 60 * 60_000);
   const statusLabel = error
     ? text.error
     : !sedentary
       ? text.loading
+      : breakOverdue
+        ? text.standUrgent
       : breakDue
         ? text.standNow
         : sedentary.seated
           ? text.sitting
           : text.standing;
   const statusAction = sedentary?.seated ? text.tapToStand : text.tapToSit;
+
+  const handleLogDrink = async () => {
+    if (!settings || loggingDrink) return;
+    setLoggingDrink(true);
+    setDrinkFailed(false);
+    try {
+      setToday(await logDrink(settings.cupSizeMl));
+    } catch (logError) {
+      console.error("[desktop-pet] failed to log water", logError);
+      setDrinkFailed(true);
+    } finally {
+      setLoggingDrink(false);
+    }
+  };
 
   const handleToggleSedentary = async () => {
     if (toggling) {
@@ -177,20 +204,24 @@ export function DesktopPet() {
         </button>
       </div>
 
-      <div
-        className={`pet-baby relative z-10 transition-transform duration-500 ${breakDue ? "pet-baby--alert" : ""}`}
-        title={`${text.hydration} ${today?.actualIntakeMl ?? 0} / ${today?.targetMl ?? 0} ml`}
+      <HoldToConfirmButton
+        className={`pet-baby relative z-10 touch-none rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300 ${breakDue || breakOverdue ? "pet-baby--alert" : ""}`}
+        ariaLabel={`${text.holdToDrink} (${settings?.cupSizeMl ?? 0} ml)`}
+        title={`${drinkFailed ? text.drinkError : text.holdToDrink} · ${text.hydration} ${today?.actualIntakeMl ?? 0} / ${today?.targetMl ?? 0} ml`}
+        progressClassName="hidden"
+        cooldownMs={550}
+        disabled={!settings || !today || loggingDrink}
+        onComplete={() => void handleLogDrink()}
+        onDrag={() => void petWindow.startDragging().catch(console.error)}
       >
-        <span data-tauri-drag-region className="absolute inset-0 z-30" />
-        <span className="absolute left-1/2 top-[54%] z-20 -translate-x-1/2 rounded-full border border-white/70 bg-[#f5fcff]/90 px-1.5 py-px text-[10px] font-extrabold tabular-nums tracking-tight text-[#096b9c] shadow-[0_2px_8px_rgba(12,90,128,0.18)]">
-          {progress}%
-        </span>
         <WaterBabyAvatar
           state="home"
           fillPercent={progress}
+          holdFeedback
           className="h-[124px] w-[104px]"
         />
-      </div>
+      </HoldToConfirmButton>
+      <span role="status" className="sr-only">{drinkFailed ? text.drinkError : ""}</span>
 
       <button
         type="button"
@@ -199,7 +230,9 @@ export function DesktopPet() {
         aria-label={`${statusLabel} ${formatClock(activeDuration)}。${statusAction}`}
         title={statusAction}
         className={`relative z-10 -mt-2.5 flex h-[43px] w-full max-w-[150px] items-center justify-between rounded-full border px-3 shadow-[0_7px_18px_rgba(14,80,112,0.2)] backdrop-blur-md transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 disabled:opacity-80 ${
-          breakDue
+          breakOverdue
+            ? "border-red-300 bg-red-100/96 text-red-900 hover:bg-red-50"
+          : breakDue
             ? "border-[#ffe5a2] bg-[#fff1c9]/96 text-[#74400e] hover:bg-[#fff7df]"
             : "border-white/85 bg-[#eefaff]/95 text-[#173f54] hover:bg-white"
         }`}
@@ -208,7 +241,7 @@ export function DesktopPet() {
           <span
             aria-hidden="true"
             className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-              breakDue ? "bg-amber-500" : sedentary?.seated ? "bg-sky-500" : "bg-emerald-500"
+              breakOverdue ? "bg-red-600" : breakDue ? "bg-amber-500" : sedentary?.seated ? "bg-sky-500" : "bg-emerald-500"
             }`}
           />
           <span className="truncate text-[9px] font-bold tracking-[0.08em] opacity-75">
