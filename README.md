@@ -60,6 +60,8 @@ corepack pnpm exec tauri build --debug
 
 `pnpm` 与 `pnpm-lock.yaml` 是唯一依赖入口。不要手工编辑锁文件、生成目录 `dist/`、`src-tauri/target/` 或 Tauri 生成物。
 
+推送到 `main` 时，如果 `package.json`、`src-tauri/Cargo.toml`、`src-tauri/tauri.conf.json` 的版本号一起从旧值变成同一个 `x.y.z`，GitHub Actions 会打包 Windows NSIS 安装包和 macOS（Apple 芯片、Intel）磁盘映像，并上传到 tag `vX.Y.Z`。只改其中一处版本会让这次检查失败。安装包没有签名，也不会写入 D1 `app_releases`。要重打当前版本，在 Actions 里手动运行 Package。
+
 ## Cloudflare Worker
 
 实际 `cloudflare/wrangler.jsonc` 包含本地账户/资源标识并被 Git 忽略。新环境先复制模板，再填写自己的 Cloudflare 资源：

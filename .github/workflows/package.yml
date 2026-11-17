@@ -1,0 +1,145 @@
+name: Package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - src-tauri/Cargo.toml
+      - src-tauri/tauri.conf.json
+      - .github/workflows/package.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.check.outputs.changed }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: check
+        shell: bash
+        run: |
+          node --input-type=module <<'EOF'
+          import { execSync } from "node:child_process";
+          import { appendFileSync } from "node:fs";
+
+          function readVersions(ref) {
+            const show = (path) => execSync(`git show ${ref}:${path}`, { encoding: "utf8" });
+            const pkg = JSON.parse(show("package.json")).version;
+            const cargo = show("src-tauri/Cargo.toml").match(/^version = "([^"]+)"/m)?.[1];
+            const tauri = JSON.parse(show("src-tauri/tauri.conf.json")).version;
+            return { pkg, cargo, tauri };
+          }
+
+          const head = readVersions("HEAD");
+          if (!head.pkg || head.pkg !== head.cargo || head.pkg !== head.tauri) {
+            console.error("package.json, Cargo.toml and tauri.conf.json versions must match.", head);
+            process.exit(1);
+          }
+          if (!/^\d+\.\d+\.\d+$/.test(head.pkg)) {
+            console.error(`Version must look like x.y.z, got ${head.pkg}`);
+            process.exit(1);
+          }
+
+          const parents = execSync("git rev-list --parents -n 1 HEAD", { encoding: "utf8" })
+            .trim()
+            .split(/\s+/);
+          let changed = parents.length < 2;
+          if (!changed) {
+            const previous = readVersions(parents[1]);
+            changed = previous.pkg !== head.pkg;
+            console.log(`Previous ${previous.pkg ?? "missing"} -> ${head.pkg}`);
+          }
+          console.log(`Package: ${changed}`);
+          appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\nversion=${head.pkg}\n`);
+          EOF
+
+  package:
+    needs: version
+    if: github.event_name == 'workflow_dispatch' || needs.version.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            args: --bundles nsis
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles dmg
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare macOS icon
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          src="src-tauri/icons/icon.png"
+          iconset="src-tauri/icons/icon.iconset"
+          rm -rf "$iconset"
+          mkdir -p "$iconset"
+          sips -z 16 16 "$src" --out "$iconset/icon_16x16.png"
+          sips -z 32 32 "$src" --out "$iconset/icon_16x16@2x.png"
+          sips -z 32 32 "$src" --out "$iconset/icon_32x32.png"
+          sips -z 64 64 "$src" --out "$iconset/icon_32x32@2x.png"
+          sips -z 128 128 "$src" --out "$iconset/icon_128x128.png"
+          sips -z 256 256 "$src" --out "$iconset/icon_128x128@2x.png"
+          sips -z 256 256 "$src" --out "$iconset/icon_256x256.png"
+          sips -z 512 512 "$src" --out "$iconset/icon_256x256@2x.png"
+          sips -z 512 512 "$src" --out "$iconset/icon_512x512.png"
+          cp "$src" "$iconset/icon_512x512@2x.png"
+          iconutil -c icns "$iconset" -o src-tauri/icons/icon.icns
+          rm -rf "$iconset"
+          node --input-type=module <<'EOF'
+          import { readFileSync, writeFileSync } from "node:fs";
+          const path = "src-tauri/tauri.conf.json";
+          const config = JSON.parse(readFileSync(path, "utf8"));
+          const icons = config.bundle.icon;
+          if (!icons.includes("icons/icon.icns")) icons.push("icons/icon.icns");
+          writeFileSync(path, `${JSON.stringify(config, null, 2)}\n`);
+          EOF
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: Drink Water v__VERSION__
+          releaseBody: Unsigned desktop installers. This release does not update the Cloudflare D1 app_releases row used by the in-app update check.
+          args: ${{ matrix.args }}
+          uploadUpdaterJson: false
+          uploadUpdaterSignatures: false
