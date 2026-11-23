@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "drink-water"
-version = "0.8.7"
+version = "0.9.0"
 dependencies = [
  "chrono",
  "rand",
