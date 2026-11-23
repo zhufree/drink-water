@@ -25,6 +25,7 @@ include!("models.rs");
 include!("achievements.rs");
 include!("commands.rs");
 include!("garden.rs");
+include!("presence.rs");
 include!("hydration.rs");
 include!("ui.rs");
 include!("tests.rs");

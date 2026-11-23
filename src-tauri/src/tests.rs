@@ -155,6 +155,9 @@ mod tests {
                     at: now.to_rfc3339(),
                 }],
                 activity_history: Vec::new(),
+                auto_away: false,
+                presence_hold: false,
+                presence_seen_away: None,
             },
         };
 
@@ -195,6 +198,187 @@ mod tests {
             reconcile_sedentary(&mut state, now + chrono::Duration::minutes(36)),
             Some(NotificationKind::SedentaryAskSitting)
         ));
+    }
+
+    fn seated_presence_state(now: DateTime<Local>) -> PersistedState {
+        let mut state = PersistedState::new(now);
+        state.sedentary.activity_day_key = day_key(now);
+        state.sedentary.seated = true;
+        state.sedentary.seated_since = Some(now.to_rfc3339());
+        state.sedentary.activity_events.push(SedentaryActivityEvent {
+            kind: SedentaryActivityKind::Seated,
+            at: now.to_rfc3339(),
+        });
+        state
+    }
+
+    #[test]
+    fn presence_idle_without_media_marks_standing_and_return_marks_seated() {
+        let seated_at = local_dt(2026, 11, 17, 9, 0);
+        let mut state = seated_presence_state(seated_at);
+        let mut memory = PresenceMemory {
+            was_locked_or_asleep: None,
+            interactive_since: None,
+        };
+        let away_at = seated_at + chrono::Duration::minutes(20);
+        let away = evaluate_presence(
+            &mut memory,
+            PresenceObservation {
+                locked_or_asleep: false,
+                idle_seconds: 6 * 60,
+                media_playing: false,
+            },
+            away_at,
+        );
+        apply_presence_decision(&mut state, away_at, away);
+        assert!(!state.sedentary.seated);
+        assert!(state.sedentary.auto_away);
+        assert_eq!(
+            state.sedentary.activity_events.last().map(|event| event.kind.clone()),
+            Some(SedentaryActivityKind::Standing)
+        );
+        assert_eq!(
+            state.sedentary.stood_up_at.as_deref(),
+            Some((away_at - chrono::Duration::minutes(6)).to_rfc3339().as_str())
+        );
+        assert!(reconcile_sedentary(&mut state, away_at + chrono::Duration::minutes(10)).is_none());
+
+        let back = evaluate_presence(
+            &mut memory,
+            PresenceObservation {
+                locked_or_asleep: false,
+                idle_seconds: 1,
+                media_playing: false,
+            },
+            away_at + chrono::Duration::minutes(10),
+        );
+        apply_presence_decision(&mut state, away_at + chrono::Duration::minutes(10), back);
+        assert!(state.sedentary.seated);
+        assert!(!state.sedentary.auto_away);
+    }
+
+    #[test]
+    fn presence_keeps_sitting_while_media_plays_or_after_screen_wakes() {
+        let now = local_dt(2026, 11, 17, 9, 30);
+        let mut state = seated_presence_state(local_dt(2026, 11, 17, 9, 0));
+        let mut memory = PresenceMemory {
+            was_locked_or_asleep: None,
+            interactive_since: None,
+        };
+        let watching = evaluate_presence(
+            &mut memory,
+            PresenceObservation {
+                locked_or_asleep: false,
+                idle_seconds: 30 * 60,
+                media_playing: true,
+            },
+            now,
+        );
+        apply_presence_decision(&mut state, now, watching);
+        assert!(state.sedentary.seated);
+
+        let mut asleep = PresenceMemory {
+            was_locked_or_asleep: Some(true),
+            interactive_since: Some(now - chrono::Duration::hours(1)),
+        };
+        let woke = evaluate_presence(
+            &mut asleep,
+            PresenceObservation {
+                locked_or_asleep: false,
+                idle_seconds: 40 * 60,
+                media_playing: false,
+            },
+            now,
+        );
+        assert!(!woke.away);
+
+        state.sedentary.seated = false;
+        state.sedentary.auto_away = true;
+        state.sedentary.seated_since = None;
+        state.sedentary.stood_up_at = Some((now - chrono::Duration::minutes(20)).to_rfc3339());
+        apply_presence_decision(&mut state, now, woke);
+        assert!(state.sedentary.seated);
+    }
+
+    #[test]
+    fn presence_screen_lock_marks_standing_immediately() {
+        let now = local_dt(2026, 11, 17, 11, 0);
+        let mut state = seated_presence_state(now - chrono::Duration::minutes(15));
+        let mut memory = PresenceMemory {
+            was_locked_or_asleep: Some(false),
+            interactive_since: Some(now - chrono::Duration::hours(2)),
+        };
+        let locked = evaluate_presence(
+            &mut memory,
+            PresenceObservation {
+                locked_or_asleep: true,
+                idle_seconds: 20,
+                media_playing: true,
+            },
+            now,
+        );
+        apply_presence_decision(&mut state, now, locked);
+        assert!(!state.sedentary.seated);
+        assert!(state.sedentary.auto_away);
+    }
+
+    #[test]
+    fn manual_posture_holds_until_presence_changes() {
+        let now = local_dt(2026, 11, 17, 14, 0);
+        let mut state = seated_presence_state(now - chrono::Duration::minutes(5));
+        toggle_sedentary_state_in_state(&mut state, now);
+        assert!(!state.sedentary.seated);
+        assert!(state.sedentary.presence_hold);
+
+        let present = PresenceDecision {
+            away: false,
+            changed_at: now + chrono::Duration::seconds(30),
+        };
+        apply_presence_decision(&mut state, now + chrono::Duration::seconds(30), present);
+        assert!(!state.sedentary.seated);
+
+        let still_present = PresenceDecision {
+            away: false,
+            changed_at: now + chrono::Duration::minutes(2),
+        };
+        apply_presence_decision(&mut state, now + chrono::Duration::minutes(2), still_present);
+        assert!(!state.sedentary.seated);
+
+        let left = PresenceDecision {
+            away: true,
+            changed_at: now + chrono::Duration::minutes(8),
+        };
+        apply_presence_decision(&mut state, now + chrono::Duration::minutes(8), left);
+        assert!(state.sedentary.auto_away);
+        assert!(!state.sedentary.presence_hold);
+
+        let returned = PresenceDecision {
+            away: false,
+            changed_at: now + chrono::Duration::minutes(20),
+        };
+        apply_presence_decision(&mut state, now + chrono::Duration::minutes(20), returned);
+        assert!(state.sedentary.seated);
+    }
+
+    #[test]
+    fn display_sleep_assertion_ignores_remote_desktop_and_accepts_video() {
+        assert!(!display_sleep_counts_as_media(
+            "/usr/libexec/UURemoteServer",
+            "PreventUserIdleDisplaySleep",
+            255
+        ));
+        assert!(!display_sleep_counts_as_media(
+            "WindowServer",
+            "PreventUserIdleDisplaySleep",
+            255
+        ));
+        assert!(!display_sleep_counts_as_media("Google Chrome", "NoIdleSleepAssertion", 255));
+        assert!(display_sleep_counts_as_media(
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "PreventUserIdleDisplaySleep",
+            255
+        ));
+        assert!(!display_sleep_counts_as_media("", "PreventUserIdleDisplaySleep", 255));
     }
 
     #[test]

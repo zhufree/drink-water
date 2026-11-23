@@ -134,6 +134,12 @@ pub struct SedentaryState {
     activity_events: Vec<SedentaryActivityEvent>,
     #[serde(default)]
     activity_history: Vec<SedentaryActivityDay>,
+    #[serde(default)]
+    auto_away: bool,
+    #[serde(default)]
+    presence_hold: bool,
+    #[serde(default)]
+    presence_seen_away: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -163,11 +163,21 @@ fn start_scheduler(app: AppHandle) {
                 let mut sedentary_notification = None;
                 let mut notifications_enabled = false;
                 let mut locale = default_locale();
+                let mut posture_changed = false;
 
                 if let Ok(mut guard) = state.data.lock() {
                     let before_snooze = guard.today.snooze_until.clone();
+                    let seated_before = guard.sedentary.seated;
+                    let events_before = guard.sedentary.activity_events.len();
                     let changed = reconcile(&mut guard, Local::now());
-                    sedentary_notification = reconcile_sedentary(&mut guard, Local::now());
+                    let now = Local::now();
+                    sedentary_notification = reconcile_sedentary_with_presence(
+                        &mut guard,
+                        now,
+                        current_presence_decision(now),
+                    );
+                    posture_changed = guard.sedentary.seated != seated_before
+                        || guard.sedentary.activity_events.len() != events_before;
                     notifications_enabled = guard.settings.notifications_enabled;
                     locale = guard.settings.locale.clone();
                     should_snooze_notify = guard.today.pending_slot_index.is_some()
@@ -200,8 +210,9 @@ fn start_scheduler(app: AppHandle) {
                 }
 
                 let _ = state.save();
-                if (should_notify || should_snooze_notify || sedentary_notification.is_some())
-                    && notifications_enabled
+                if posture_changed
+                    || ((should_notify || should_snooze_notify || sedentary_notification.is_some())
+                        && notifications_enabled)
                 {
                     emit_state_updated(&app);
                 }

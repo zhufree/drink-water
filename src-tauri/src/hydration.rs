@@ -114,6 +114,7 @@ fn sync_current_sedentary_from_activity_events(sedentary: &mut SedentaryState) {
             sedentary.stood_up_at = None;
         }
     }
+    mark_manual_presence_hold(sedentary);
 }
 
 fn prune_sedentary_activity_history(sedentary: &mut SedentaryState, now: DateTime<Local>) {
@@ -397,6 +398,7 @@ fn toggle_sedentary_state_in_state(state: &mut PersistedState, now: DateTime<Loc
         at: now_text.clone(),
     });
     state.sedentary.updated_at = Some(now_text);
+    mark_manual_presence_hold(&mut state.sedentary);
 }
 
 fn reconcile_sedentary(
@@ -404,6 +406,9 @@ fn reconcile_sedentary(
     now: DateTime<Local>,
 ) -> Option<NotificationKind> {
     reconcile_sedentary_activity_day(&mut state.sedentary, now);
+    if state.sedentary.auto_away {
+        return None;
+    }
 
     if state.sedentary.seated {
         let seated_since = state
